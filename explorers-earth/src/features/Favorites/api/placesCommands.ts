@@ -91,14 +91,8 @@ export function usePlacesCommands() {
    if(!intent){const parent=await PlacesClient.observeCollection(collectionId,signal);assert();const item=await PlacesClient.observeRecommendation(id,signal);assert();intent=PlacesClient.prepareMembershipIntent(parent,item,attached);memberships.current.set(signature,intent);}
    assert();const result=await PlacesClient.saveMembership(intent,signal);assert();memberships.current.delete(signature);return result;
   }),
-  pin:(id:string,collectionId:string,pinned:boolean)=>run(async(assert,signal)=>{
-   const signature=`pin:${id}:${collectionId}:${pinned}`;begin('pins',signature);const observed=await observeComplete(signature,assert,signal);assert();
-   if(!observed.memberships.some(member=>member.recommendationId===id&&member.collectionId===collectionId&&!member.collectionArchived&&!member.recommendationArchived))throw new Error('Place membership unavailable');
-   const pins=(observed.topPicks??[]).filter(pin=>pin.recommendationId!==id).map(pin=>({recommendationId:pin.recommendationId,collectionId:pin.collectionId}));
-   if(pinned)pins.push({recommendationId:id,collectionId});
-   assert();const result=await PlacesClient.setTopPicks(observed,pins,key(signature),signal);assert();forget(signature);return result;
-  }),
-  savePins:(pins:{recommendationId:string;collectionId:string}[])=>run(async(assert,signal)=>{const signature=`save-pins:${JSON.stringify(pins)}`;begin('pins',signature);const observed=await observeComplete(signature,assert,signal);assert();const result=await PlacesClient.setTopPicks(observed,pins,key(signature),signal);assert();forget(signature);return result;}),
+  // No pin or top-picks commands: Places is not a top-pick category, so the endpoint
+  // cannot accept it. A place's position is its order inside its list.
   // Provider imagery is imported into owned media before it is referenced, so a place
   // gallery never depends on a provider request to render.
   upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;}),

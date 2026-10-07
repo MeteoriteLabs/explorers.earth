@@ -52,7 +52,10 @@ export const PlacesClient={
  // A place gallery is owned media in S3, so provider imagery is imported rather than
  // linked and nothing here references a provider URL.
  async upload(file:File,purpose:'recommendation'|'collection'='recommendation',signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,purpose,signal);current(scope,signal);return media;},
- async readCompleteOwner(signal?:AbortSignal):Promise<CompletePlacesOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'places',status:'active'},signal,true);complete(value);return value;},
+ // Places is not a top-pick category (topPickCategorySchema covers books, movies,
+ // games, apps, products and people), so this read asks for none. Requesting them
+ // made the whole read throw 422 before a request went out.
+ async readCompleteOwner(signal?:AbortSignal):Promise<CompletePlacesOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'places',status:'active'},signal);complete(value);return value;},
  async observeCollection(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableCollection(id,signal);collection(value);return value;},
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
@@ -136,7 +139,6 @@ export const PlacesClient={
  updateRecommendation(observed:RecommendationObservation,patch:Omit<UpdateRecommendationInput,'expectedRevision'>,commandKey:string,signal?:AbortSignal){recommendation(observed);return explorersApiClient.updateMyRecommendation(observed,patch,commandKey,signal);},
  archiveRecommendation(observed:RecommendationObservation,commandKey:string,signal?:AbortSignal){recommendation(observed);return explorersApiClient.archiveMyRecommendation(observed,commandKey,signal);},
  reorderCollection(observed:CompletePlacesOwnerContent,id:string,ids:string[],commandKey:string,signal?:AbortSignal){complete(observed);return explorersApiClient.reorderMyCollection(observed,id,ids,commandKey,signal);},
- setTopPicks(observed:CompletePlacesOwnerContent,pins:Parameters<typeof explorersApiClient.setMyCategoryTopPicks>[1],commandKey:string,signal?:AbortSignal){complete(observed);return explorersApiClient.setMyCategoryTopPicks(observed,pins,commandKey,signal);},
  /**
   * Set or clear a list's location. Separate from updateCollection because changing where
   * a list is, is not the same edit as renaming it, and the snapshot must be replaced

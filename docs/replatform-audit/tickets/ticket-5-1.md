@@ -123,6 +123,26 @@ deferred to its own ticket. The consumer half proceeded on those answers.
 | `tunes/server/test/explorers/places.test.ts` | not written |
 | `explorers-earth/e2e/replatform/places.spec.ts` | not started - needs a fixture runner and protected-manifest identities |
 
+### Places has no category-wide top picks (found by the contained navigation lane, 2026-10-08)
+
+`topPickCategorySchema` is `books, movies, games, apps, products, people` - Places and
+Guides are deliberately outside it. `PlacesClient.readCompleteOwner` was asking for top
+picks anyway, and `completeCategory` refuses that combination with a 422 **before any
+request goes out**, so the entire Places owner read failed and the dashboard rendered its
+empty state. Every unit test mocked `readCompleteOwner`, so none of them could see it; the
+contained `places:` navigation lane did, which is what that lane is for.
+
+The read no longer asks, and the pin and top-picks commands are gone from the Places
+surface rather than left to throw. `is_pinned` and `pin_order` stay on the view because
+the cards read them, and they are honestly always false.
+
+**Consequence to raise.** Strapi's `recommendedPlace.is_pinned` / `pin_order` had no
+equivalent reachable through the owner API. A place's position is its order inside its
+list, which is preserved. `publicPlacesProjection` still reads
+`category_recommendation_pins`, so the storage is accurate and the column is simply always
+empty for places - but if pinning individual places is wanted back, it needs either Places
+added to the top-pick category set or a per-list pin of its own. Not invented here.
+
 ### What is left on Apollo in this surface, and why
 
 Nothing in the Places owner surface reads or writes Strapi any more. What remains in

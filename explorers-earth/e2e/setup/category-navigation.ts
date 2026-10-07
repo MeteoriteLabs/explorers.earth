@@ -134,7 +134,11 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
     createNativeNavigationContentFixture('games', () => state.lists.gameLists, state.account.documentId),
     createNativeNavigationContentFixture('apps', () => state.lists.appLists, state.account.documentId),
     createNativeNavigationContentFixture('products', () => state.lists.productLists, state.account.documentId),
-    createNativeNavigationContentFixture('people', () => state.lists.personLists, state.account.documentId)];
+    createNativeNavigationContentFixture('people', () => state.lists.personLists, state.account.documentId),
+    // Ticket 5.1. Places reads its owner lists natively now, so the contained fixture has
+    // to serve them too - otherwise the Favorites page renders no lists and its header
+    // controls never appear, which is exactly how the places navigation lane failed.
+    createNativeNavigationContentFixture('places', () => state.lists.recommendationLists, state.account.documentId)];
   const booksCommands = new Map<string, { body: string; result: unknown }>();
   const denied: string[] = [];
   const vendors: string[] = [];
@@ -243,15 +247,19 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       booksCommands.set(replayKey,{body:serialized,result});
       return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);
     }
-    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
+    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people|places)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
       ?? (['/api/explorers/v1/collections','/api/explorers/v1/recommendations'].includes(url.pathname) ? url.searchParams.get('category') : undefined);
-    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : nativeCategory==='people' ? nativeContentFixtures[4] : undefined;
-    if(url.origin===origin && request.method()==='GET' && nativeReader) {
+    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : nativeCategory==='people' ? nativeContentFixtures[4] : nativeCategory==='places' ? nativeContentFixtures[5] : undefined;
+    // The editable list read is addressed by id with no category, so the fixture that owns
+    // that collection answers and the rest return undefined.
+    const editableReader = /^\/api\/explorers\/v1\/collections\/[0-9a-fA-F-]{36}\/editable$/.test(url.pathname)
+      ? nativeContentFixtures.find(fixture => fixture(url) !== undefined) : undefined;
+    if(url.origin===origin && request.method()==='GET' && (nativeReader ?? editableReader)) {
       const authenticated=await hasOwnerSession();state.apiCalls.push({path:url.pathname,method:'GET',authenticated});
       if(!authenticated){expectedHttpErrors.set(request.url(),401);return route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:{code:'UNAUTHENTICATED',message:'Owner session required',requestId:'navigation-native'}})});}
       const fault=state.faults.get(url.pathname)?.shift();if(fault?.gate)await fault.gate;
       if(fault?.kind==='offline'){expectedOffline.add(request.url());return route.abort('internetdisconnected');}
-      const nativeResponse=nativeReader(url)!;
+      const nativeResponse=(nativeReader ?? editableReader)!(url)!;
       const status=fault?.kind==='error'?fault.status??503:nativeResponse.status;
       if(status>=400)expectedHttpErrors.set(request.url(),status);
       return route.fulfill({status,contentType:'application/json',body:JSON.stringify(fault?.kind==='error'

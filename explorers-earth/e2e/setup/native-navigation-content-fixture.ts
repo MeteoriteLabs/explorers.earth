@@ -3,13 +3,37 @@ import { bookFixtureId } from './books-owner-content';
 import * as contract from '../../../tunes/shared/explorersOwnerContentContract';
 
 /** Contained collection fixtures only; nonempty recommendations require their own qualified adapter. */
-export function createNativeNavigationContentFixture(category: 'movies' | 'games' | 'apps' | 'products' | 'people', lists: () => Record<string, any>[], legacyAccountId: string) {
+export function createNativeNavigationContentFixture(category: 'movies' | 'games' | 'apps' | 'products' | 'people' | 'places', lists: () => Record<string, any>[], legacyAccountId: string) {
   let signature = '', revision = 0;
   const snapshots = new Map<string, { revision: string; expiresAt: number }>();
   return (url: URL): { status: number; body: unknown } | undefined => {
     const base = '/api/explorers/v1';
     if (!url.pathname.startsWith(base + '/')) return;
     const path = url.pathname.slice(base.length);
+    // Ticket 5.1/5.2. The editable list read carries the fields only that read has: the
+    // category revision, the list's own pin, and - for a location list - its location and
+    // what is linked to it. Absent where the question does not apply, which the contract
+    // enforces, so a missing field here shows up as an empty page rather than a parse error.
+    const editable = /^\/collections\/([0-9a-fA-F-]{36})\/editable$/.exec(path);
+    if (editable) {
+      const source = lists();
+      const owned = source.map((list, displayOrder) => ({ list, displayOrder }))
+        .find(entry => bookFixtureId('collection', entry.list.documentId) === editable[1]);
+      if (!owned) return;
+      return { status: 200, body: { collection: contract.editableOwnerCollectionSchema.parse({
+        id: editable[1], accountId: canonicalAccountFixture().id, category,
+        title: owned.list.List_Name, slug: owned.list.slug,
+        visibility: owned.list.visibility ? 'public' : 'private',
+        publicationState: owned.list.canonicalPublicationState ?? (owned.list.Visibility ? 'published' : 'draft'),
+        revision: owned.list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null,
+        archived: owned.list.archived === true, displayOrder: owned.displayOrder,
+        categoryRevision: String(revision), pinOrder: null,
+        ...(category === 'places'
+          ? { placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null }, linkedChildren: [] }
+          : {}),
+        ...(category === 'products' || category === 'people' ? { locationLink: null } : {}),
+      }) } };
+    }
     const snapshot = path === `/categories/${category}/content-snapshot`;
     const validate = path === `/categories/${category}/content-snapshot/validate`;
     const stream = path === '/collections' && url.searchParams.get('category') === category ? 'collections'
@@ -27,7 +51,7 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
     if (!parsed.success || parsed.data.category !== category) return fail('INVALID_INPUT', 422);
     const source = lists();
     if (source.some(list => list.account?.documentId !== legacyAccountId)) return fail('FORBIDDEN', 403);
-    const relation = category === 'movies' ? 'recommended_movies' : category === 'games' ? 'recommended_games' : category === 'apps' ? 'recommended_apps' : category === 'products' ? 'recommended_products' : 'recommended_people';
+    const relation = category === 'movies' ? 'recommended_movies' : category === 'games' ? 'recommended_games' : category === 'apps' ? 'recommended_apps' : category === 'products' ? 'recommended_products' : category === 'places' ? 'recommended_places' : 'recommended_people';
     if (source.some(list => !Array.isArray(list[relation]) || list[relation].length !== 0)) return fail('PROVIDER_UNAVAILABLE', 503);
     const next = JSON.stringify(source);
     if (next !== signature) { signature = next; revision++; }

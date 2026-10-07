@@ -80,6 +80,9 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  // provider identity, and the internal entity id is never substituted for it.
  const entity='providerPlaceId' in detail.entity?detail.entity:null;
  const title=detail.displayTitle??'Unnamed place';
+ // Places has no category-wide top picks, so no pin ever arrives here. The field is
+ // kept because the cards read it, and it is honestly always false rather than
+ // reflecting a feature that cannot be set.
  const selectedPin=pin?.recommendationId===membership.recommendationId&&pin.collectionId===membership.collectionId?pin:undefined;
  // Photos are owned media in their stored order, then the recommendation's own uploads.
  // PlaceOverview concatenates both into one gallery, so both are emitted.
