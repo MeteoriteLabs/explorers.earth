@@ -21,7 +21,9 @@ import {ExplorersApiError,type RecommendationObservation,type CollectionObservat
 type Pin={recommendationId:string;collectionId:string;position:number};
 const MEDIA=(id:string)=>`/api/explorers/v1/media/${id}/content`;
 
-export type PlaceGeometry={location:{lat:number;lng:number}};
+// Flat {lat,lng}, which is the shape every map and card in the app reads. Nesting it
+// under `location` would typecheck and silently break every map.
+export type PlaceGeometry={lat:number;lng:number};
 export type OwnerPlaceDetails={
  Place_Id:string|null;Place_Name:string;Title:string;Place_Address:string|null;
  Geometry:PlaceGeometry|null;Rating:number|null;Rating_Count:number|null;
@@ -84,7 +86,7 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
    Place_Name:title,Title:title,
    Place_Address:facts.formattedAddress,
    // Zero is a real point; an absent pair stays null rather than becoming (0,0).
-   Geometry:facts.latitude===null||facts.longitude===null?null:{location:{lat:facts.latitude,lng:facts.longitude}},
+   Geometry:facts.latitude===null||facts.longitude===null?null:{lat:facts.latitude,lng:facts.longitude},
    Rating:facts.providerRating,Rating_Count:facts.ratingsCount,
    Photos:photos.map(id=>({url:MEDIA(id)})),
    Place_Types:facts.providerTypes.length?[...facts.providerTypes]:null,

@@ -54,7 +54,7 @@ async function richPlace(db:PoolClient,row:any){
   Place_Name:title,Title:title,
   Place_Address:facts.formattedAddress,
   // Absent coordinates stay absent rather than becoming (0,0); zero is a real point.
-  Geometry:facts.latitude===null||facts.longitude===null?null:{location:{lat:facts.latitude,lng:facts.longitude}},
+  Geometry:facts.latitude===null||facts.longitude===null?null:{lat:facts.latitude,lng:facts.longitude},
   Rating:facts.providerRating,Rating_Count:facts.ratingsCount,
   // Owned media, never a provider URL and never a provider request.
   Photos:photos.map(id=>({url:mediaUrl(id)})),

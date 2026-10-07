@@ -25,7 +25,7 @@ it('maps every consumed Place_Details key, with photos as owned media routes',()
  const row=placeViewModel(detail(),membership(),{recommendationId:id(1),collectionId:id(2),position:0});
  expect(row.Place_Details).toEqual({
   Place_Id:'ChIJ_example',Place_Name:'Blue Tokai',Title:'Blue Tokai',Place_Address:'1 Example Road',
-  Geometry:{location:{lat:12.9715987,lng:77.5945627}},Rating:4.5,Rating_Count:1200,
+  Geometry:{lat:12.9715987,lng:77.5945627},Rating:4.5,Rating_Count:1200,
   Photos:[{url:`/api/explorers/v1/media/${photo}/content`}],Place_Types:['cafe','food'],
   Public_Phone:'+91 80 1234 5678',Website:'https://example.com',Price_Level:null,Price_Range:null,
  });
@@ -39,7 +39,7 @@ it('keeps a zero coordinate rather than treating it as missing',()=>{
  // The defect the ticket names: `latitude && longitude` or `Number(v)||null` drops the
  // null island, which is a real point on the equator at the prime meridian.
  const row=placeViewModel(detail({effectivePlaceDetails:facts({latitude:0,longitude:0})}),membership());
- expect(row.Place_Details.Geometry).toEqual({location:{lat:0,lng:0}});
+ expect(row.Place_Details.Geometry).toEqual({lat:0,lng:0});
 });
 
 it('leaves absent coordinates null rather than fabricating (0,0)',()=>{

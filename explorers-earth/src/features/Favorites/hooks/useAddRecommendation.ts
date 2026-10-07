@@ -517,8 +517,8 @@ export const useAddRecommendation = ({
       if (recommendationType === "place") {
         const facts = placeFacts({ address: values.address, geoCoords: values.geoCoords, places, provider });
         const changed = facts.formattedAddress !== (fetchedPlace?.Place_Details?.Place_Address ?? null)
-          || facts.latitude !== (fetchedPlace?.Place_Details?.Geometry?.location?.lat ?? null)
-          || facts.longitude !== (fetchedPlace?.Place_Details?.Geometry?.location?.lng ?? null);
+          || facts.latitude !== (fetchedPlace?.Place_Details?.Geometry?.lat ?? null)
+          || facts.longitude !== (fetchedPlace?.Place_Details?.Geometry?.lng ?? null);
         if (changed) {
           await commands.correctFacts(placeId, values.title || fetchedPlace?.Place_Details?.Title || "Untitled", facts);
         }
