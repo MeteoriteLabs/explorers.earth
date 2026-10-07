@@ -235,6 +235,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["POST", "/api/people/scrape-profile"],
     ["POST", "/api/products/scrape-link"],
     ["GET", "/api/proxy-image"],
+    ["GET", "/itunes-api/search"],
     ["GET", "/api"],
     ["GET", "/api/verify-email?token=removed"],
   ])("never leaves a removed family as an unregistered 404: %s %s", async (method, path) => {

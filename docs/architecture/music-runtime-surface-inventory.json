@@ -269,6 +269,12 @@
       "classification": "tombstone"
     },
     {
+      "family": "itunes",
+      "path": "/itunes-api",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
       "family": "scrape",
       "path": "/apps",
       "match": "prefix",
@@ -1329,16 +1335,6 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "line": 107
-    },
-    {
-      "method": "GET",
-      "path": "/itunes-api/search",
-      "classification": "public",
-      "ownerSource": "none",
-      "policy": "explicit-public-contract",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/index.ts",
-      "line": 290
     },
     {
       "method": "GET",

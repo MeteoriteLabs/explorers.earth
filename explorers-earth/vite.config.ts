@@ -40,11 +40,6 @@ export default defineConfig(({ mode }) => {
          rewrite: (path) => path.replace(/^\/__localtunes/, ''),
          secure: true,
        } } : {}),
-        '/itunes-api': {
-          target: 'http://127.0.0.1:5000',
-          changeOrigin: true,
-          secure: false,
-        },
         '/api/apps/scrape-url': {
           target: 'http://127.0.0.1:5000',
           changeOrigin: true,

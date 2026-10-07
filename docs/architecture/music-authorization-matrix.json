@@ -1926,25 +1926,6 @@
     },
     {
       "method": "GET",
-      "path": "/itunes-api/search",
-      "source": "tunes/server/routes/index.ts",
-      "decision": "public",
-      "allowed": {
-        "unauthenticated": true,
-        "owner": false,
-        "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
-        "staleEntitlement": false,
-        "guestValid": false,
-        "guestInvalid": false,
-        "guestRevoked": false,
-        "internalAdmin": false,
-        "nativeSession": false
-      }
-    },
-    {
-      "method": "GET",
       "path": "/api/music/features",
       "source": "tunes/server/routes/musicFeatureRoutes.ts",
       "decision": "owner",
@@ -4007,6 +3988,26 @@
     {
       "family": "scrape",
       "path": "/api/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "itunes",
+      "path": "/itunes-api",
       "match": "prefix",
       "classification": "tombstone",
       "decision": "tombstone",

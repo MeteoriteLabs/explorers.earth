@@ -177,17 +177,3 @@ export function buildLogoUrl(logoUrl: string | null | undefined): string {
   }
   return logoUrl;
 }
-
-// ─────────────────────────────────────────────────────────────
-// iTunes Search API helper
-// ─────────────────────────────────────────────────────────────
-export function mapItunesKindToPlatforms(kind: string): string[] {
-  if (kind === "mac-software") return ["macOS"];
-  if (kind === "software") return ["iOS", "iPadOS"];
-  return ["Web"];
-}
-
-export function itunesPriceTier(price: number): "Free" | "Freemium" | "Paid" {
-  if (!price || price === 0) return "Free";
-  return "Paid";
-}

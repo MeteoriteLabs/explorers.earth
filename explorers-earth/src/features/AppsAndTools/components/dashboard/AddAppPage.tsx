@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import {
-  ArrowLeft, Search, Star, X, Loader2, Check, Smartphone, Link as LinkIcon,
+  ArrowLeft, Pencil, Star, X, Loader2, Check, Smartphone, Link as LinkIcon,
   AlertCircle, Upload,
 } from "lucide-react";
 import axios from "axios";
@@ -11,11 +11,9 @@ import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
 import { APPS_BY_LIST, APP_CATEGORIES, appsByListVars, refetchAppsByList } from "../../api/query";
 import { CREATE_RECOMMENDED_APP, UPDATE_RECOMMENDED_APP } from "../../api/mutation";
-import itunesService from "../../../../services/itunesService";
-import type { ItunesResult } from "../../../../services/itunesService";
 import {
   deduplicateApps, buildLogoUrl, generateSlug,
-  getPriceTierColor, itunesPriceTier,
+  getPriceTierColor,
 } from "../../utils/appHelpers";
 import type { RecommendedApp, AppCategory } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
@@ -27,84 +25,6 @@ import {
 
 const PRICE_TIERS = ["Free", "Freemium", "Paid", "Subscription"] as const;
 const ALL_PLATFORMS = ["iOS", "iPadOS", "macOS", "Android", "Windows", "Web", "Linux", "Chrome Extension"];
-
-// ─────────────────────────────────────────────────────────────
-// iTunes Inline Search
-// ─────────────────────────────────────────────────────────────
-const ItunesInlineSearch = ({ onSelect }: { onSelect: (item: ItunesResult) => void }) => {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ItunesResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const items = await itunesService.searchApps(query, 12);
-        setResults(items);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [query]);
-
-  return (
-    <div className="space-y-3">
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-        <input
-          autoFocus
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search App Store (e.g. Figma, Notion)..."
-          className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50 transition-colors"
-        />
-        {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 animate-spin" />}
-      </div>
-
-      {results.length > 0 && (
-        <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
-          {results.map((item) => (
-            <button
-              key={item.trackId}
-              onClick={() => onSelect(item)}
-              className="flex items-center gap-3 w-full text-left p-2.5 rounded-xl hover:bg-white/6 transition-colors border border-transparent hover:border-white/10"
-            >
-              <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden bg-white/5">
-                <img
-                  src={itunesService.getArtworkUrl(item, 100)}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{item.trackName}</p>
-                <p className="text-xs text-white/40 truncate">{item.sellerName}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${getPriceTierColor(itunesPriceTier(item.price))}`}>
-                    {item.formattedPrice || "Free"}
-                  </span>
-                  <span className="text-[10px] text-white/30">{item.primaryGenreName}</span>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!loading && query.trim() && results.length === 0 && (
-        <p className="text-sm text-white/30 text-center py-6">No results found for "{query}"</p>
-      )}
-    </div>
-  );
-};
 
 // ─────────────────────────────────────────────────────────────
 // URL Paste Scraper
@@ -175,7 +95,7 @@ const AddAppPage = () => {
   const { user, token } = useAuthStore();
   const isEdit = !!appId;
 
-  const [step, setStep] = useState<"method" | "search" | "url" | "form">(isEdit ? "form" : "method");
+  const [step, setStep] = useState<"method" | "url" | "form">(isEdit ? "form" : "method");
   const [formData, setFormData] = useState<Partial<RecommendedApp>>({
     platforms: [],
     price_tier: "Freemium",
@@ -236,30 +156,6 @@ const AddAppPage = () => {
 
   const [createApp] = useMutation(CREATE_RECOMMENDED_APP);
   const [updateApp] = useMutation(UPDATE_RECOMMENDED_APP);
-
-  const handleItunesSelect = useCallback((item: ItunesResult) => {
-    const platforms = itunesService.getPlatforms(item);
-    const priceTier = itunesService.getPriceTier(item.price);
-    // Use screenshotUrls as selectable scraped images if available
-    const screenshots: string[] = (item as any).screenshotUrls || [];
-    setFormData({
-      app_url: item.trackViewUrl,
-      title: item.trackName,
-      description: item.description || "",
-      logo_url: itunesService.getArtworkUrl(item, 512),
-      developer: item.sellerName || "",
-      platforms,
-      price_tier: priceTier,
-      download_url: item.trackViewUrl,
-      screenshots: [],
-    });
-    if (screenshots.length > 0) {
-      setScrapedImages(screenshots.map((url) => ({ url, selected: true })));
-    } else {
-      setScrapedImages([]);
-    }
-    setStep("form");
-  }, []);
 
   const handleUrlScraped = useCallback((data: Partial<RecommendedApp>) => {
     // Separate scraped screenshots from form data
@@ -467,7 +363,7 @@ const AddAppPage = () => {
           <ArrowLeft size={18} />
         </button>
         <h1 className="text-lg font-bold text-dashboard">
-          {isEdit ? "Edit App" : step === "method" ? "Add App or Tool" : step === "search" ? "Search App Store" : step === "url" ? "Add via URL" : "App Details"}
+          {isEdit ? "Edit App" : step === "method" ? "Add App or Tool" : step === "url" ? "Add via URL" : "App Details"}
         </h1>
       </div>
 
@@ -476,15 +372,15 @@ const AddAppPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <motion.button
             whileHover={{ scale: 1.02 }}
-            onClick={() => setStep("search")}
+            onClick={() => setStep("form")}
             className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-gradient-to-br from-violet-900/30 to-purple-900/20 border border-violet-700/30 hover:border-violet-500/50 transition-all text-center"
           >
             <div className="w-14 h-14 rounded-2xl bg-violet-600/30 flex items-center justify-center">
-              <Search size={24} className="text-violet-300" />
+              <Pencil size={24} className="text-violet-300" />
             </div>
             <div>
-              <p className="font-semibold text-white">Search App Store</p>
-              <p className="text-xs text-white/40 mt-1">Find iOS, iPadOS & Mac apps</p>
+              <p className="font-semibold text-white">Enter details manually</p>
+              <p className="text-xs text-white/40 mt-1">Fill in the app details yourself</p>
             </div>
           </motion.button>
 
@@ -502,11 +398,6 @@ const AddAppPage = () => {
             </div>
           </motion.button>
         </div>
-      )}
-
-      {/* Step: iTunes Search */}
-      {step === "search" && (
-        <ItunesInlineSearch onSelect={handleItunesSelect} />
       )}
 
       {/* Step: URL Scrape */}

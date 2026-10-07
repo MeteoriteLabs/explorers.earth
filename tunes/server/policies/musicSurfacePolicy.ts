@@ -82,7 +82,6 @@ const PUBLIC_PATHS = new Set([
   "/robots.txt",
   "/sitemap.xml",
   "/api/explorers-sitemap.xml",
-  "/itunes-api/search",
   "/api/user/request-reactivation",
   "/api/user/reactivate",
   "/api/music-fixture/readiness",

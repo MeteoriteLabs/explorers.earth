@@ -20,7 +20,6 @@ export function createReplatformViteConfig(): UserConfig {
         "/graphql": { target: gateway, changeOrigin: true },
         "/twitch-api": { target: gateway, changeOrigin: true },
         "/igdb-api": { target: gateway, changeOrigin: true },
-        "/itunes-api": { target: gateway, changeOrigin: true },
       },
     },
   });

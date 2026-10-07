@@ -286,40 +286,6 @@ export async function registerRoutes(
   publicationShredTimer.unref();
   server.once("close", () => { void shutdown(); });
 
-  // iTunes Search Proxy
-  app.get("/itunes-api/search", async (req, res) => {
-    if (musicConfig.mode === "fixture") {
-      return res.status(503).json({ error: "FIXTURE_PROVIDER_UNAVAILABLE" });
-    }
-    try {
-      const { term, entity, limit, media } = req.query;
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(String(term || ""))}&entity=${entity || "software"}&limit=${limit || 12}&media=${media || "software"}`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
-
-      const affiliateToken = process.env.APPLE_AFFILIATE_TOKEN;
-      if (affiliateToken && data.results) {
-        data.results = data.results.map((item: any) => {
-          if (item.trackViewUrl) {
-            try {
-              const u = new URL(item.trackViewUrl);
-              u.searchParams.set("at", affiliateToken);
-              item.trackViewUrl = u.toString();
-            } catch {
-              // ignore url parsing failures
-            }
-          }
-          return item;
-        });
-      }
-
-      res.json(data);
-    } catch (error) {
-      console.error("iTunes proxy search failed:", error);
-      res.status(500).json({ error: "iTunes search proxy failed" });
-    }
-  });
   
   return { server, shutdown };
   } catch (error) {
