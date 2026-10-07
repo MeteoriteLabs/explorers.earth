@@ -488,12 +488,12 @@ for (const category of categories) {
       await card.getByTitle('Category options').click();
       const beforeEnable = canonicalCategoryAccount(state);
       const enable = owner.page.getByRole('button', { name: 'Enable Public URL', exact: true });
-      // Known intermittent, seen once in CI and unreproduced in 40 local samples: press
-      // can time out here waiting for this locator, which suggests the popover opened
-      // two lines above is rebuilt between these two resolutions. focus() is redundant
-      // because press() focuses too, so deleting it is the first thing to try if this
-      // recurs - not a longer timeout. See docs/replatform-audit/category-delivery-learnings.md.
-      await enable.focus(); await enable.press('Enter');
+      // Resolved once, deliberately. press() focuses the element itself, so an explicit
+      // focus() first bought nothing and opened a second independent resolution of a
+      // locator inside a popover that can be rebuilt between the two - which is the
+      // timeout seen twice in CI, the second time on a markdown-only commit. Keyboard
+      // activation is unchanged: press('Enter') still focuses, then presses.
+      await enable.press('Enter');
       await expect.poll(() => state.account[category.field]).toBe('Yes');
       expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeEnable, { category: category.route, isPublic: true }));
       await settings(owner.page, true); await toggle(owner.page.getByRole('checkbox', { name: 'Auto-pin navigation tabs' }), false);
