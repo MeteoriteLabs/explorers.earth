@@ -1,0 +1,168 @@
+# Remaining work, in the order we will do it
+
+**2026-10-08. Supersedes `strapi-retirement-path.md`.**
+
+Everything still outstanding, sequenced. This says *what* and *when*, not *how* — the ticket
+stays authoritative for scope, acceptance and design.
+
+Read with: [ticket index](ticket-index.md) for per-ticket verdicts, the
+[coverage register](strapi-coverage-register.md) for field-level gaps, and the
+[execution checklist](execution-checklist.md) for the rules every package follows.
+
+## Where we are
+
+Delivered on `codex/unified-replatform`: epic 1 (bar one obligation), epic 2.1–2.3,
+epic 6 complete, Books/Movies/Games manual slices, and the category migrations
+**4.3 Apps · 4.4 Products · 4.5 People · 5.1 Places · 5.2 place-links**. PR #119 is green
+and still a draft.
+
+Two numbers set the shape of what is left, both measured at `d97a5733`:
+
+- **Frontend: 37 files, 70 live Apollo calls.** There is one Apollo link
+  (`src/main.tsx:32`) and it points at Strapi, so one live `useQuery`/`useMutation` is one
+  Strapi dependency. Files importing `@apollo/client` only for `gql` are retired
+  definitions, not consumers — counting imports instead of calls overstates the surface by
+  about half.
+- **Server: 55 non-test files mention Strapi**, and `server/app.ts:179` still builds a
+  gateway from a *required* `strapiOrigin`, so the API cannot boot without Strapi
+  configured. That 55 overstates real coupling: some of those files exist precisely to
+  *prove* Strapi's absence (`musicRetirementPolicy`, `strapiIdentityAbsenceProof`).
+  Classifying them is step 10 below, not a guess to make here.
+
+The frontend steps partition all 70 calls exactly, so when the last one is done the count
+is zero: **28** Guides + **10** Home + **9** auth pages + **6** public detail + **8**
+Profile/Settings/Analytics + **4** music glue + **5** billing = 70. Steps with no call count
+are structural work with no live Strapi consumer.
+
+```bash
+# recheck the frontend number, from explorers-earth/src
+grep -rl "useQuery(\|useMutation(\|useApolloClient(\|useLazyQuery(" \
+  --include=*.ts --include=*.tsx . | grep -v __tests__
+```
+
+If the code and this doc disagree, the code is right and this doc is stale.
+
+---
+
+## Phase A — finish the categories
+
+### 1. Guides — [5.3](tickets/ticket-5-3.md) · 28 calls, 12 files · 27 MISSING fields
+- New migration for the `guide` + `guide-section` aggregate; Guides is schema-unreachable today.
+- Versioned aggregate with atomic order, archive and media race behaviour.
+- Owner + public reads, adapter, consumer migration (`GuidesPage`, `CreateGuidePage`, `GuideDetailsPage`, the section forms, the six `GuideDetails` modals).
+- `PublicGuideModal` lives in PublicHome but migrates here, with the rest of Guides.
+
+### 2. Dashboard home — `pages/Home.tsx` · 10 calls, 1 file · no ticket
+- Found by measurement, recorded in no epic. Reads books, apps, products, people, places and guides lists straight from Strapi though five of those already have native owner reads.
+- Mostly rewiring to hooks that already exist. Early, because it is a cross-category consumer that would otherwise be the last file blocking retirement.
+
+### 3. Claim flow — [5.4](tickets/ticket-5-4.md) · 18 MISSING fields
+- Claim service, repository, routes and migration — none of it exists.
+- Eligibility is the direct canonical query 5.1 already specifies; no second stale directory.
+- Retires `features/Favorites/services/claimablePlaceProfileService.ts`, still in the tree and no longer called.
+- Needs decision **D4** first.
+
+## Phase B — close the gaps behind "complete"
+
+### 4. Auth pages — epic 2 · 9 calls, 7 files
+- `Register`, `ForgotPassword`, `ResetPassword`, `ResetLinkSent`, `ClaimAccount`, `hooks/useLogout`, `hooks/useUsernameValidation`.
+- Canonical auth is delivered; these screens were never converted, so **password reset and registration run on Strapi today**. Small, mechanical, highest consequence if broken.
+
+### 5. Auth UX and lifecycle — [2.4](tickets/ticket-2-4.md)
+- Write the frozen 18+3 behaviour map first; the ticket names it as a blocking prerequisite.
+- Four subpackages L0→L3; migrate the unmigrated legacy spec; add the absent held-completion, response-loss and reload cases.
+- Close the "no browser authority from account IDs" violation on *subjects* — it holds for bearers already.
+
+### 6. Public place and person detail — [5.1](tickets/ticket-5-1.md)/[7.1](tickets/ticket-7-1.md) · 6 calls, 4 files
+- `PlaceDetails`, `PlaceOverview`, `PersonOverview` and the remaining PublicHome readers still fetch detail through Strapi while the list read next to them is native.
+- Two sources for one page is how "right on the grid, wrong in the modal" happens, and 7.1 cannot prove parity across the split.
+
+### 7. Profile, Settings, Analytics — [3.1](tickets/ticket-3-1.md), [3.2](tickets/ticket-3-2.md), [3.4](tickets/ticket-3-4.md), [7.2](tickets/ticket-7-2.md) · 8 calls, 6 files
+- Rewire `useUpdateProfile`, `useCanonicalAccount`, `Settings`, the three Analytics components.
+- **3.4**: 10 analytics identities are authored and **0 attested** — add the analytics lane to the runner and the suite manifest. Its consent and privacy obligations are also open, and are not a rewiring job.
+- **3.2**: the mandated upload-hook changes were never made.
+- **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally dead; plus the reference-content module (`faq`, `platform-term`, legal copy — 7 MISSING fields) and the canonical email suppression table.
+- Decisions **D2**, **D6**, **D7**, **D8** all land in this step.
+
+### 8. Music glue — epic 6 tail · 4 calls, 4 files
+- `AuthSyncManager`, `MusicPublishProvider`, `pages/Music`, `hooks/useTunesDashboard`.
+- Epic 6's exit requires **zero required Strapi config**, and `server/app.ts:179` requires `strapiOrigin` today. This is the server-side half, and it blocks the epic-6 exit claim.
+
+### 9. Billing and subscription · 5 calls, 3 files — **blocked on a decision, not on work**
+- `Checkout`, `SubscriptionPlans`, `features/Settings/components/BillingTab.tsx`.
+- `revised-direction.md` defers monetization, but these three files are live Strapi consumers today, so something has to happen to them either way — port, or remove behind the deferral.
+- Carries the `song-limit` request quotas (3 MISSING fields). Needs decision **D1**.
+
+## Phase C — prove it, then retire
+
+### 10. Classify the server-side Strapi references — [8.1a](tickets/ticket-8-1.md)
+- Walk the 55 files and label each: live consumer, retirement-policy/absence-proof (stays), or dead. 8.1 is oversized and splits into 8.1a (classify, remove coupling) and 8.1b (delete).
+- Make `strapiOrigin` optional, then absent.
+
+### 11. Parity and milestone evidence — [7.1](tickets/ticket-7-1.md), [7.3](tickets/ticket-7-3.md), [1.2](tickets/ticket-1-2.md)
+- 7.1: all nine public categories (3 of 9 at audit), privacy and public media, pins, cold-entry positives; commit the navigation slice that currently exists only as an uncommitted overlay.
+- 7.3: milestone-2 evidence — the command flags it mandates do not exist in the runner yet.
+- 1.2: extend the route-parity inventory to the landed canonical routes and raise its expected count. Epic 1's one open obligation; shared files, so coordinator-allocated.
+
+### 12. Retire Strapi — [8.1b](tickets/ticket-8-1.md), [8.2](tickets/ticket-8-2.md), [8.3](tickets/ticket-8-3.md)
+- Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features.
+- 8.2: remove the duplicate Tunes frontend — still built and served. A CI-gating risk, not a product change.
+- 8.3: the mechanical backend rename, strictly after 8.1 and 8.2.
+
+### 13. Topology, deployment, recovery — [3.5](tickets/ticket-3-5.md), [8.4](tickets/ticket-8-4.md), [8.5](tickets/ticket-8-5.md)
+- **All of this needs separate deployment authority**, so it sits outside the engineering sequence by design.
+- 3.5: both mandated workflows are absent, so Q2 has no artifact producer; the QA hostname is still pending.
+- 8.4: verifier, compose and routing exist but self-label synthetic, with placeholder digests.
+- 8.5: prose only — every named artifact absent, no restore evidence.
+
+## Phase D — not blocking retirement, ship on product priority
+
+Measured: these have **zero live Strapi calls**. What is outstanding is new capability
+against third-party APIs, so they can ship before or after retirement, in any order.
+
+### 14. Provider search
+- **[4.2](tickets/ticket-4-2.md) Games** — the IGDB provider chain is dead code behind an unconditional 503; four named provider cases absent; 7 MISSING provider-fact fields.
+- **[4.1](tickets/ticket-4-1.md) Movies** — the live TMDB provider is open; two named cases absent by name.
+- **[3.3](tickets/ticket-3-3.md) Books** — "no Books flow requires Strapi" is unproven at an exact SHA; otherwise 20/20 verified.
+
+### 15. Owed from the delivered category tickets
+- `tunes/server/test/explorers/places.test.ts` — the unit suite 5.1 names.
+- `e2e/replatform/places.spec.ts` and `place-links.spec.ts` — need the Docker fixture runner plus `suite-manifest.json` identities; **reserved to the coordinator**.
+- Places seeded taxonomy and the sector browse — blocked on **D3**.
+- Per-place pinning — blocked on **D5**.
+- `e2e/{apps,products,people}.spec.ts` still expect the retired scraper steps. Nightly discovery only, and already failing on `main`.
+
+### 16. Epic 9 — public discovery
+- [9.1](tickets/ticket-9-1.md) MCP adapter and public tools: no module and no dependency yet. Revalidate the current MCP and OpenAI protocols when the phase starts.
+- [9.2](tickets/ticket-9-2.md) discovery quality and observability: default-deny currently holds only *vacuously*.
+- Prerequisite is 8.5, in step 13.
+
+### 17. Epic 10 — linked creator tools
+- [10.1](tickets/ticket-10-1.md) OAuth linking and delegated principal, [10.2](tickets/ticket-10-2.md) creator tools, [10.3](tickets/ticket-10-3.md) publication readiness.
+- Resolve the one tool double-claimed between 10.1 and 10.2.
+- Submission to any external directory is a separate authorized action.
+
+---
+
+## Decisions only the owner can make
+
+Each blocks a step above, and none is an engineering question. Source: coverage register §7.
+
+| | Decision | Blocks | Why it cannot be assumed |
+|---|---|---|---|
+| **D1** | `song-limit` AI-guide and song request quotas | 9 | Live in `BillingTab`, `Checkout` and `useAIGuideQuota`; no canonical table and no authorization to drop. `revised-direction.md` defers *monetization*, which does not cover an abuse and cost control — dropping it means uncapped AI and YouTube usage at launch. Port the quota without the billing, port both, or accept uncapped and cap elsewhere. |
+| **D2** | `unsubscribe` email suppression list | 7 | The only `unique:true` in the legacy schema. "No users to migrate" authorizes zero rows, not no table — new unsubscribes must be honoured from the first email sent. |
+| **D3** | Places category and subcategory taxonomy values | 15 | The vocabulary is Strapi content and 5.1 forbids inventing production values. Needs an export, or an explicit decision to ship without it. Deferred to its own ticket on 2026-10-07. |
+| **D4** | Claim flow scope | 3 | 18 MISSING fields across `claimable-place-profile`, `verify-claim` and `account.Is_Claimable`. Either in scope, or recorded as dropped. |
+| **D5** | Per-place pinning | 15 | Strapi's `recommendedPlace.is_pinned` has no equivalent reachable through the owner API, because Places sits outside `topPickCategorySchema` by design. Needs Places added to that set, or a per-list pin of its own. |
+| **D6** | Instagram import scope | 7 | Without OAuth token storage, feed import works exactly once — at authorization. In scope with token storage, or dropped. |
+| **D7** | Per-field i18n (19 `account` fields, `faq`, `platform-term`, `recommendation-category`) | 7 | `revised-direction.md:47` instructs preserving language behaviour. That is an instruction to preserve, not authority to drop. Likely out of launch scope, but it needs saying. |
+| **D8** | Residual unaccounted fields (register §7.5) | 7 | `account.profile_place_media_details`, `account.localtunes_public` and others have neither a canonical equivalent nor a drop record. |
+
+## Standing facts worth not rediscovering
+
+- **122 of 401 legacy attributes are MISSING** — missing *structure for future content*, not unmigrated rows. TK confirmed on 2026-10-05 that the legacy Strapi instance holds nothing worth carrying over, so there is no import ticket. That does **not** reduce the structural scope.
+- The shared E2E fixture module epic 4 mandated now exists, at `explorers-earth/e2e/replatform/fixtures.ts`.
+- Protected browser lanes are coordinator-allocated throughout: each needs a Docker fixture runner plus `suite-manifest.json` identities.
+- The Games integration suite needs its own disposable Postgres container on a port other than 55432, which is reserved.
+- eslint carries 1647 warnings against a 0-error gate. The burn-down is ongoing and deliberately not sequenced here.

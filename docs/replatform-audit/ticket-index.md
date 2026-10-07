@@ -2,10 +2,12 @@
 
 **2026-10-05 re-groom:** [Current dependency order, all-ticket disposition and parallel ownership](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md). Required red cases retain their acceptance owner; saving a plan changes no delivery status.
 
-**Sequencing (2026-10-08):** [The path to retiring Strapi](strapi-retirement-path.md) orders the
-remaining work by what actually blocks retirement, measured from the live Apollo call sites
-rather than from epic status. Read it to decide *what next*; read the tickets for scope and
-acceptance. It also records which "partial" epics do **not** block retirement.
+**Sequencing (2026-10-08):** [Remaining work, in the order we will do it](remaining-work-sequence.md)
+is the whole outstanding backlog as one sequence, starting from the current state of
+`codex/unified-replatform` and measured from the live Apollo call sites rather than from epic
+status. Read it to decide *what next*; read the tickets below for scope and acceptance. It
+also lists which "partial" epics do **not** block Strapi retirement, and the eight decisions
+that are the owner's rather than engineering's.
 
 Consult the [durable implementation ledger](../../.superpowers/sdd/epic-01/progress.md) for current status. [Master plan](implementation-plan.md) · [Shared execution checklist](execution-checklist.md). Each ticket links its epic for mandatory shared contracts, safety rules and test-harness prerequisites.
 
