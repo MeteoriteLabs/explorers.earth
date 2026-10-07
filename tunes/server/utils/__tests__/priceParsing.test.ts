@@ -6,7 +6,7 @@ import {
   resolveCurrency,
   selectBestPrice,
   type PriceCandidate,
-} from "../scrapeUtils";
+} from "../priceParsing";
 
 describe("parsePriceString — locale-aware price parsing (BUG-6)", () => {
   it("parses US thousands + decimal", () => {

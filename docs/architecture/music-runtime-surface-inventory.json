@@ -2145,18 +2145,6 @@
       "line": 13
     },
     {
-      "kind": "setTimeout",
-      "lifecycle": "scheduled-callback",
-      "source": "tunes/server/utils/scrapeUtils.ts",
-      "line": 467
-    },
-    {
-      "kind": "setTimeout",
-      "lifecycle": "scheduled-callback",
-      "source": "tunes/server/utils/scrapeUtils.ts",
-      "line": 869
-    },
-    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/workers/musicLifecycleWorker.ts",

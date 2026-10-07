@@ -3447,28 +3447,6 @@
       }
     },
     {
-      "kind": "setTimeout",
-      "lifecycle": "scheduled-callback",
-      "source": "tunes/server/utils/scrapeUtils.ts",
-      "decision": "internal-service",
-      "allowed": {
-        "internalService": true,
-        "browser": false,
-        "public": false
-      }
-    },
-    {
-      "kind": "setTimeout",
-      "lifecycle": "scheduled-callback",
-      "source": "tunes/server/utils/scrapeUtils.ts",
-      "decision": "internal-service",
-      "allowed": {
-        "internalService": true,
-        "browser": false,
-        "public": false
-      }
-    },
-    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/workers/musicLifecycleWorker.ts",
