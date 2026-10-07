@@ -1053,7 +1053,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/services/googleBooksService.ts
 !explorers-earth/src/services/igdbService.ts
 !explorers-earth/src/services/instagramService.ts
-!explorers-earth/src/services/itunesService.ts
 !explorers-earth/src/services/lazyAccountLifecycleService.ts
 !explorers-earth/src/services/paymentService.ts
 !explorers-earth/src/services/requestTrackingService.ts
