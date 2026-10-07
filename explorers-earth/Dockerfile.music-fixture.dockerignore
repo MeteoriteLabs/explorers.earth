@@ -106,6 +106,8 @@ explorers-earth/src/features/Analytics/utils/*
 explorers-earth/src/features/AppsAndTools/api/*
 !explorers-earth/src/features/AppsAndTools/components/
 explorers-earth/src/features/AppsAndTools/components/*
+!explorers-earth/src/features/AppsAndTools/hooks/
+explorers-earth/src/features/AppsAndTools/hooks/*
 !explorers-earth/src/features/AppsAndTools/types/
 explorers-earth/src/features/AppsAndTools/types/*
 !explorers-earth/src/features/AppsAndTools/utils/
@@ -514,6 +516,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Analytics/utils/countryMapping.ts
 !explorers-earth/src/features/Analytics/utils/geolocationService.ts
 !explorers-earth/src/features/Analytics/utils/trafficSource.ts
+!explorers-earth/src/features/AppsAndTools/api/appsClient.ts
+!explorers-earth/src/features/AppsAndTools/api/appsViewModel.ts
+!explorers-earth/src/features/AppsAndTools/api/explorersAdapter.ts
 !explorers-earth/src/features/AppsAndTools/api/mutation.ts
 !explorers-earth/src/features/AppsAndTools/api/query.ts
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AddAppPage.tsx
@@ -526,6 +531,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/AppsAndTools/components/public/AppTopPicksMobileHero.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/PublicAppList.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/PublicApps.tsx
+!explorers-earth/src/features/AppsAndTools/hooks/useAppsOwner.ts
 !explorers-earth/src/features/AppsAndTools/index.ts
 !explorers-earth/src/features/AppsAndTools/types/index.ts
 !explorers-earth/src/features/AppsAndTools/utils/appHelpers.ts

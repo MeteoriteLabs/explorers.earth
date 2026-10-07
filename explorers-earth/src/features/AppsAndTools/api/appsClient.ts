@@ -40,6 +40,9 @@ export const AppsClient={
   const result=await (intent.attached?explorersApiClient.attachMyAppMembership:explorersApiClient.detachMyAppMembership)(intent.parent,intent.item,intent.commandKey,signal);
   current(scope,signal);return result;
  },
+ // Screenshots are owner uploads stored as media assets, so they go through the native
+ // media route rather than the Strapi /upload the add page used to post to.
+ async upload(file:File,_commandKey:string,signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,'recommendation',signal);current(scope,signal);return media;},
  async readCompleteOwner(signal?:AbortSignal):Promise<CompleteAppsOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'apps',status:'active'},signal,true);complete(value);return value;},
  async observeCollection(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableCollection(id,signal);collection(value);return value;},
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},

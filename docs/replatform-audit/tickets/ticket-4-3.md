@@ -80,13 +80,114 @@ So the legacy required fields are **currently unrepresentable** end to end: `app
 
 - [ ] **Creating the shared `fixtures.ts` is folded into this package, as the first category package of Epic 4.** It must export the exact surface epic-04 names — `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context — create real in-process sessions via its identity test factory, and mount **no** public test-login endpoint. 4.4, 4.5 and later category lanes consume it rather than each re-deriving sign-in. Folding the file into this package does not transfer authority over the identity model away from the Authentication owner, and it does not permit weakening the contained-test network restrictions to make a new suite pass.
 
+## Delivery status (2026-10-07)
+
+The 2026-10-05 review above verified NOT-STARTED at `225d83e5`. This records what now
+exists, so the next reader does not re-derive it. The ledger remains authoritative.
+
+| Mandated path | State |
+|---|---|
+| `tunes/server/explorers/categories/apps.ts` | **not created, deliberately** — see below |
+| `explorers-earth/src/features/AppsAndTools/api/explorersAdapter.ts` | delivered |
+| `tunes/server/test/explorers/apps.test.ts` | delivered |
+| `tunes/server/test/explorers/apps.integration.test.ts` | delivered (8 cases) |
+| `explorers-earth/e2e/replatform/apps.spec.ts` | **still missing** — see below |
+| `explorers-earth/e2e/replatform/fixtures.ts` | delivered |
+
+Also delivered, from the review's scope correction that this ticket owes a contract,
+migration and storage rather than only an adapter:
+
+- `tunes/shared/explorersAppContract.ts` — typed details with the exact four price tiers
+  and null, bounded free-text platforms, and an override vocabulary that **excludes
+  `appUrl`** because an override re-presents a shared entity.
+- `tunes/migrations/0043_explorers_apps_provider_context.sql` — `app_entity_details`
+  (`app_url` NOT NULL with a scheme CHECK) and `recommendation_app_screenshots` (ten
+  ordered slots, composite FKs), with the three revision functions and
+  `purge_explorers_account_content` re-emitted to reach the new tables.
+- `tunes/server/repositories/appCatalogRepository.ts`, and
+  `tunes/server/publicProfile/publicAppsProjection.ts` wired into
+  `postgresPublicProfileGateway`. Before that, a published Apps tab answered HTTP 200
+  with an empty list — the worse failure, because it looked legitimately empty.
+- The public display-override allowlist in `tunes/server/application/publicContent.ts`
+  now admits the Apps vocabulary instead of rejecting every key but `title`.
+
+### The live consumer is now native
+
+The review recorded the live consumer as Apollo/Strapi. It is not any more:
+
+- `hooks/useAppsOwner.ts` plus `useAppsCommands`/`useAppsCallerCustody` in `api/query.ts`.
+- `AppsHome`, `AppListView`, `AppTopPicksManager` and `AddAppPage` read and write through
+  them. The `gql` documents stay in `api/query.ts` and `api/mutation.ts` for Epic 8 to
+  remove after it checks callers.
+- The public pages were **already** native (`usePublicRecommendationCategory`), which is
+  why the missing server projection was a live defect rather than dormant work.
+
+Three Strapi-era behaviours were removed rather than ported, each with a reason:
+
+- `AddAppPage` posted to `/api/apps/scrape-url`. That route does not exist;
+  `music-security-containment.test.ts` asserts the path stays absent. Apps has no
+  provider, so the URL is an owner-entered field and the form says details are not
+  fetched. This satisfies "preserve manual entry when enrichment is unavailable" without
+  reviving the endpoint.
+- Screenshot uploads went to the Strapi `/upload` with a bearer token. They are owner
+  media now, uploaded through the native media route and held in the ordered slots.
+- The app-category selector read a Strapi taxonomy with no canonical replacement.
+  Taxonomy is out of scope here and the projection serves `app_category` as null, so a
+  picker would have written a value nothing reads.
+
+`AppListView` gained a per-recommendation publication control, as Games has. This is not
+cosmetic: the public projection serves only `publication_state='published'` rows, so
+without it a published list would serve nothing.
+
+`AppTopPicksManager` now writes the whole pin set in one command. The Strapi path issued
+one mutation per row and could leave the set half-applied, and reordering auto-saved per
+move; order is local until Save.
+
+### Why there is no `tunes/server/explorers/categories/apps.ts`
+
+`tunes/server/explorers/categories/` contains only `movies.ts` and `movieGenreSeeds.ts`.
+Ticket 4.2 shipped Games with no `categories/games.ts`: that module exists for Movies
+because Movies has provider genre seeds to own. Apps has no provider, no taxonomy and no
+seeds, so the equivalent logic is the repository and the projection. Creating an empty
+module to satisfy the path list would add a file with nothing in it.
+
+### Remaining obligations
+
+- [ ] **`explorers-earth/e2e/replatform/apps.spec.ts` and its lane.** This is a separate
+  package, not a loose end of the adapter work: `scripts/replatform-e2e.mjs` holds a
+  closed six-lane registry at `:11`, and `validateManifest` at `:54` requires
+  `scopeContents` to equal the registry exactly and every lane to declare its runner,
+  config, spec path, projects and an exact identity list matching
+  `e2e/replatform/suite-manifest.json`. An Apps lane therefore needs a new
+  `tunes/scripts/apps-browser-fixture.ts` (Docker Postgres, migrate, seed, serve, receipt
+  with an owned `music_uat_*` database and image id), a playwright config, the registry
+  and manifest entries, and spec titles pinned to the manifest identities. It should be
+  the first consumer of `fixtures.ts`.
+- [ ] **`apps.integration.test.ts` needs the fixture Postgres.** It is gated on
+  `MUSIC_C6_POSTGRES_TEST=1` against `127.0.0.1:55432`. Its 8 cases last ran green in the
+  session that wrote them; a bare `vitest run` of the two backend files silently runs only
+  `apps.test.ts`, so a run that reports one file is a skip, not a pass.
+- [ ] **UAT** at `:40` (add, edit note, upload/replace media, top picks, publish/unpublish,
+  public modal on both viewports) is unrun. The modal keyboard/escape and focus-restore
+  obligations at `:42` live in `AppDetailModal`, which this package did not touch; only one
+  accessibility test covers it today.
+
+### Note on `fixtures.ts`
+
+It exports exactly the surface `epic-04.md:95` names, but `signInAs('suspended')` is
+**ownerA plus the lane's own `suspend-ownerA` control action**, not a third seeded
+persona. The delivered runners model suspension that way (`games-browser-fixture.ts:201`),
+and seeding a third account here would describe an identity model they do not have. The
+module mounts no test-login endpoint and keeps the origin-only route filter. It has no
+browser consumer until the first lane adopts it.
+
 ## Registering a new shared contract file (learned 2026-10-07)
 
 Adding `tunes/shared/explorersAppContract.ts` cost three separate CI round-trips because a new file under `tunes/shared/` must be declared in several hardcoded allowlists, none of which is discoverable from the others. 4.4 and 4.5 each add one, so the full list is recorded here.
 
 A new `tunes/shared/explorers*Contract.ts` that `explorersContract.ts` imports must be added to **all** of:
 
-1. `scripts/generate-music-fixture-dockerignore.mjs` — the shared-contract allowlist. Then run the generator with `--write`; `--check` must exit 0.
+1. `scripts/generate-music-fixture-dockerignore.mjs` — the shared-contract allowlist, then run the generator with `--write`; `--check` must exit 0. Correction (2026-10-07): only `tunes/shared/*` contracts are hand-listed there. Everything under `explorers-earth/src` comes from `git ls-files` at `:69`, so a **new frontend file must be staged before `--write`** or it is silently left out of both generated files and the next `--check` fails on a later commit. Test files are excluded by `deniedSegments`.
 2. `explorers-earth/Dockerfile.music-fixture` — an explicit `COPY` line. **This one is a real build break, not a test failure:** the fixture image copies contracts individually, so without it the image ships without a module `explorersContract.ts` imports.
 3. `explorers-earth/src/lib/__tests__/ownerSharedBundle.test.ts` — the copy list at `:14`. That test bundles the shared contracts in a temp directory to prove they carry no sibling dependencies, so an unlisted import fails with `UNRESOLVED_IMPORT` rather than anything that names the real cause.
 4. `fixtures/db/music-runtime-table-manifest.json` and `tunes/shared/explorersSchema.ts` — only when the contract comes with new tables. The manifest's `managedBy: "drizzle"` entries are validated against the generated Drizzle references, so a table in the manifest with no Drizzle declaration fails as "in the manifest but absent from a fresh migrated database".
