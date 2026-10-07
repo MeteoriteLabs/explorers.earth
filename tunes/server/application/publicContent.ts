@@ -1,6 +1,7 @@
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
 import {movieDisplayFieldsSchema} from '../../shared/explorersMovieContract';
+import {appDisplayFieldsSchema} from '../../shared/explorersAppContract';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
 import {readBookCovers} from '../repositories/bookCovers';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
@@ -31,6 +32,7 @@ function effectiveTitle(row:any) {
  const title=catalogTitleSchema.safeParse(row.canonical_title),overrides=displayOverridesReadSchema.safeParse(row.display_values??{});
  if(!title.success||!overrides.success)throw new PublicContentFailure(400);
  if(row.content_category==='movies'){const {title:_,...fields}=overrides.data;if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
+ else if(row.content_category==='apps'){const {title:_appTitle,...fields}=overrides.data;if(!appDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
  else if(row.content_category!=='books'&&Object.keys(overrides.data).some(k=>k!=='title'))throw new PublicContentFailure(400);
  return Object.hasOwn(overrides.data,'title')?overrides.data.title:title.data;
 }

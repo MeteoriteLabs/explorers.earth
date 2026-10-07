@@ -45,7 +45,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all eight ordinary database selectors on their existing service", () => {
+  it("preserves all nine ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
@@ -58,6 +58,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       // Ticket 6.2/6.3. The only real-stack proof of the socket handshake, guest
       // capability and revocation while connected, so it belongs on this service.
       "server/test/music-socket-handshake.integration.test.ts",
+      // Ticket 4.3. 0043's typed storage and its ordered screenshot relation.
+      "server/test/explorers/apps.integration.test.ts",
     ]);
   });
 });
