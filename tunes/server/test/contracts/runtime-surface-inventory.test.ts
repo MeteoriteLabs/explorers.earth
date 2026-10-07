@@ -71,6 +71,8 @@ describe("runtime route/event/job inventory", () => {
     const ownerCommands=[
       ['POST','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
       ['DELETE','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
+      ['POST','/api/explorers/v1/collections/:id/location'],
+      ['DELETE','/api/explorers/v1/collections/:id/location'],
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
@@ -89,6 +91,7 @@ describe("runtime route/event/job inventory", () => {
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
+      '/api/explorers/v1/collections/:id/location',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',

@@ -943,11 +943,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         </div>,
         document.body
       )}
-      {false ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <EarthLoader context="general" size="small" />
-        </div>
-      ) : !isLoading ? (
+      {!isLoading ? (
         <div className="flex relative flex-col mb-10 items-center max-w-full gap-4">
           <div className="flex flex-row gap-4 md:w-[70%] w-full md:justify-between justify-between md:mt-0 mt-4 mx-6 md:mx-0 items-center">
             <Button
