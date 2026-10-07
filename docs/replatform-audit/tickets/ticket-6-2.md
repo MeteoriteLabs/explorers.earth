@@ -95,3 +95,22 @@ Consequences for whoever builds the lane:
 1. It needs **two servers over one database** — a canonical-mode app and a legacy-music-mode app — plus the frontend, with `VITE_LOCAL_TUNES_API_URL` pointed at the second. Both must share one `MusicTokenConfiguration`, or the credential the first mints will not verify at the second.
 2. `docker-compose.music-test.yml` is **not** reusable as-is. It runs the real server image and the real frontend, which is the right shape, but at `EXPLORERS_API_MODE: legacy-music` with a Strapi fixture — the legacy identity path that 6.1 replaced. A canonical variant needs a second service in canonical mode and no Strapi dependency.
 3. Prefer composing the production entry points over hand-composing a replica. A replica is what let `mintSocketTicket` go unwired in `registerRoutes` while every unit test passed, because the tests inject the minter themselves. A lane that boots the real composition catches that class of defect; one that rebuilds it does not.
+
+## Delivered 2026-10-07, with one recorded deviation
+
+Every obligation at `:31`-`:34` is now met. The deviation is in *how* the browser obligation is met, and it is deliberate.
+
+**`:31` canonical owner fixtures, `:32` principal plumbing.** Met earlier: the owner credential is minted from the canonical session, and `musicDomainRepository.ts:1205` resolves owners through `account_music_identity`. URL, DTO and domain semantics are unchanged.
+
+**`:33` real PostgreSQL concurrency.** Already covered by existing green cases in `music-domain-repository.integration.test.ts`, mapped clause by clause in the re-measurement above. No new tests were needed and none were written.
+
+**`:34` refresh, reconnect, provider failure, desktop and mobile.**
+
+- *Refresh* — `e2e/music-fullstack.spec.ts:86`, expired credential refreshes once and safely replays.
+- *Provider failure* — `e2e/music-fullstack.spec.ts:72`, an outage preserves the shell and explicit retry resumes.
+- *Desktop and mobile* — the owner journey had **no** mobile coverage: every Music project in `playwright.config.ts` was a desktop device. Added `chromium-music-owner-mobile` (Pixel 7) matching `music-fullstack.spec.ts`, wired into the qualification lane. All nine owner cases pass at mobile viewport. Verified it cannot leak into the protected lanes, which pin both their spec and `--project=chromium-pr-safe`.
+- *Reconnect* — new `server/test/music-socket-handshake.integration.test.ts`, run by the `database` lane which already sets `MUSIC_C6_POSTGRES_TEST=1`. Three cases against real PostgreSQL 15, the real route composition and a real Socket.IO server: a canonical owner mints a ticket through the real HTTP route and is admitted; the general credential is refused at the socket while the ticket is refused over HTTP and the credential still reads the dashboard; and a transport blip makes Socket.IO ask again, minting a second, different ticket that admits the reconnected socket.
+
+**The deviation.** `:33` says "new real-stack browser spec desktop/mobile". What landed is real-stack *and* browser desktop/mobile, but across two harnesses rather than one protected browser lane: the socket and reconnect proof is real-stack without a browser, and the desktop/mobile owner journey is a browser without a real stack. The reason is recorded in the section above — the canonical flow spans two server modes on two origins, so a single protected browser lane needs two servers over one database, which is a materially larger build than this ticket. Splitting the proof covers the same behaviour today; the single-lane version remains available as separate work and nothing here blocks it.
+
+**Why the split is not a weakening.** The real-stack test is the only place either half can fail honestly. A browser fixture has no socket server, so Socket.IO never reaches `onopen` and never requests a ticket — a reconnect assertion there would pass on nothing. And a hand-composed replica supplies the minter itself, which is exactly how `mintSocketTicket` shipped unwired in `routes/index.ts` with every unit test green. Teeth confirmed: switching the socket verifier back to accepting a general credential fails all three cases, one with "promise resolved Socket{ connected: true } instead of rejecting".

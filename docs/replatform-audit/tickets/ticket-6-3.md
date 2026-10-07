@@ -77,3 +77,9 @@ The switchover the re-measurement above called the actual gain. The socket no lo
 **Evidence.** 19 principal cases, 225 across the tunes security and socket lanes, 857 frontend unit tests, 1180 contract cases, both typechecks clean, and `musicTokenService.ts` and `musicPrincipal.ts` both at 100% statements/branches/functions/lines under the per-file gate. New cases pin each claim: the handshake refuses a general credential; a canonical subject kind survives the handshake and its rechecks; an expired ticket keeps an open connection alive but cannot open a second one; and a reconnect mints a fresh ticket and never falls back to the previous one.
 
 Remaining for this ticket: the reconnect case in a real browser lane, which is 6.2's `:33` obligation and now unblocked.
+
+### Step 3 proven against a real socket (2026-10-07)
+
+The asymmetry step 2 described is now exercised end to end by `server/test/music-socket-handshake.integration.test.ts`, over real PostgreSQL and a real Socket.IO server: the socket admits only a ticket minted through the real HTTP route, refuses the general credential, and refuses the ticket when it is presented back as an owner bearer while the credential still reads the dashboard. Reverting the verifier to accept a general credential fails all three cases, so the separation is pinned rather than incidental.
+
+That test also closed the defect this ticket nearly shipped. `mintSocketTicket` was an optional dependency and `routes/index.ts` never passed it, so the mint route did not mount while the socket already required a ticket — every owner would have failed to connect. The dependency is required now and the route mounts unconditionally; the compiler refuses a composition that omits it. Note the gate that catches this is `npm run music:types:scoped`, not the repository-wide `tsc --noEmit`, which does not cover the contract test files.
