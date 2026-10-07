@@ -3,7 +3,7 @@ import { bookFixtureId } from './books-owner-content';
 import * as contract from '../../../tunes/shared/explorersOwnerContentContract';
 
 /** Contained collection fixtures only; nonempty recommendations require their own qualified adapter. */
-export function createNativeNavigationContentFixture(category: 'movies' | 'games', lists: () => Record<string, any>[], legacyAccountId: string) {
+export function createNativeNavigationContentFixture(category: 'movies' | 'games' | 'apps', lists: () => Record<string, any>[], legacyAccountId: string) {
   let signature = '', revision = 0;
   const snapshots = new Map<string, { revision: string; expiresAt: number }>();
   return (url: URL): { status: number; body: unknown } | undefined => {
@@ -27,7 +27,7 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
     if (!parsed.success || parsed.data.category !== category) return fail('INVALID_INPUT', 422);
     const source = lists();
     if (source.some(list => list.account?.documentId !== legacyAccountId)) return fail('FORBIDDEN', 403);
-    const relation = category === 'movies' ? 'recommended_movies' : 'recommended_games';
+    const relation = category === 'movies' ? 'recommended_movies' : category === 'games' ? 'recommended_games' : 'recommended_apps';
     if (source.some(list => !Array.isArray(list[relation]) || list[relation].length !== 0)) return fail('PROVIDER_UNAVAILABLE', 503);
     const next = JSON.stringify(source);
     if (next !== signature) { signature = next; revision++; }
