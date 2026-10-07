@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0049_explorers_collection_location_links",
+    "expectedId": "0050_explorers_guide_sections",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -51,7 +51,8 @@
         "0046_explorers_places_catalog.sql",
         "0047_explorers_place_photo_media.sql",
         "0048_explorers_place_location_aggregate.sql",
-        "0049_explorers_collection_location_links.sql"
+        "0049_explorers_collection_location_links.sql",
+        "0050_explorers_guide_sections.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -116,6 +117,18 @@
     },
     {
       "name": "collection_location_links",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "guide_collection_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "guide_sections",
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "strip-on-deletion"
@@ -212,6 +225,12 @@
     },
     {
       "name": "recommendation_place_photos",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "guide_section_photos",
       "managedBy": "drizzle",
       "family": "media",
       "lifecycle": "detach-on-deletion"

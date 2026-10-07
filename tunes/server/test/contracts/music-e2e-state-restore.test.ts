@@ -120,7 +120,7 @@ describe("Music E2E transactional state restore", () => {
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "app_entity_details", "application_command_receipts", "auth_account", "auth_session", "auth_user",
       "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
-      "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects",
+      "explorers_analytics_receipts", "guest_interactions", "guide_collection_details", "guide_section_photos", "guide_sections", "initial_account_bindings", "media_assets", "media_objects",
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "person_entity_details", "place_collection_details", "place_entity_details", "place_recommendation_context", "playback_states", "played_songs", "playlist_songs",
@@ -162,6 +162,7 @@ describe("Music E2E transactional state restore", () => {
       "0047_explorers_place_photo_media",
       "0048_explorers_place_location_aggregate",
       "0049_explorers_collection_location_links",
+      "0050_explorers_guide_sections",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

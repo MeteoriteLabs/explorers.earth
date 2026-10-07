@@ -250,6 +250,42 @@ export const placeCollectionDetails=pgTable('place_collection_details',{
  locationEntityId:uuid('location_entity_id').references(()=>entities.id,{onDelete:'restrict'}),
  locationSnapshot:jsonb('location_snapshot').notNull().default(sql`'{}'::jsonb`),instagramMediaUrl:text('instagram_media_url'),
 },t=>[index('place_collection_details_location_idx').on(t.accountId,t.locationEntityId)]);
+
+// 0050 owns the guide aggregate. Ticket 5.3.
+//
+// A guide is a `collections` row with category 'guides' plus these tables; its sections
+// are NOT recommendations and NOT collection_items, so 0029's CHECKs on those two tables
+// still omit 'guides' on purpose - that is what stops a guide being flattened into
+// ordinary item rows. Section places are denormalised provider snapshots inside `blocks`,
+// because a published itinerary has to keep saying what the author arranged.
+//
+// 0050 owns the composite ownership FKs, the deferrable section order, the block version
+// CHECK and the registry-matches-JSON guard. It does NOT guard the parent's category:
+// the composite FK is immediate NO ACTION and already refuses that.
+export const guideCollectionDetails=pgTable('guide_collection_details',{
+ collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('guides'),
+ guideType:text('guide_type'),multiCity:boolean('multi_city').notNull().default(false),numberOfDays:integer('number_of_days'),
+ estimatedBudget:numeric('estimated_budget',{precision:14,scale:2}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),
+ bestTimeToVisit:jsonb('best_time_to_visit').notNull().default(sql`'[]'::jsonb`),categories:jsonb('categories').notNull().default(sql`'[]'::jsonb`),
+ tags:jsonb('tags').notNull().default(sql`'[]'::jsonb`),tipsNotes:jsonb('tips_notes'),
+ placeSnapshot:jsonb('place_snapshot').notNull().default(sql`'{}'::jsonb`),
+ locationEntityId:uuid('location_entity_id').references(()=>entities.id,{onDelete:'restrict'}),
+},t=>[index('guide_collection_details_account_idx').on(t.accountId,t.collectionId),index('guide_collection_details_entity_idx').on(t.locationEntityId)]);
+export const guideSections=pgTable('guide_sections',{
+ id:uuid('id').primaryKey().defaultRandom(),collectionId:uuid('collection_id').notNull(),accountId:uuid('account_id').notNull(),
+ category:text('category').notNull().default('guides'),displayOrder:integer('display_order').notNull(),
+ blockVersion:text('block_version').notNull(),title:text('title').notNull(),description:text('description'),
+ blocks:jsonb('blocks').notNull(),archivedAt:timestamp('archived_at',{withTimezone:true}),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('guide_sections_order_idx').on(t.collectionId,t.displayOrder,t.id),index('guide_sections_account_idx').on(t.accountId,t.collectionId)]);
+// The referential integrity for photo ids that travel inside a section's block JSON. JSON
+// cannot hold a foreign key, so the layout lives in the JSON and the FK plus the
+// purpose='guide' readiness guard live here; 0050's deferred trigger asserts the two agree.
+// No UPDATE grant: a photo is attached or detached, never rewritten in place.
+export const guideSectionPhotos=pgTable('guide_section_photos',{
+ sectionId:uuid('section_id').notNull(),accountId:uuid('account_id').notNull(),mediaId:uuid('media_id').notNull(),
+},t=>[primaryKey({columns:[t.sectionId,t.mediaId]}),index('guide_section_photos_asset_idx').on(t.mediaId,t.accountId),index('guide_section_photos_account_idx').on(t.accountId,t.sectionId)]);
 // 0047 owns composite ownership FKs, the image readiness guard and category revisions.
 // Provider photos are imported into owned media, so a place gallery is S3 bytes.
 export const recommendationPlacePhotos=pgTable('recommendation_place_photos',{

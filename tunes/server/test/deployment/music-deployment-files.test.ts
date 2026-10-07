@@ -185,10 +185,10 @@ describe("Music deployment authority files", () => {
       "/app/migrations/0035_explorers_book_cover_import.sql",
     ]) expect(ci).toContain(file);
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0049_explorers_collection_location_links"',
+      'production_current_marker="0050_explorers_guide_sections"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0049_explorers_collection_location_links"',
+      'const marker = "0050_explorers_guide_sections"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -465,11 +465,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0049_explorers_collection_location_links");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0049_explorers_collection_location_links");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0049_explorers_collection_location_links");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0049_explorers_collection_location_links");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0049_explorers_collection_location_links");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0050_explorers_guide_sections");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0050_explorers_guide_sections");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0050_explorers_guide_sections");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0050_explorers_guide_sections");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0050_explorers_guide_sections");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

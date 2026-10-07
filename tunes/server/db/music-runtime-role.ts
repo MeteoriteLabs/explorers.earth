@@ -38,6 +38,9 @@ const expectedRuntimeTables = [
   "entity_identifiers",
   "explorers_analytics_receipts",
   "guest_interactions",
+  "guide_collection_details",
+  "guide_section_photos",
+  "guide_sections",
   "initial_account_bindings",
   "media_assets",
   "media_objects",
@@ -143,6 +146,8 @@ const expectedRuntimeFunctions = [
   "guard_app_entity_details()",
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
+  "guard_guide_location_entity()",
+  "guard_guide_section_media()",
   "guard_movie_context()",
   "guard_movie_details()",
   "guard_movie_genres()",
@@ -643,9 +648,9 @@ export async function provisionMusicRuntimeLogin(
       ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,person_entity_details,place_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
-    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
-      ON collection_location_links FROM ${capabilityRole}`);
+      ON collection_location_links,guide_section_photos FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -797,7 +802,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, false]
       : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || row.object_name === "product_entity_details" || row.object_name === "person_entity_details" || row.object_name === "place_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
         ? [true, true, false, false]
-      : row.object_name === "collection_location_links"
+      : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
         ? [true, true, false, true]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
@@ -853,7 +858,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
           && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
-          && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details)\(\)$/.test(row.function_signature)))) {
+          && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 

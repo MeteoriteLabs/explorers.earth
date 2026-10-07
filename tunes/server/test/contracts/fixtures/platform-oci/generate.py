@@ -1,8 +1,15 @@
 """Independent deterministic stdlib fixtures. No application/validator imports."""
 import base64, copy, gzip, hashlib, io, json, pathlib, tarfile
 OUT=pathlib.Path(__file__).parent
-# Explicit reviewed fixture revision; no application/validator import.
-SCHEMA_VERSION=42
+# Explicit reviewed fixture revision; no application/validator import. This must equal
+# SCHEMA_FLOOR, which is derived from EXPECTED_MUSIC_MIGRATION_ID, so it moves with every
+# migration. It was left at 42 while the committed fixtures moved to 49, which meant this
+# generator no longer reproduced its own committed output; 5.3 brings it back in step.
+# Note that the committed cases.json/receipt.json are pretty-printed with a one-space
+# indent while enc() writes them compact, so re-running this reformats both. The content
+# is identical either way - only the floor and each release's manifestDigest change when
+# the floor moves.
+SCHEMA_VERSION=50
 INDEX='application/vnd.oci.image.index.v1+json'
 MANIFEST='application/vnd.oci.image.manifest.v1+json'
 CONFIG='application/vnd.oci.image.config.v1+json'
