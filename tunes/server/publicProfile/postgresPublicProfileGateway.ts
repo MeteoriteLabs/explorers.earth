@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { PublicProfileGateway } from "./publicProfileService";
 import type { PublicCategory } from "./publicProfilePolicy";
 import {publicBooksProjection} from './publicBooksProjection';
+import {publicAppsProjection} from './publicAppsProjection';
 
 const flag: Record<string, string> = { places: "public_recommendations", guides: "public_guides", music: "public_music",
   movies: "public_movie", books: "public_books", games: "public_games", apps: "public_apps",
@@ -55,10 +56,10 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
   }
 
   async resolveCategory(username: string, category: PublicCategory, limit=12,cursor?:string,operation?:GamePublicOperation): Promise<unknown> {
-    return category==='games'?publicGamesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret,operation):category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor):{ items: [], nextCursor: null };
+    return category==='games'?publicGamesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret,operation):category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor):category==='apps'?publicAppsProjection(this.db,username,limit,cursor):{ items: [], nextCursor: null };
   }
   async resolveDetail(username:string,category:PublicCategory,slug:string,limit=12,cursor?:string,operation?:GamePublicOperation): Promise<unknown> {
-    return category==='games'?publicGamesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret,operation):category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):undefined;
+    return category==='games'?publicGamesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret,operation):category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):category==='apps'?publicAppsProjection(this.db,username,limit,cursor,slug):undefined;
   }
   async resolveMovieGenre(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>{return publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret,genreSlug);}
 

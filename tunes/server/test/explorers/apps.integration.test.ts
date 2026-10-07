@@ -3,6 +3,7 @@ import pg from "pg";
 import {afterAll, beforeAll, describe, expect, it} from "vitest";
 import {migrateMusicDatabase} from "../../db/migrate";
 import {insertAppDetails, readAppEntity, readAppScreenshotMediaIds, writeAppScreenshots, effectiveAppDetails} from "../../repositories/appCatalogRepository";
+import {publicAppsProjection} from "../../publicProfile/publicAppsProjection";
 import {appEntityDetailsSchema} from "../../../shared/explorersAppContract";
 
 /**
@@ -136,6 +137,52 @@ describePg("Apps typed storage on a real PostgreSQL", () => {
     expect(effectiveAppDetails(base, {developer: "Patched", priceTier: "Paid"})).toEqual(details({developer: "Patched", priceTier: "Paid"}));
     expect(effectiveAppDetails(base, {appUrl: "https://evil.example/app"}).appUrl).toBe("https://example.com/app");
   }, 30_000);
+
+  it("serves a published Apps list instead of an empty page", async () => {
+    // Before 4.3 the gateway fell through to { items: [], nextCursor: null } for apps and
+    // answered 200, so a published Apps tab looked legitimately empty rather than
+    // unimplemented. This is the proof that it now carries content.
+    const {accountId, entityId, recommendationId, mediaIds} = await seed(2);
+    const handle = `appowner${randomUUID().slice(0, 8)}`;
+    await pool.query(`UPDATE creator_accounts SET handle=$2,display_name='App owner',account_type='Creator',
+      public_profile=true,onboarding_status='complete',status='active' WHERE id=$1`, [accountId, handle]);
+    await pool.query(`INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'apps',true,0)
+      ON CONFLICT(account_id,category) DO UPDATE SET is_public=true`, [accountId]);
+
+    const client = await pool.connect();
+    try {
+      await insertAppDetails(client, entityId, details({developer: "Studio", downloadUrl: "https://example.com/get"}));
+      await writeAppScreenshots(client, recommendationId, accountId, mediaIds);
+    } finally { client.release(); }
+
+    const collectionId = (await pool.query(
+      `INSERT INTO collections(account_id,category,title,slug,heading,visibility,publication_state,display_order)
+       VALUES($1,'apps','Daily tools',$2,'Top tools','public','published',0) RETURNING id`,
+      [accountId, `tools-${randomUUID().slice(0, 8)}`])).rows[0].id as string;
+    await pool.query("UPDATE recommendations SET publication_state='published' WHERE id=$1", [recommendationId]);
+    await pool.query(
+      "INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,'apps',0)",
+      [collectionId, recommendationId, accountId]);
+
+    const page = await publicAppsProjection(pool, handle, 12) as {appLists: Array<Record<string, any>>};
+    expect(page).toBeDefined();
+    expect(page.appLists).toHaveLength(1);
+    const list = page.appLists[0];
+    expect(list).toMatchObject({documentId: collectionId, List_Name: "Daily tools", Visibility: true, top_apps_heading: "Top tools"});
+    expect(list.recommended_apps).toHaveLength(1);
+    expect(list.recommended_apps[0]).toMatchObject({
+      documentId: recommendationId, app_url: "https://example.com/app", developer: "Studio",
+      price_tier: "Freemium", platforms: ["iOS", "macOS"], download_url: "https://example.com/get",
+      is_pinned: false, app_category: null,
+    });
+    // Screenshots are owned media, so they are served through the media route and never as
+    // an address an owner typed.
+    expect(list.recommended_apps[0].screenshots).toEqual(mediaIds.map(id => `/api/explorers/v1/media/${id}/content`));
+
+    // An unpublished list is not public, which is the gate the projection shares with Books.
+    await pool.query("UPDATE collections SET publication_state='draft' WHERE id=$1", [collectionId]);
+    expect(((await publicAppsProjection(pool, handle, 12)) as {appLists: unknown[]}).appLists).toHaveLength(0);
+  }, 60_000);
 
   it("removes screenshots when the account's content is purged", async () => {
     const {accountId, recommendationId, mediaIds} = await seed(2);
