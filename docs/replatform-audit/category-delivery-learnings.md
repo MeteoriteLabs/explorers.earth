@@ -67,3 +67,27 @@ Diagnostic mistakes also remain evidence: normalized LF preparation missed actua
 - First-page optional snapshot issuance differs from continuation authorization. Validate full stream contracts and authenticate before allocation; denied requests must have no side effects.
 - Preserve privacy assertions through protocol changes: exact inert persisted envelope is allowed; authority fields are not. Independent review must assess the translated invariant.
 - Use fresh agents for every new assignment. If capacity prevents dispatch, record it, continue safe independent work and retain the unfulfilled review gate.
+## Known intermittent: `category-navigation-a.spec.ts:474` Enable Public URL (recorded 2026-10-07)
+
+Recorded because it is unreproduced, not because it is resolved. Treat a green re-run as weak evidence.
+
+**Observed once in CI**, run `37525558414` on `ca1072cf`: the `movies` case of the eight-category `Auto saved → header Off → reload → Hub On → Manual explicit Pin` test failed with `TimeoutError: locator.press: Timeout 12000ms exceeded`, call log `waiting for getByRole('button', { name: 'Enable Public URL', exact: true })`. 18 of 19 lane cases passed. A re-run of the same commit with no code change passed, and the lane has been green since.
+
+**It is not a regression from the 6.3 socket work.** The test never touches Music, has no clean-network assertion, and the same lane passed on `9daa9d6f`, which already carried the entire owner-socket client change. The only delta in `ca1072cf` is three browser-fixture stubs, one of which is gated on `path === '/api/music/socket-ticket' && musicOwner` and is therefore inert here.
+
+**Two hypotheses were tested. The obvious one is wrong.**
+
+1. *"Movies is heavier, so it tips first."* **Disproved.** Per-case durations are `places` 19.7s, `books` 17.9s, `games` 17.8s, `movies` 17.4s, `apps` 17.2s, `products` 16.5s, `guides` 16.2s, `people` 15.9s. Movies is mid-pack and `places` is slowest. That it was movies is chance, one of eight — so this can surface on any category and nobody should go looking for a movies-specific cause.
+2. *"Runner contention alone."* **Not reproduced.** 40 samples: 8 unloaded, 8 with 20 of 24 cores saturated, 24 with 22 saturated and `--repeat-each=3`. All passed. Contention raised durations about 20% (movies 17.4s → 21.1s) without a single failure. Note the local machine has 24 cores against a runner's 2–4, so local absence of failure is expected and proves little.
+
+**The mechanism worth examining, stated as a hypothesis.** `:487-491` opens a popover and then resolves the button inside it twice:
+
+```js
+await card.getByTitle('Category options').click();
+const enable = owner.page.getByRole('button', { name: 'Enable Public URL', exact: true });
+await enable.focus(); await enable.press('Enter');
+```
+
+`locator.press()` focuses the element itself, so the explicit `focus()` is redundant, and it creates a second independent resolution of the same locator. If a late re-render closes or rebuilds that popover between the two calls, `focus()` succeeds against the old element and `press()` then waits the full 12s for a detached one. This matches the observed call log — the timeout is on `press`, and it is waiting for the locator rather than for actionability.
+
+**Deliberately not changed.** Deleting the redundant `focus()` is semantically neutral and would halve the window, but it was not applied: the failure could not be reproduced, so there is no way to show the change fixes anything, and a timing assertion altered on a hunch is how a lane quietly stops catching defects. If this recurs, delete the `focus()` call first and look for what re-renders `/recommendations` after the popover opens — settling category-preference state is the first place to look. Do not raise the 12s timeout; the margin is not the defect.
