@@ -60,6 +60,8 @@ describe("private local media", () => {
     expect((await request(composed.app).get(url)).status).toBe(404);
     const head = await request(composed.app).head(url).set("cookie", owner.cookie);
     expect(head.status).toBe(200);
+    // Attached but not yet published, so these bytes are the owner's alone and must not be
+    // stored by any cache between them and this server.
     expect(head.headers["cache-control"]).toBe("no-store");
     const partial = await request(composed.app).get(url).set("cookie", owner.cookie).set("range", "bytes=0-3");
     expect(partial.status).toBe(206);
@@ -72,7 +74,18 @@ describe("private local media", () => {
         handle: `p${randomUUID().replaceAll("-", "").slice(0, 12)}`, displayName: "Public",
         accountType: "Creator", onboardingStatus: "complete" });
     expect(published.status).toBe(200);
-    expect((await request(composed.app).get(url)).status).toBe(200);
+    const servedPublicly = await request(composed.app).get(url);
+    expect(servedPublicly.status).toBe(200);
+    // Public bytes are cacheable, so a repeat view does not re-download them through this
+    // server. The window is short because it also bounds how long an unpublished image can
+    // still be handed out by a shared cache.
+    expect(servedPublicly.headers["cache-control"]).toBe("public, max-age=300, must-revalidate");
+    expect(servedPublicly.headers.etag).toBeTruthy();
+    // Past the window, revalidation costs a request and no bytes. Under no-store a browser
+    // kept no ETag, so this branch was unreachable from one.
+    const revalidated = await request(composed.app).get(url).set("if-none-match", servedPublicly.headers.etag!);
+    expect(revalidated.status).toBe(304);
+    expect(revalidated.body.length ?? 0).toBe(0);
     const detached = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
       .set("origin", config.baseURL).send({ expectedRevision: owner.revision + 2, profileImageId: null });
     expect(detached.status).toBe(200);

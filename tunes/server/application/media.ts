@@ -13,7 +13,9 @@ import { resolveObjectStorage, type ObjectStorage } from "../services/objectStor
 export type MediaUploadInput = { purpose: "profile" | "background" | "feed" | "recommendation" | "collection"; filename: string;
   mimeType: string; length: number; bytes: Buffer; alternativeText?: string | null; caption?: string | null };
 export type AuthorizedMediaObject = { key: string; mimeType: string; length: number; bytes: Buffer;
-  sha256: string };
+  sha256: string;
+  /** Attached to something published, so these bytes are servable to anyone. */
+  publicAttachment: boolean };
 export class MediaInputError extends Error {}
 export class MediaUnavailable extends Error {}
 
@@ -164,7 +166,7 @@ export class MediaService {
       catch { throw new MediaUnavailable("Media unavailable"); }
     }
     return { key: record.object_key, mimeType: record.mime_type, length: bytes.length, bytes,
-      sha256: record.content_sha256.toString("hex") };
+      sha256: record.content_sha256.toString("hex"), publicAttachment: stillPublic };
   }
 
   async deleteMedia(actor: Actor, id: string, _context: RequestContext): Promise<void> {

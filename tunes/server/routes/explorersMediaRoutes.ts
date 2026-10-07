@@ -6,6 +6,12 @@ import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { MediaService, MediaInputError, MediaUnavailable, type MediaUploadInput } from "../application/media";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * How long a shared cache may serve a public attachment without asking again. It bounds
+ * how long an unpublished image can still be handed out, so it is deliberately short;
+ * past it, revalidation is a 304 with no bytes rather than a fresh download.
+ */
+const PUBLIC_MEDIA_MAX_AGE = 300;
 const failure = (status: number, code: string, message: string) => ({ status, body: { error: { code, message, requestId: randomUUID() } } });
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
@@ -54,6 +60,16 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
         catch { actor = null; }
       }
       const object = await service.resolveMediaContent(actor, request.params.id);
+      // Media is written once per id, so bytes for a given URL never change and a cache
+      // hit can never be wrong about content. What can change is whether they may be
+      // served at all, which is why only an already-public attachment is cacheable and
+      // why the window is short: unpublishing takes effect in a shared cache within it.
+      // Owner-only bytes stay no-store.
+      //
+      // Until now every public view re-downloaded the full object through this server:
+      // no-store meant browsers kept no ETag, so the 304 branch below could never be
+      // reached from a browser.
+      if (object.publicAttachment) response.setHeader("Cache-Control", `public, max-age=${PUBLIC_MEDIA_MAX_AGE}, must-revalidate`);
       const etag = `"${object.sha256}"`;
       response.setHeader("ETag", etag);
       response.setHeader("Content-Type", object.mimeType);
