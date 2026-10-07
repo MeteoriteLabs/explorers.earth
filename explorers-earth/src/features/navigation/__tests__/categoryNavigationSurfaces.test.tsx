@@ -7,6 +7,7 @@ import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
 import { explorersApiClient, type CompleteMyCategoryContent, type CollectionObservation } from '../../../lib/explorersApiClient';
 import { invalidateGames } from '../../Games/hooks/useGamesOwner';
 import { invalidateApps } from '../../AppsAndTools/hooks/useAppsOwner';
+import { invalidateProducts } from '../../Products/hooks/useProductsOwner';
 import { invalidateMovies } from '../../Movies/api/explorersAdapter';
 
 vi.mock('../../../lib/explorersApiClient', async importOriginal => {
@@ -23,6 +24,7 @@ vi.mock('../../../lib/explorersApiClient', async importOriginal => {
 
 function gameObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'games', collections: observed.collections.map(list => ({ ...list, category: 'games' })) }; }
 function appObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'apps', collections: observed.collections.map(list => ({ ...list, category: 'apps' })) }; }
+function productObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'products', collections: observed.collections.map(list => ({ ...list, category: 'products' })) }; }
 
 function movieObservation(title?: string): CompleteMyCategoryContent {
   const current = useAuthStore.getState();
@@ -105,7 +107,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
-  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
+  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
     const listFields = { public_books: 'bookLists', public_movie: 'movieLists', public_games: 'gameLists', public_apps: 'appLists', public_products: 'productLists', public_people: 'personLists', public_guides: 'guides', public_recommendations: 'recommendationLists' };
     const field = listFields[category];
     const lists: Record<string, unknown> = { [field]: [{ ...listFixture.recommendationLists[0], ...guideFixture,
@@ -182,6 +184,24 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.navigation.snapshot?.visibility.public_apps).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_music']);
   });
+  it('public_products native empty list refresh never changes category visibility or saved pins', async () => {
+    const read = vi.mocked(explorersApiClient.getCompleteMyCategoryContent);
+    read.mockResolvedValue(productObservation('Before refresh'));
+    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_music'] } });
+    await h.ready();
+    expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
+    const readsBefore = read.mock.calls.length;
+    read.mockResolvedValue(productObservation());
+    act(() => invalidateProducts());
+    await waitFor(() => expect(screen.queryByText('Before refresh')).not.toBeInTheDocument());
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(readsBefore + 2));
+    expect(read).toHaveBeenLastCalledWith({ category: 'products', status: 'active' }, expect.any(AbortSignal), true);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(h.requests.some(request => request.name === 'ProductListsByAccount')).toBe(false);
+    expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_products).toBe('Yes');
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_music']);
+  });
   it.each(headers)('%s uses the verified selected account, not incomplete accounts[0]', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { incompleteFirst: true, lists: listFixture }); await h.ready();
     expect((await screen.findAllByRole('checkbox'))[0]).toBeChecked();
@@ -207,7 +227,7 @@ describe('ordinary category headers use verified navigation', () => {
       canonicalWrite(category, true, ['public_profile', 'public_music'], 2),
     ]);
   });
-  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps'))('%s failed list refresh has no category side effects', async (_category, Component) => {
+  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products'))('%s failed list refresh has no category side effects', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture }); await h.ready(); h.failLists = true;
     await act(async () => { await h.client.refetchQueries({ include: 'active' }).catch(() => {}); });
     expect(h.writes).toEqual([]);
@@ -222,6 +242,18 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
+  });
+  it('public_products failed native refresh has no category side effects', async () => {
+    vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(productObservation());
+    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_music'] } });
+    await h.ready();
+    await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
+    vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
+    act(() => invalidateProducts());
+    expect(await screen.findByRole('alert')).toHaveTextContent('Products could not be loaded');
+    expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_products).toBe('Yes');
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_music']);
   });
   it('public_apps failed native refresh has no category side effects', async () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(appObservation());

@@ -18,6 +18,7 @@ import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type Ed
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
+import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/shared/explorersProductContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -267,8 +268,8 @@ async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id
 function commandInput<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
  const result=schema.safeParse(input);if(!result.success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');return result.data;
 }
-async function membershipCommand(category:'games'|'apps',parent:CollectionObservation,item:RecommendationObservation,key:string,attached:boolean,signal?:AbortSignal){
- const label=category==='games'?'Games':'Apps';
+async function membershipCommand(category:'games'|'apps'|'products',parent:CollectionObservation,item:RecommendationObservation,key:string,attached:boolean,signal?:AbortSignal){
+ const label=category==='games'?'Games':category==='apps'?'Apps':'Products';
  assertOwnerDetailObservation(parent,'collection');assertOwnerDetailObservation(item,'recommendation');commandInput(commandKeySchema,key);
  if(parent.detail.category!==category||item.detail.category!==category||parent.accountId!==item.accountId||parent.generation!==item.generation)throw new ExplorersApiError(422,'INVALID_INPUT',`${label} membership observations required`);
  const input=commandInput(gameMembershipCommandSchema,{expectedCollectionRevision:parent.resourceRevision,expectedRecommendationRevision:item.resourceRevision});
@@ -348,6 +349,8 @@ export const explorersApiClient = {
   attachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,true,signal),
   detachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,false,signal),
   detachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,false,signal),
+  attachMyProductMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('products',parent,item,key,true,signal),
+  detachMyProductMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('products',parent,item,key,false,signal),
   async getMovieGenres(signal?:AbortSignal){return ownerRead('/catalog/movie-genres',{},movieGenreTermsResultSchema,signal,true);},
   async importMovieMedia(observed:RecommendationObservation,key:string,signal?:AbortSignal){
    assertOwnerDetailObservation(observed,'recommendation');if(observed.detail.category!=='movies')throw new ExplorersApiError(422,'INVALID_INPUT','Movie import requires Movies');
@@ -364,6 +367,12 @@ export const explorersApiClient = {
   },
   async searchBookCandidates(input:{query:string;limit?:number;cursor?:string},signal?:AbortSignal){
    const parsed=commandInput(bookCandidateRequestSchema,input);return ownerRead('/catalog/books',parsed,bookCandidatesSchema,signal,true);
+  },
+  async resolveProductEntity(input:z.input<typeof resolveManualProductSchema>,key:string,signal?:AbortSignal){
+   const body=commandInput(resolveManualProductSchema,input);
+   const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',productEntityDtoSchema,signal);
+   if(entity.kind!=='product'||entity.title!==body.details.title||entity.details.productUrl!==body.details.productUrl)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved Product identity');
+   return entity;
   },
   async resolveAppEntity(input:z.input<typeof resolveManualAppSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(resolveManualAppSchema,input);

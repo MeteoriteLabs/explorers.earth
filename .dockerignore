@@ -190,6 +190,8 @@ explorers-earth/src/features/People/utils/*
 explorers-earth/src/features/Products/api/*
 !explorers-earth/src/features/Products/components/
 explorers-earth/src/features/Products/components/*
+!explorers-earth/src/features/Products/hooks/
+explorers-earth/src/features/Products/hooks/*
 !explorers-earth/src/features/Products/types/
 explorers-earth/src/features/Products/types/*
 !explorers-earth/src/features/Products/utils/
@@ -762,7 +764,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/People/index.ts
 !explorers-earth/src/features/People/types/index.ts
 !explorers-earth/src/features/People/utils/personHelpers.ts
+!explorers-earth/src/features/Products/api/explorersAdapter.ts
 !explorers-earth/src/features/Products/api/mutation.ts
+!explorers-earth/src/features/Products/api/productsClient.ts
+!explorers-earth/src/features/Products/api/productsViewModel.ts
 !explorers-earth/src/features/Products/api/query.ts
 !explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx
 !explorers-earth/src/features/Products/components/dashboard/ProductListView.tsx
@@ -774,6 +779,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Products/components/public/ProductTopPicksMobileHero.tsx
 !explorers-earth/src/features/Products/components/public/PublicProductList.tsx
 !explorers-earth/src/features/Products/components/public/PublicProducts.tsx
+!explorers-earth/src/features/Products/hooks/useProductsOwner.ts
 !explorers-earth/src/features/Products/index.ts
 !explorers-earth/src/features/Products/types/index.ts
 !explorers-earth/src/features/Products/utils/productHelpers.ts

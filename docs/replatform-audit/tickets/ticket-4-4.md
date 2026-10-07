@@ -73,3 +73,110 @@ So the legacy required fields are **currently unrepresentable** end to end: `pro
 ### Shared fixtures module
 
 The epic-mandated `explorers-earth/e2e/replatform/fixtures.ts` (specified at `docs/replatform-audit/epics/epic-04.md:71`, exporting `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context) **DOES NOT EXIST**; all six existing lanes roll bespoke setup. Creating it is folded into **4.3** as the first category package of Epic 4. This ticket's `products.spec.ts` consumes that fixture rather than deriving its own sign-in, and must not add a publicly mounted test-login endpoint or relax the contained-test network restrictions.
+
+## Delivery status (2026-10-07)
+
+The 2026-10-05 review verified NOT-STARTED at `225d83e5`. This records what now exists.
+The ledger remains authoritative.
+
+| Mandated path | State |
+|---|---|
+| `tunes/server/explorers/categories/products.ts` | **not created, deliberately** — see below |
+| `explorers-earth/src/features/Products/api/explorersAdapter.ts` | delivered |
+| `tunes/server/test/explorers/products.test.ts` | **still missing** — see below |
+| `tunes/server/test/explorers/products.integration.test.ts` | delivered (21 cases) |
+| `explorers-earth/e2e/replatform/products.spec.ts` | **still missing** — see below |
+
+Also delivered, from the review's correction that this ticket owes a contract, migration
+and storage rather than only an adapter:
+
+- `tunes/shared/explorersProductContract.ts`. Money is an exact decimal string end to end.
+  The supported currencies are pinned with their ISO 4217 minor units rather than read
+  from `Intl`, whose currency data varies with the host's ICU build; the set is
+  AddProductPage's own `ALLOWED_CURRENCIES`. `canonicalAmount` resolves the one real
+  ambiguity: `numeric(20,6)` returns `"19.90"` as `"19.900000"`, so the rule is to drop
+  trailing zeros and, when the currency is known, pad back to its minor units.
+- `tunes/migrations/0044_explorers_products_offer_context.sql`. `product_entity_details`
+  holds the shared catalog facts; the creator's offer lives in
+  `product_recommendation_context`, keyed on the recommendation, which is what makes "A's
+  offer must not change B's recommendation of the same entity" true by construction.
+- `productCatalogRepository`, `publicProductsProjection` wired into the gateway, and the
+  Products vocabulary admitted to the public override allowlist. Before that, a published
+  Products tab answered HTTP 200 with an empty list.
+- The live consumer is native: `useProductsOwner`, `useProductsCommands` and all four
+  dashboard components. The public pages were already native.
+
+### Three gaps this work exposed in 4.3 as well
+
+The command contract accepted typed Apps and Products payloads, the storage existed, and
+the two were not connected. Fixed here and pinned by
+`tunes/server/test/explorers/category-write-path.integration.test.ts`:
+
+1. `resolveEntity` fell through to `resolveManualEntity` for both categories, so the
+   entities row was written and the typed details discarded. The client then rejected the
+   untyped response, which means **the Apps package shipped with working reads and a
+   create that could not complete**.
+2. `createRecommendation` and `updateRecommendation` accepted `appScreenshots` and
+   `productOffer` and wrote neither.
+3. `updateRecommendation` rejected every display override but `title` outside Books and
+   Movies, so editing an App's or a Product's presentational fields was impossible.
+
+`ownerContent` had no app or product branch either, so an owner read returned the untyped
+core entity.
+
+### Strapi-era behaviour removed rather than ported
+
+- `AddProductPage` posted to `/api/products/scrape-link`. `explorers-earth/vite.config.ts`
+  still proxies that path to the Tunes server, but the server has no such route, so the
+  step called a dead endpoint and discarded the draft when it failed. With no enrichment
+  there is nothing to auto-fill and nothing to flag as unverified, which is the whole
+  purpose of the scraped-price guard; `scrapePriceGuard.test.tsx` and
+  `scrape-flow.integration.test.tsx` are replaced by `manualProductFlow.test.tsx`, which
+  asserts what that guard protected against the native path: an owner's amount is never
+  silently altered, an unsupported currency cannot be chosen, and an impossible precision
+  is reported before any command is dispatched.
+- The price input was `type="number"`. A float cannot represent `"19.90"`, so it is now
+  decimal text and the exact string reaches `numeric(20,6)`.
+- The category selector read a Strapi taxonomy with no canonical replacement.
+
+`ProductListView` gained a per-recommendation publication control, as Games and Apps have:
+the public projection serves only published rows, so without it a published list would
+serve nothing. `ProductTopPicksManager` now writes the whole pin set in one command.
+
+### Why there is no `tunes/server/explorers/categories/products.ts`
+
+`tunes/server/explorers/categories/` contains only `movies.ts` and `movieGenreSeeds.ts`.
+That module exists for Movies because Movies has provider genre seeds to own. Products has
+no provider, no taxonomy and no seeds, so the equivalent logic is the repository and the
+projection. The same reasoning was recorded for Apps in ticket 4.3.
+
+### Remaining obligations
+
+- [ ] **`tunes/server/test/explorers/products.test.ts`** — the SQL-shape assertions over
+  `0044` that `apps.test.ts` makes over `0043`. The storage is covered by the integration
+  suite against real PostgreSQL; this file is the cheaper static proof and is not written.
+- [ ] **`explorers-earth/e2e/replatform/products.spec.ts` and its lane.** As with Apps,
+  this is a separate package: `scripts/replatform-e2e.mjs` holds a closed lane registry at
+  `:11` and `validateManifest` at `:54` requires `scopeContents` to equal it exactly, so a
+  Products lane needs a `tunes/scripts/products-browser-fixture.ts`, a playwright config,
+  and manifest identities matching its spec titles. It should consume `fixtures.ts`.
+- [ ] **`explorers-earth/e2e/products.spec.ts` and `e2e/apps.spec.ts`** drive the pages
+  these two tickets rewrote and still expect the scraper steps. They run in
+  `frontend-e2e-qualification.yml`, which is nightly and manual-dispatch only - not PR
+  CI - and its scheduled run on `main` was already failing before this work. They are
+  owed by 4.3 and 4.4 regardless.
+- [ ] **UAT** at `:40` (zero-price and unknown-price products, edit currency, sort,
+  external link, imagery, publish/unpublish) is unrun.
+- [ ] The acceptance gate's note that **zero-price visibility bugs in the existing UI are
+  baseline defects** has not been checked against the rewritten page; `formatPrice`
+  formats 0 as a currency amount and was deliberately left alone.
+
+### Currency metadata, the open owner decision
+
+The ticket required validating precision "against versioned ISO metadata" without naming a
+source. Recorded decision: pin the eight currencies the existing form already offers, with
+their minor units, under `CURRENCY_METADATA_VERSION`, and reject any other three-letter
+code at the API boundary. `Intl` was rejected as the source because its currency data
+varies with the host's ICU build, so the same price would validate differently on
+different machines. Adding a currency is therefore a visible, dated change to one table -
+not a silent widening.
