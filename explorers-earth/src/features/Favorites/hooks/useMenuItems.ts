@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ApolloQueryResult, OperationVariables } from "@apollo/client";
 import { toast } from "sonner";
 import { useCityStore } from "../../../store/useCityStore";
 import { useTranslation } from "react-i18next";
@@ -23,9 +22,8 @@ export const useMenuItems = ({
   advanceToNextStep,
   advanceToNextStepRef,
 }: {
-  refetchCities: (
-    variables?: Partial<OperationVariables> | undefined
-  ) => Promise<ApolloQueryResult<unknown>>;
+  /** Any refresh the caller holds. Nothing here depends on an Apollo result shape. */
+  refetchCities: () => Promise<unknown>;
   setShowConfirmDeleteModal: (show: boolean) => void;
   onDeleteSuccess?: () => void;
   advanceToNextStep?: () => void;
@@ -63,7 +61,7 @@ export const useMenuItems = ({
       await commands.archiveList(listId);
 
       const refetchResult = await refetchCities();
-      const updatedLists = (refetchResult as { data?: { recommendationLists?: unknown[] } })?.data?.recommendationLists;
+      const updatedLists = (refetchResult as { data?: { recommendationLists?: unknown[] } } | undefined)?.data?.recommendationLists;
       if (updatedLists && updatedLists.length > 0) {
         setSelectedCity(updatedLists[0] as never);
       } else {

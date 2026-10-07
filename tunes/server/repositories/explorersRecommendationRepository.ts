@@ -336,7 +336,7 @@ export class ExplorersRecommendationRepository {
       return{collection:await this.collectionRecord(db,list.rows[0]),recommendation:await this.recommendationRecord(db,row.rows[0]),attached};
     });
   }
-  async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails},key:string):Promise<CollectionRecord> {
+  async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockCollection(db,accountId,id,expectedRevision);
       if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
@@ -345,6 +345,10 @@ export class ExplorersRecommendationRepository {
       if(input.description!==undefined) await db.query('UPDATE collections SET description=$2 WHERE id=$1',[id,input.description]);
       if(input.heading!==undefined) await db.query('UPDATE collections SET heading=$2 WHERE id=$1',[id,input.heading]);
       if(input.coverMediaId!==undefined) await this.replaceCover(db,accountId,id,input.coverMediaId);
+      // Where the list sits, and whether it is pinned above the rest. Both are the
+      // list's own and neither touches the pinned recommendations inside it.
+      if(input.displayOrder!==undefined) await db.query('UPDATE collections SET display_order=$2 WHERE id=$1 AND account_id=$3',[id,input.displayOrder,accountId]);
+      if(input.pinOrder!==undefined) await db.query('UPDATE collections SET pin_order=$2 WHERE id=$1 AND account_id=$3',[id,input.pinOrder,accountId]);
       if(input.placeLocation!==undefined) await writePlaceCollectionDetails(db,id,accountId,input.placeLocation);
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });

@@ -19,7 +19,7 @@ vi.mock('../../../lib/explorersApiClient', async importOriginal => {
     // is covered by the API client's own contract tests.
     assertCompleteMyCategoryContent: vi.fn(),
     explorersApiClient: { ...actual.explorersApiClient, getMyProfile: vi.fn(),
-      getCompleteMyCategoryContent: vi.fn(), getCompleteMyCategoryTopPicks: vi.fn(), getMyEditableCollection: vi.fn(), archiveMyCollection: vi.fn() },
+      getCompleteMyCategoryContent: vi.fn(), getCompleteMyCategoryTopPicks: vi.fn(), getMyEditableCollection: vi.fn(), archiveMyCollection: vi.fn(), updateMyCollection: vi.fn() },
   };
 });
 
@@ -27,6 +27,10 @@ function gameObservation(title?: string): CompleteMyCategoryContent { const obse
 function appObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'apps', collections: observed.collections.map(list => ({ ...list, category: 'apps' })) }; }
 function productObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'products', collections: observed.collections.map(list => ({ ...list, category: 'products' })) }; }
 function personObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'people', collections: observed.collections.map(list => ({ ...list, category: 'people' })) }; }
+// Ticket 5.1. Favorites reads its Places lists natively, so this surface needs a places
+// observation rather than the Strapi recommendationLists query.
+const PLACE_LIST_ID = '00000000-0000-4000-8000-0000000000f1';
+function placeObservation(title?: string): CompleteMyCategoryContent { const observed = movieObservation(title); return { ...observed, category: 'places', collections: observed.collections.map(list => ({ ...list, category: 'places', id: PLACE_LIST_ID, slug: 'places' })) }; }
 
 function movieObservation(title?: string): CompleteMyCategoryContent {
   const current = useAuthStore.getState();
@@ -90,10 +94,21 @@ const headers = [
   ['public_movie', MoviesHome], ['public_games', GamesHome], ['public_apps', AppsHome],
   ['public_products', ProductsHome], ['public_people', PeopleHome], ['public_guides', GuidesPage], ['public_recommendations', Favorites],
 ] as const;
-const listFixture = { recommendationLists: [{ documentId: 'place-list', List_Name: 'My places', slug: 'places', Visibility: true, createdAt: '2026-01-01', recommended_places: [], List_Name_Details: {} }] };
+const listFixture = { recommendationLists: [{ documentId: PLACE_LIST_ID, List_Name: 'My places', slug: 'places', Visibility: true, createdAt: '2026-01-01', recommended_places: [], List_Name_Details: {} }] };
 const guideFixture = { documentId: 'g1', Title: 'Test guide', Visibility: true, guide_sections: [], Guide_Media: [], Guide_Tags: [], Number_Of_Days: 1 };
 describe('ordinary category headers use verified navigation', () => {
-  beforeEach(async () => { loginSurface(); vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(gameObservation()); vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
+  beforeEach(async () => { loginSurface();
+    // Each surface reads its own category, so the complete read answers per category
+    // rather than handing every surface the same one.
+    vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockImplementation(async input =>
+      input.category === 'places' ? placeObservation('My places') : gameObservation());
+    // The real editable read runs against the harness's own transport, so the
+    // observations the commands receive carry the client's private brand. A fixture
+    // cannot join that brand, and refusing an unbranded observation is the point of it.
+    const real = await vi.importActual<typeof import('../../../lib/explorersApiClient')>('../../../lib/explorersApiClient');
+    vi.mocked(explorersApiClient.getMyEditableCollection).mockImplementation(real.explorersApiClient.getMyEditableCollection);
+    vi.mocked(explorersApiClient.updateMyCollection).mockImplementation(async (observed, patch) => ({ ...(observed as { detail: Record<string, unknown> }).detail, ...patch }) as never);
+    vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
   it.each(headers)('%s Off removes only the target saved pin and desktop/mobile share confirmed state', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
@@ -109,7 +124,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
-  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products' && category !== 'public_people'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
+  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products' && category !== 'public_people' && category !== 'public_recommendations'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
     const listFields = { public_books: 'bookLists', public_movie: 'movieLists', public_games: 'gameLists', public_apps: 'appLists', public_products: 'productLists', public_people: 'personLists', public_guides: 'guides', public_recommendations: 'recommendationLists' };
     const field = listFields[category];
     const lists: Record<string, unknown> = { [field]: [{ ...listFixture.recommendationLists[0], ...guideFixture,
@@ -374,12 +389,17 @@ describe('ordinary category headers use verified navigation', () => {
   it('Favorites per-list Visibility never changes category visibility or saved pins', async () => {
     const list = { ...listFixture.recommendationLists[0], recommended_places: [{ documentId: 'p1' }] };
     useCityStore.setState({ selectedCity: list });
+    const update = vi.mocked(explorersApiClient.updateMyCollection);
+    update.mockResolvedValue({ id: 'place-list', revision: 2 } as never);
     const h = surfaceHarness(<Favorites />, { lists: { recommendationLists: [list] } }); await h.ready();
     fireEvent.click((await screen.findAllByText('My places'))[0]);
     const control = await waitFor(() => { const node = document.querySelector('[data-walkthrough="togglePublish"] input'); if (!node) throw new Error('Waiting for list details'); return node; });
     fireEvent.click(control);
-    await waitFor(() => expect(h.requests.some(r => r.variables.documentId === 'place-list' && r.variables.data?.Visibility === false)).toBe(true));
+    // Taking one list out of public view is a list command, not an account write.
+    await waitFor(() => expect(update.mock.calls.some(call => (call[0] as { resourceId: string }).resourceId === PLACE_LIST_ID
+      && (call[1] as { visibility?: string }).visibility === 'private')).toBe(true));
     expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_recommendations).toBe('Yes');
   });
 });
 describe('Settings verified ordinary publication', () => {

@@ -52,13 +52,32 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
     categories: keys.map((category, displayOrder) => ({ category, displayOrder, isPublic: saved[fields[displayOrder]] === 'Yes', pinnedOrder: Array.isArray(saved.pinned_nav_tabs) && saved.pinned_nav_tabs.includes(fields[displayOrder]) ? saved.pinned_nav_tabs.indexOf(fields[displayOrder]) - 1 : null })) });
   // Use the real pagination producer so native publication proof retains its
   // provenance brand; unsupported categories deliberately receive no producer.
+  const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+  const ownerPage = (items: unknown[] = [], extra: Record<string, unknown> = {}) => json({ version: 'explorers-owner-content/v2',
+    snapshot: '1', snapshotToken: 'native-surface', expiresAt: Date.now() + 60_000, items, nextCursor: null, ...extra });
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     const request = new URL(String(url), 'http://localhost');
+    // Ticket 5.1. The Favorites page reads its Places lists through the owner API, so the
+    // rest of that read is answered with empty pages. These surfaces assert the category
+    // header controls; the list content is not what they are about.
+    const owner = /^\/api\/explorers\/v1\/categories\/[a-z]+\/(content-snapshot|memberships|top-picks)$/.exec(request.pathname);
+    if (owner) {
+      if (owner[1] === 'content-snapshot') return json({ version: 'explorers-owner-content/v2', snapshotToken: 'native-surface', revision: '1', expiresAt: Date.now() + 60_000, pinRevision: null });
+      return ownerPage([], owner[1] === 'top-picks' ? { pinRevision: null } : {});
+    }
+    if (request.pathname === '/api/explorers/v1/recommendations') return ownerPage();
+    const editable = /^\/api\/explorers\/v1\/collections\/([0-9a-f-]+)\/editable$/.exec(request.pathname);
+    if (editable) {
+      return json({ collection: { id: editable[1], accountId: useAuthStore.getState().accountId, category: 'places',
+        title: 'My places', slug: 'places', description: null, heading: null, coverMediaId: null, visibility: 'public',
+        publicationState: 'published', revision: 1, archived: false, displayOrder: 0, pinOrder: null, categoryRevision: '1',
+        placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null } } });
+    }
     if (request.pathname !== '/api/explorers/v1/collections') return new Response('{}', { status: 404 });
     // deferContent holds owner content pending while authority is already resolved.
     if (options.deferContent) await options.deferContent;
     const category = request.searchParams.get('category');
-    const listField = category === 'books' ? 'bookLists' : category === 'movies' ? 'movieLists' : category === 'games' ? 'gameLists' : undefined;
+    const listField = category === 'books' ? 'bookLists' : category === 'movies' ? 'movieLists' : category === 'games' ? 'gameLists' : category === 'places' ? 'placeLists' : undefined;
     if (!listField || failLists) throw new Error('Native lists unavailable');
     const items = (content[listField] as unknown[] ?? []).map((_item, index) => ({
       id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,

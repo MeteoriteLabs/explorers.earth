@@ -30,7 +30,7 @@ type Cursor=z.infer<typeof cursorSchema>;
 // numeric indicator before any unbounded text crosses the database connection.
 const collectionFields={id:'c.id',accountId:'c.account_id',category:'c.category',title:'c.title',slug:'c.slug',visibility:'c.visibility',publicationState:'c.publication_state',revision:'c.revision',description:'c.description',heading:'c.heading',coverMediaId:'m.media_id',archived:'(c.archived_at IS NOT NULL)',displayOrder:'c.display_order'};
 const collectionBytes=`octet_length(convert_to('{'||${Object.entries(collectionFields).map(([key,column],n)=>`'${n?',':''}"${key}":'||coalesce(to_json(${column})::text,'null')`).join('||')}||'}','UTF8'))`;
-const collectionProjection='c.id,c.account_id,c.category,c.title,c.slug,c.visibility,c.publication_state,c.revision,c.archived_at,c.display_order,c.description,c.heading,m.media_id AS cover_media_id';
+const collectionProjection='c.id,c.account_id,c.category,c.title,c.slug,c.visibility,c.publication_state,c.revision,c.archived_at,c.display_order,c.pin_order,c.description,c.heading,m.media_id AS cover_media_id';
 const collectionJoin="FROM collections c LEFT JOIN collection_media m ON m.collection_id=c.id AND m.account_id=c.account_id AND m.slot='cover'";
 const recommendationProjection='r.id,r.account_id,r.category,r.entity_id,r.user_rating,r.publication_state,r.revision,r.archived_at';
 const statusPredicate=(alias:string,status:string)=>status==='all'?'TRUE':`${alias}.archived_at IS ${status==='active'?'':'NOT '}NULL`;
@@ -205,7 +205,7 @@ export class OwnerContentService {
    if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
    if(!editable)return collection;
    const categoryRevision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[actor.accountId,row.category])).rows[0].revision;
-   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
+   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,pinOrder:row.pin_order===null||row.pin_order===undefined?null:Number(row.pin_order),...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
   });
  }
  async getRecommendation(actor:Actor,id:string,raw:unknown={},editable=false) {

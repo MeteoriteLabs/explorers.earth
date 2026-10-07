@@ -235,6 +235,36 @@ describePg("owner write path for typed categories", () => {
     await expect(repository.createCollection(accountId, {category: "places", title: "Porto", slug: `porto-${randomUUID()}`, coverMediaId: wrong}, key())).rejects.toThrow();
   });
 
+  it("pins a list and moves it in the order, each on its own", async () => {
+    // collections.pin_order has existed since the list schema and nothing wrote it, so a
+    // list could be pinned in storage and never through a command.
+    const accountId = await account();
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`}, key());
+    const read = async () => (await pool.query("SELECT display_order,pin_order FROM collections WHERE id=$1", [list.id])).rows[0];
+    expect(await read()).toMatchObject({pin_order: null});
+
+    await repository.updateCollection(accountId, list.id, list.revision, {pinOrder: 2}, key());
+    expect((await read()).pin_order).toBe(2);
+
+    // Moving the list leaves the pin where it was: they are separate decisions.
+    const moved = (await pool.query("SELECT revision FROM collections WHERE id=$1", [list.id])).rows[0];
+    await repository.updateCollection(accountId, list.id, Number(moved.revision), {displayOrder: 7}, key());
+    expect(await read()).toMatchObject({display_order: 7, pin_order: 2});
+
+    // Unpinning is an explicit null, not an omission.
+    const after = (await pool.query("SELECT revision FROM collections WHERE id=$1", [list.id])).rows[0];
+    await repository.updateCollection(accountId, list.id, Number(after.revision), {pinOrder: null}, key());
+    expect((await read()).pin_order).toBeNull();
+  });
+
+  it("refuses to pin or move another account's list", async () => {
+    const owner = await account();
+    const stranger = await account();
+    const list = await repository.createCollection(owner, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`}, key());
+    await expect(repository.updateCollection(stranger, list.id, list.revision, {pinOrder: 1}, key())).rejects.toThrow();
+    expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [list.id])).rows[0].pin_order).toBeNull();
+  });
+
   it("refuses an App resolve without the URL its storage requires", async () => {
     const accountId = await account();
     await expect(repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "No link"}}, key())).rejects.toThrow();

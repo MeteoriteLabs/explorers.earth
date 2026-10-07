@@ -317,7 +317,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // Use the existing menu items hook for draft/publish functionality
   // Must be called AFTER walkthrough hook to access advanceToNextStepRef
   useMenuItems({
-    refetchCities: refetchCitiesInternal as never,
+    refetchCities: refetchCitiesInternal,
     setShowConfirmDeleteModal: () => { }, // Not needed in this component
     advanceToNextStepRef: advanceToNextStepRef,
   });

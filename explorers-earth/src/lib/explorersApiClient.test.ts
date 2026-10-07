@@ -11,7 +11,7 @@ describe('authentic Games membership wire',()=>{
  const account='00000000-0000-4000-8000-000000000001',listId='00000000-0000-4000-8000-000000000002',recId='00000000-0000-4000-8000-000000000003',entityId='00000000-0000-4000-8000-000000000004';
  const collection={id:listId,accountId:account,category:'games',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null};
  const recommendation={id:recId,accountId:account,category:'games',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[]};
- const collectionDetail={...collection,archived:false,displayOrder:0,categoryRevision:'9'};
+ const collectionDetail={...collection,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
  const recommendationDetail={...recommendation,archived:false,pin:null,note:null,categoryRevision:'9',entity:{id:entityId,kind:'game',title:'Manual'},displayOverrides:{},displayTitle:'Manual',gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null}};
  const reply=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
  beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/games');});

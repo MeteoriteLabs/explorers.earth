@@ -1,4 +1,3 @@
-import { ApolloQueryResult, OperationVariables } from "@apollo/client";
 import useAuthStore from "../../../store/store";
 import { KeyValuePair } from "../components/RecommendForm";
 import { toast } from "sonner";
@@ -27,9 +26,8 @@ import { legacyListNameDetails, type PlaceLocationSnapshot } from "../../../../.
 
 interface UseCreateLocationProps {
   setIsLocationModalOpen: (isOpen: boolean) => void;
-  refetchCities: (
-    variables?: Partial<OperationVariables> | undefined
-  ) => Promise<ApolloQueryResult<unknown>>;
+  /** Any refresh the caller holds. Nothing here depends on an Apollo result shape. */
+  refetchCities: () => Promise<unknown>;
   setIsLoading: (isloading: boolean) => void;
   cities?: unknown;
   onCreated?: (newId?: string) => void;
@@ -158,10 +156,8 @@ export const useCreateLocation = ({
       // Best-effort refresh of the full list — a refresh failure must NOT be reported as
       // a create failure (which would invite a duplicate-create retry).
       try {
-        const { data } = await refetchCities();
-        const updatedCity = (
-          data as { recommendationLists?: selectedCity[] } | undefined
-        )?.recommendationLists?.find(
+        const refreshed = (await refetchCities()) as { data?: { recommendationLists?: selectedCity[] } } | undefined;
+        const updatedCity = refreshed?.data?.recommendationLists?.find(
           (list: selectedCity) => list.documentId === created.id
         );
         if (updatedCity) {

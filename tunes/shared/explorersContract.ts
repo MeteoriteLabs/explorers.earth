@@ -70,7 +70,10 @@ export const createCollectionSchema = z.object({category:contentCategorySchema,t
   .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category');
 export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),
   visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
-  heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional(),placeLocation:placeCollectionDetailsSchema.optional()}).strict()
+  heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional(),placeLocation:placeCollectionDetailsSchema.optional(),
+  // A list's own place among its category's lists. displayOrder is where it sits;
+  // pinOrder is whether it is pinned above the rest, with null meaning not pinned.
+  displayOrder:z.number().int().min(0).max(100000).optional(),pinOrder:z.number().int().min(0).max(100000).nullable().optional()}).strict()
   .refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
   collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),

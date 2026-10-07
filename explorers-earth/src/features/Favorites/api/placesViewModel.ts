@@ -48,6 +48,9 @@ export type RecommendedPlaceView={
 };
 export type RecommendationListView={
  documentId:string;List_Name:string;slug:string;Visibility:boolean;display_order:number;
+ // The list's own pin among its category's lists, which is not the pinned
+ // recommendations inside it.
+ is_pinned:boolean;pin_order:number|null;
  List_Name_Details:ReturnType<typeof legacyListNameDetails>|null;
  Instagram_Media_URL:string|null;
  cover_image:{url:string;alternativeText:null}|null;
@@ -124,6 +127,8 @@ export function collectionViewModel(collection:Readonly<EditableOwnerCollection>
   slug:collection.slug,
   Visibility:collection.visibility==='public'&&collection.publicationState==='published',
   display_order:collection.displayOrder,
+  is_pinned:collection.pinOrder!==null,
+  pin_order:collection.pinOrder,
   // The list's own location, assembled from the same shared mapper the public projection
   // uses, so the owner and the reader never see two different shapes.
   List_Name_Details:collection.placeLocation.locationSnapshot===null&&collection.description===null&&cover===null

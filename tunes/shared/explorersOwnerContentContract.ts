@@ -16,6 +16,8 @@ const limit=z.union([z.number().int().min(1).max(100),z.string().regex(/^[1-9][0
 export const ownerCollectionsRequestSchema=z.object({category:contentCategorySchema,status,limit,cursor:token.optional(),snapshotToken:token.optional()}).strict();
 export const ownerRecommendationsRequestSchema=ownerCollectionsRequestSchema.extend({collectionId:contentIdSchema.optional()}).strict();
 export const ownerDetailRequestSchema=z.object({status}).strict();
+// pinOrder is the list's own pin position among its category's lists, which is not the
+// same thing as the pinned recommendations inside it. Null means not pinned.
 export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.string().min(1).max(200),description:z.string().nullable(),heading:z.string().nullable(),archived:z.boolean(),displayOrder:z.number().int().nonnegative()}).strict();
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
@@ -23,7 +25,9 @@ const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSaf
 // because the owner form edits the list and its location together, and it is absent for
 // every other category rather than empty, so a reader cannot mistake "no location set"
 // for "this category has locations".
-export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,placeLocation:placeCollectionDetailsSchema.optional()}).strict()
+// pinOrder is the list's own pin among its category's lists, which is not the same thing
+// as the pinned recommendations inside it. Null means not pinned.
+export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,pinOrder:z.number().int().nonnegative().nullable(),placeLocation:placeCollectionDetailsSchema.optional()}).strict()
  .superRefine((v,ctx)=>{if((v.placeLocation!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent location aggregate'});});
 export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema,personEntityDtoSchema,placeEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional(),effectivePersonDetails:personEntityDetailsSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),effectivePlaceDetails:placeEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
  if(v.category==='games'?!v.gamePresentation||v.gamePresentation.images.length!==v.mediaIds.length||v.gamePresentation.images.some((image,index)=>image.mediaId!==v.mediaIds[index]):v.gamePresentation!==undefined)ctx.addIssue({code:'custom',message:'Inconsistent Game presentation'});
