@@ -58,7 +58,7 @@ and anything behind the 2.4/3.5 deployment-authority gates.
 | 1 — 4.3 Apps | **complete** (`11987c69`, `e90ebb6b`, `487cae51`) |
 | 2 — 4.4 Products | **complete** (`4190600c`, `b832bb4f`, `88b2297c`, `2901093d`) |
 | 2 — 4.5 People | **complete** (`a1b5cd61`, `233b1bd1`, `8d9fc37a`, `5386bfac`) |
-| 3 — 5.1 Places | contract and migration `0046` landed (`8ba664e4`); storage, projection, write path, adapter and consumer in progress |
+| 3 — 5.1 Places | contract, migration `0046`, storage and claim lookup landed (`8ba664e4`, `6afe0c4f`); projection, write path, adapter and consumer blocked on the two owner decisions in [ticket 5.1](tickets/ticket-5-1.md) |
 | 4 — 5.2 Guides attachment | not started; consumes the order 2 and 3 attachment contracts |
 
 One input is outstanding and it belongs to order 3: the Places category/subcategory

@@ -64,3 +64,79 @@ The `:29`–`:45` implementation and acceptance requirements are unchanged by th
 The correction at `:48-50` above is prose-level only; the gate it corrects lived elsewhere. [`epic-05.md:68`](../epics/epic-05.md) defines the `places` suite as including place-links/claims, and `epic-05.md:130` (measured at `225d83e5`) requires "the exact category suite" for desktop and mobile runs — together these required 5.1 to run `place-links.spec.ts` (5.2) and `claims.spec.ts` (5.4). Both epic lines are corrected as of 2026-10-05: the alias line is still `epic-05.md:68` with its correction at `:70`, and the full-stack completion check is now `epic-05.md:132` with its correction at `:134`. `epic-01.md:159` carries the same grouped selection and is owned by another agent; raise it with the coordinator before 5.1 qualification.
 
 All three packages (5.1 core, 5.2 place-links, 5.4 claims) remain mandatory in full milestone discovery. Nothing is removed, skipped or relabelled optional to let core qualify.
+
+## Delivery status (2026-10-07)
+
+Storage half delivered and verified against PostgreSQL 15; the consumer half is blocked on
+two owner decisions recorded below.
+
+| Mandated path | State |
+|---|---|
+| `tunes/shared/explorersPlaceContract.ts` (not in the original list) | delivered |
+| `tunes/migrations/0046_explorers_places_catalog.sql` | delivered, chain-registered |
+| `tunes/server/repositories/placeCatalogRepository.ts` | delivered |
+| `tunes/server/test/explorers/places.integration.test.ts` | delivered (15 cases) |
+| `tunes/server/explorers/categories/places.ts` | **not created** — same reasoning as the other categories; Places' seeded taxonomy is the one thing that would justify it, and that is blocked (below) |
+| `explorers-earth/src/features/Favorites/api/explorersAdapter.ts` | **not started** — blocked |
+| `tunes/server/test/explorers/places.test.ts` | **not written** |
+| `explorers-earth/e2e/replatform/places.spec.ts` | **not started** — needs a fixture runner and protected-manifest identities |
+
+What the storage proves, each assertion checked by breaking it:
+
+- Zero coordinates survive as zero and absent stay null. Reading them as
+  `Number(value)||null` fails the suite, which is exactly the defect the ticket names.
+  The paired-null invariant is enforced in the contract and in `0046`, so a half-known
+  pair cannot be stored.
+- Contact disclosure is private until the creator chooses otherwise, and
+  `publicPlaceContact` is the only path those fields reach a reader. Making it always
+  disclose fails the suite. One creator's contact details never reach another's
+  recommendation of the same place, and a creator's number never populates the shared
+  entity's `public_phone`.
+- `publicPlaceLookup` is the direct canonical query, counting **distinct** creators.
+  Dropping `DISTINCT` fails the suite.
+- `recommendation_type = 'person'` inside a Places list is preserved with a deferred
+  entity-kind invariant checked from both sides.
+
+## Two decisions block the rest
+
+### 1. The category/subcategory vocabulary is not in this repository
+
+`recommendationCategories` is fetched from Strapi at runtime
+(`explorers-earth/src/features/Favorites/api/query.ts:38`), so the production taxonomy
+values are external content. Ticket 5.1 requires seeding them idempotently and forbids
+inventing them: *"no invented production taxonomy values hidden in tests."*
+
+Everything else in Places proceeds without it. What cannot proceed is the seeded taxonomy,
+the reusable-category assertions that depend on real terms, and `PublicPersonSector`-style
+sector browse, which has nothing to group by. The taxonomy tables themselves already exist
+and Movies uses them, so this is an input, not missing schema.
+
+**Needed:** an export of the `recommendationCategories` and
+`recommendation_sub_categories` rows, or a decision to defer taxonomy to its own ticket.
+
+### 2. `Place_Details.Photos` has no column in the target schema
+
+The behaviour contract says to map the consumed `Place_Details` JSON "without dropping data
+used by cards and maps". The consumed keys are `Place_Id`, `Place_Name`/`Title`,
+`Place_Address`, `Geometry`, `Rating`, `Rating_Count` and `Photos`. Every one has a home in
+`place_entity_details` or core **except `Photos`**, and
+`features/PublicHome/components/PlaceDetails/PlaceOverview.tsx:37` concatenates them with
+the owner's own uploads into one gallery, so they are displayed today.
+
+The target schema's Places table has no photo column, and the ticket's own fixture list
+mentions "provider photo failure", which reads as though photos are expected to come from
+the provider at request time rather than from storage.
+
+The two options are not equivalent:
+
+- **Re-fetch from the provider using the Place ID.** No new column, matches the
+  "provider photo failure" fixture, and keeps provider imagery fresh. But it adds a
+  per-render Google Places cost on exactly the surface already identified as the largest
+  cost risk, and a provider outage empties the gallery.
+- **Store the provider photo references.** Preserves today's behaviour and cost profile,
+  but needs a column or a slotted table, which is a departure from the target schema and
+  a decision about retaining provider-derived content.
+
+**Needed:** which of those, before the projection is written. Writing the projection
+either way without the decision would bake in a cost profile or drop imagery users
+currently see.
