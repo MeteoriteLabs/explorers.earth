@@ -79,3 +79,16 @@ So the legacy required fields are **currently unrepresentable** end to end: `app
 **`explorers-earth/e2e/replatform/fixtures.ts` DOES NOT EXIST.** All six existing lanes (`auth`, `profile`, `books`, `lifecycle`, `movies`, `games`) roll **bespoke setup** instead, which is why no two lanes share an identity model.
 
 - [ ] **Creating the shared `fixtures.ts` is folded into this package, as the first category package of Epic 4.** It must export the exact surface epic-04 names — `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context — create real in-process sessions via its identity test factory, and mount **no** public test-login endpoint. 4.4, 4.5 and later category lanes consume it rather than each re-deriving sign-in. Folding the file into this package does not transfer authority over the identity model away from the Authentication owner, and it does not permit weakening the contained-test network restrictions to make a new suite pass.
+
+## Registering a new shared contract file (learned 2026-10-07)
+
+Adding `tunes/shared/explorersAppContract.ts` cost three separate CI round-trips because a new file under `tunes/shared/` must be declared in several hardcoded allowlists, none of which is discoverable from the others. 4.4 and 4.5 each add one, so the full list is recorded here.
+
+A new `tunes/shared/explorers*Contract.ts` that `explorersContract.ts` imports must be added to **all** of:
+
+1. `scripts/generate-music-fixture-dockerignore.mjs` — the shared-contract allowlist. Then run the generator with `--write`; `--check` must exit 0.
+2. `explorers-earth/Dockerfile.music-fixture` — an explicit `COPY` line. **This one is a real build break, not a test failure:** the fixture image copies contracts individually, so without it the image ships without a module `explorersContract.ts` imports.
+3. `explorers-earth/src/lib/__tests__/ownerSharedBundle.test.ts` — the copy list at `:14`. That test bundles the shared contracts in a temp directory to prove they carry no sibling dependencies, so an unlisted import fails with `UNRESOLVED_IMPORT` rather than anything that names the real cause.
+4. `fixtures/db/music-runtime-table-manifest.json` and `tunes/shared/explorersSchema.ts` — only when the contract comes with new tables. The manifest's `managedBy: "drizzle"` entries are validated against the generated Drizzle references, so a table in the manifest with no Drizzle declaration fails as "in the manifest but absent from a fresh migrated database".
+
+Two generated artefacts go stale whenever **any** file is added or deleted anywhere in the tracked tree, not only a contract: the fixture Docker context (`--write`) and, if a route moved, `docs/architecture/music-runtime-surface-inventory.json` plus the authorization matrix. Regenerate them in the same commit as the file change. Discovering them from CI afterwards cost two of the three round-trips here.
