@@ -6,7 +6,7 @@ import {bookDisplayFieldsSchema,bookRecommendationContextSchema,resolveProviderB
 import {appDisplayFieldsSchema,appScreenshotsSchema,resolveManualAppSchema} from './explorersAppContract';
 import {productDisplayFieldsSchema,productOfferSchema,resolveManualProductSchema} from './explorersProductContract';
 import {personDisplayFieldsSchema,resolveManualPersonSchema} from './explorersPersonContract';
-import {placeDisplayFieldsSchema,placeRecommendationContextSchema,placePhotosSchema,resolveManualPlaceSchema} from './explorersPlaceContract';
+import {placeDisplayFieldsSchema,placeRecommendationContextSchema,placePhotosSchema,placeCollectionDetailsSchema,resolveManualPlaceSchema} from './explorersPlaceContract';
 
 export const categoryKeys = [
   "places", "guides", "music", "movies", "books", "games", "apps", "products", "people",
@@ -63,10 +63,14 @@ export type DisplayOverrides=z.infer<typeof displayOverridesSchema>;
 export const contentRevisionSchema = z.object({expectedRevision:contentRevision}).strict();
 export const createCollectionSchema = z.object({category:contentCategorySchema,title:contentTitle,slug:contentSlug,
   visibility:contentVisibility.default('private'),publicationState:publicationState.default('draft'),
-  description:collectionPlainText.default(null),heading:collectionHeading.default(null),coverMediaId:contentIdSchema.nullable().default(null)}).strict();
+  description:collectionPlainText.default(null),heading:collectionHeading.default(null),coverMediaId:contentIdSchema.nullable().default(null),
+  // The list's own location selection, for Places only: a location list is distinct
+  // from the place recommendations inside it.
+  placeLocation:placeCollectionDetailsSchema.optional()}).strict()
+  .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category');
 export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),
   visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
-  heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional()}).strict()
+  heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional(),placeLocation:placeCollectionDetailsSchema.optional()}).strict()
   .refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
   collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),

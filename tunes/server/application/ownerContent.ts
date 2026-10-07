@@ -18,7 +18,7 @@ import {readBookEntity,readBookContext,effectiveBookDetails} from '../repositori
 import {readAppEntity,readAppScreenshotMediaIds,effectiveAppDetails} from '../repositories/appCatalogRepository';
 import {readProductEntity,readProductOffer,effectiveProductDetails} from '../repositories/productCatalogRepository';
 import {readPersonEntity,effectivePersonDetails} from '../repositories/personCatalogRepository';
-import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
+import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,readPlaceCollectionDetails,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -205,7 +205,7 @@ export class OwnerContentService {
    if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
    if(!editable)return collection;
    const categoryRevision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[actor.accountId,row.category])).rows[0].revision;
-   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision});
+   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
   });
  }
  async getRecommendation(actor:Actor,id:string,raw:unknown={},editable=false) {

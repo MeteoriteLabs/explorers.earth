@@ -5,7 +5,7 @@ import {bookCoversSchema} from './explorersBookCoverContract';
 import {appEntityDtoSchema,appEntityDetailsSchema,appDisplayFieldsSchema,appScreenshotsSchema} from './explorersAppContract';
 import {productEntityDtoSchema,productEntityDetailsSchema,productDisplayFieldsSchema,productOfferSchema} from './explorersProductContract';
 import {personEntityDtoSchema,personEntityDetailsSchema,personDisplayFieldsSchema} from './explorersPersonContract';
-import {placeEntityDtoSchema,placeEntityDetailsSchema,placeDisplayFieldsSchema,placeRecommendationContextSchema,placePhotosSchema} from './explorersPlaceContract';
+import {placeEntityDtoSchema,placeEntityDetailsSchema,placeDisplayFieldsSchema,placeRecommendationContextSchema,placePhotosSchema,placeCollectionDetailsSchema} from './explorersPlaceContract';
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
@@ -19,7 +19,12 @@ export const ownerDetailRequestSchema=z.object({status}).strict();
 export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.string().min(1).max(200),description:z.string().nullable(),heading:z.string().nullable(),archived:z.boolean(),displayOrder:z.number().int().nonnegative()}).strict();
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
-export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
+// A Places list carries its own location selection. It travels on the editable read
+// because the owner form edits the list and its location together, and it is absent for
+// every other category rather than empty, so a reader cannot mistake "no location set"
+// for "this category has locations".
+export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,placeLocation:placeCollectionDetailsSchema.optional()}).strict()
+ .superRefine((v,ctx)=>{if((v.placeLocation!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent location aggregate'});});
 export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema,personEntityDtoSchema,placeEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional(),effectivePersonDetails:personEntityDetailsSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),effectivePlaceDetails:placeEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
  if(v.category==='games'?!v.gamePresentation||v.gamePresentation.images.length!==v.mediaIds.length||v.gamePresentation.images.some((image,index)=>image.mediaId!==v.mediaIds[index]):v.gamePresentation!==undefined)ctx.addIssue({code:'custom',message:'Inconsistent Game presentation'});
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};

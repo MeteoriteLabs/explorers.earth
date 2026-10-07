@@ -13,8 +13,8 @@ import {appDisplayFieldsSchema,appEntityDetailsSchema,type AppScreenshots} from 
 import {productDisplayFieldsSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
-import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos} from './placeCatalogRepository';
-import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,type PlaceRecommendationContext,type PlacePhotos} from '../../shared/explorersPlaceContract';
+import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
+import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
@@ -223,7 +223,7 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null},key:string):Promise<CollectionRecord> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails},key:string):Promise<CollectionRecord> {
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
@@ -231,6 +231,10 @@ export class ExplorersRecommendationRepository {
         [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
       await db.query('UPDATE collections SET description=$2,heading=$3 WHERE id=$1',[result.rows[0].id,input.description??null,input.heading??null]);
       await this.replaceCover(db,accountId,result.rows[0].id,input.coverMediaId??null);
+      if(input.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      // A Places list always owns a location row from the start, so the location is this
+      // list's own from creation; an unset location is explicitly empty, not missing.
+      if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
       return this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null});
     });
   }
@@ -332,14 +336,16 @@ export class ExplorersRecommendationRepository {
       return{collection:await this.collectionRecord(db,list.rows[0]),recommendation:await this.recommendationRecord(db,row.rows[0]),attached};
     });
   }
-  async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null},key:string):Promise<CollectionRecord> {
+  async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
-      await this.lockCollection(db,accountId,id,expectedRevision);
+      const locked=await this.lockCollection(db,accountId,id,expectedRevision);
+      if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       const result=await db.query(`UPDATE collections SET title=coalesce($2,title),visibility=coalesce($3,visibility),
         publication_state=coalesce($4,publication_state),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.title??null,input.visibility??null,input.publicationState??null]);
       if(input.description!==undefined) await db.query('UPDATE collections SET description=$2 WHERE id=$1',[id,input.description]);
       if(input.heading!==undefined) await db.query('UPDATE collections SET heading=$2 WHERE id=$1',[id,input.heading]);
       if(input.coverMediaId!==undefined) await this.replaceCover(db,accountId,id,input.coverMediaId);
+      if(input.placeLocation!==undefined) await writePlaceCollectionDetails(db,id,accountId,input.placeLocation);
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }

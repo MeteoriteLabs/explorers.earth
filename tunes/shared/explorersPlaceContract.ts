@@ -127,7 +127,36 @@ export type PlaceLocationSnapshot=z.infer<typeof placeLocationSnapshotSchema>;
 export type PlaceCollectionDetails=z.infer<typeof placeCollectionDetailsSchema>;
 export const emptyPlaceCollectionDetails=():PlaceCollectionDetails=>({locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null});
 
-export const placeEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('place'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:placeEntityDetailsSchema,origin:z.enum(['manual','provider'])}).strict();
+/**
+ * The legacy List_Name_Details blob, assembled from the three places its parts now live.
+ *
+ * Consumers read four things from it: note, thumbnail, location.{latitude,longitude,address}
+ * and place_id. Those are not one thing, so they are not stored as one:
+ *
+ *  - note is the list's own text, which is the collection's description column.
+ *  - thumbnail is owned media, which is the collection's cover media.
+ *  - the rest is the location snapshot.
+ *
+ * Assembled here, once, so the owner view and the public projection cannot drift into two
+ * different shapes for the same consumed blob.
+ *
+ * location is null only when no location is set. When one is set the coordinates travel as
+ * they are, including zero, and absent coordinates stay null rather than becoming (0,0).
+ */
+export function legacyListNameDetails(snapshot:PlaceLocationSnapshot|null,parts:{note:string|null;thumbnailUrl:string|null}){
+ return {
+  note:parts.note,thumbnail:parts.thumbnailUrl,
+  location:snapshot===null?null:{latitude:snapshot.latitude,longitude:snapshot.longitude,address:snapshot.address},
+  place_id:snapshot?.providerPlaceId??null,
+  name:snapshot?.name??null,
+ };
+}
+
+// providerPlaceId is the provider's own identifier for the place, which consumers use to
+// deduplicate and to look a place up for claiming. It is identity, not a display fact, so
+// it lives on the entity rather than in the overridable details and no owner can restate
+// it. A manually entered place has none.
+export const placeEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('place'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:placeEntityDetailsSchema,origin:z.enum(['manual','provider']),providerPlaceId:z.string().min(1).max(200).nullable()}).strict();
 export const resolveManualPlaceSchema=z.object({kind:z.literal('manual'),category:z.literal('places'),details:z.object(entityFields).partial().extend({title:placeTitleSchema}).strict()}).strict();
 
 export type PlaceEntityDetails=z.infer<typeof placeEntityDetailsSchema>;

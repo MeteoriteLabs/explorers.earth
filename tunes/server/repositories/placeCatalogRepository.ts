@@ -29,7 +29,8 @@ export async function insertPlaceDetails(db:PoolClient,entityId:string,d:PlaceEn
 export async function readPlaceEntity(db:Pick<Pool,'query'>,id:string){
  const bounds=(await db.query('SELECT octet_length(to_json(d)::text) AS bytes FROM place_entity_details d WHERE entity_id=$1',[id])).rows[0];
  if(Number(bounds?.bytes??0)>16384)throw new RecommendationFailure(413,'Place facts exceed the read bound');
- const row=(await db.query(`SELECT e.id,e.kind,e.title,e.origin,d.*,d.latitude::text AS latitude_text,d.longitude::text AS longitude_text,d.provider_rating::text AS provider_rating_text
+ const row=(await db.query(`SELECT e.id,e.kind,e.title,e.origin,d.*,d.latitude::text AS latitude_text,d.longitude::text AS longitude_text,d.provider_rating::text AS provider_rating_text,
+   (SELECT external_id FROM entity_identifiers WHERE entity_id=e.id AND provider='google_places') AS provider_place_id
    FROM entities e LEFT JOIN place_entity_details d ON d.entity_id=e.id WHERE e.id=$1`,[id])).rows[0];
  if(!row)throw new Error('Place catalog unavailable');
  // Every column is nullable, so a place with nothing but a name is a legitimate record.
@@ -42,7 +43,7 @@ export async function readPlaceEntity(db:Pick<Pool,'query'>,id:string){
   publicPhone:row.public_phone,websiteUrl:row.website_url,
   priceLevel:row.price_level===null?null:Number(row.price_level),priceRange:row.price_range,
  }):emptyPlaceDetails();
- return placeEntityDtoSchema.parse({id:row.id,kind:row.kind,title:row.title,origin:row.origin,details});
+ return placeEntityDtoSchema.parse({id:row.id,kind:row.kind,title:row.title,origin:row.origin,providerPlaceId:row.provider_place_id??null,details});
 }
 
 /**

@@ -2,8 +2,8 @@ import {createHash, randomUUID} from "node:crypto";
 import pg from "pg";
 import {afterAll, beforeAll, describe, expect, it} from "vitest";
 import {migrateMusicDatabase} from "../../db/migrate";
-import {insertPlaceDetails, readPlaceEntity, readPlaceContext, writePlaceContext, publicPlaceLookup, effectivePlaceDetails, readPlacePhotoMediaIds, writePlacePhotos} from "../../repositories/placeCatalogRepository";
-import {placeEntityDetailsSchema, emptyPlaceDetails, emptyPlaceContext, publicPlaceContact} from "../../../shared/explorersPlaceContract";
+import {insertPlaceDetails, readPlaceEntity, readPlaceContext, writePlaceContext, publicPlaceLookup, effectivePlaceDetails, readPlacePhotoMediaIds, writePlacePhotos, readPlaceCollectionDetails, writePlaceCollectionDetails} from "../../repositories/placeCatalogRepository";
+import {placeEntityDetailsSchema, emptyPlaceDetails, emptyPlaceContext, emptyPlaceCollectionDetails, publicPlaceContact, legacyListNameDetails} from "../../../shared/explorersPlaceContract";
 
 /**
  * Ticket 5.1. 0046's storage against a real PostgreSQL 15.
@@ -271,6 +271,71 @@ describePg("Places storage against PostgreSQL", () => {
     await expect(withClient(client => writePlacePhotos(client, recommendationId, accountId, [pending]))).rejects.toThrow();
     await expect(withClient(client => writePlacePhotos(client, recommendationId, accountId, [foreign]))).rejects.toThrow();
     expect(await readPlacePhotoMediaIds(pool, recommendationId, accountId)).toEqual([]);
+  });
+
+  it("round-trips the provider place identifier as entity identity, not as a display fact", async () => {
+    // Consumers deduplicate and look places up by this, so the internal entity id must
+    // never stand in for it and a manual place must report none.
+    const {entityId} = await place();
+    await withClient(client => insertPlaceDetails(client, entityId, details()));
+    expect((await readPlaceEntity(pool, entityId)).providerPlaceId).toBeNull();
+    await pool.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id) VALUES($1,'google_places','place','ChIJ_fixture')", [entityId]);
+    const read = await readPlaceEntity(pool, entityId);
+    expect(read.providerPlaceId).toBe("ChIJ_fixture");
+    expect(read.providerPlaceId).not.toBe(entityId);
+  });
+
+  it("keeps a list's location distinct from the place recommendations inside it", async () => {
+    const {accountId, recommendationId} = await place();
+    const collectionId = await publish(accountId, recommendationId, `loc-${randomUUID().slice(0, 8)}`);
+    expect(await readPlaceCollectionDetails(pool, collectionId, accountId)).toEqual(emptyPlaceCollectionDetails());
+    const snapshot = {version: 1 as const, name: "Lisbon", address: "Lisbon, Portugal", providerPlaceId: "ChIJ_city", latitude: 38.7223, longitude: -9.1393};
+    await withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: "https://example.com/reel"}));
+    const stored = await readPlaceCollectionDetails(pool, collectionId, accountId);
+    expect(stored.locationSnapshot).toEqual(snapshot);
+    // Removing every place leaves the list's own location intact, which is the point.
+    await pool.query("DELETE FROM collection_items WHERE recommendation_id=$1", [recommendationId]);
+    await pool.query("DELETE FROM recommendations WHERE id=$1", [recommendationId]);
+    expect((await pool.query("SELECT count(*)::int AS count FROM collection_items WHERE collection_id=$1", [collectionId])).rows[0].count).toBe(0);
+    expect((await readPlaceCollectionDetails(pool, collectionId, accountId)).locationSnapshot).toEqual(snapshot);
+  });
+
+  it("stores a located list's zero coordinates as zero and an unlocated list as null", async () => {
+    const {accountId, recommendationId} = await place();
+    const collectionId = await publish(accountId, recommendationId, `zero-${randomUUID().slice(0, 8)}`);
+    const zero = {version: 1 as const, name: "Null island", address: null, providerPlaceId: null, latitude: 0, longitude: 0};
+    await withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: null, locationSnapshot: zero, instagramMediaUrl: null}));
+    expect((await readPlaceCollectionDetails(pool, collectionId, accountId)).locationSnapshot).toEqual(zero);
+    const absent = {version: 1 as const, name: "Somewhere", address: null, providerPlaceId: null, latitude: null, longitude: null};
+    await withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: null, locationSnapshot: absent, instagramMediaUrl: null}));
+    const read = await readPlaceCollectionDetails(pool, collectionId, accountId);
+    expect(read.locationSnapshot).toEqual(absent);
+    // The legacy blob the cards read, assembled from the same mapper both edges use.
+    expect(legacyListNameDetails(read.locationSnapshot, {note: "A guide", thumbnailUrl: null}).location).toEqual({latitude: null, longitude: null, address: null});
+  });
+
+  it("refuses a half-known list location and a location entity that is not a place", async () => {
+    const {accountId, recommendationId} = await place();
+    const collectionId = await publish(accountId, recommendationId, `guard-${randomUUID().slice(0, 8)}`);
+    const half = {version: 1, name: "Half", address: null, providerPlaceId: null, latitude: 38.7223, longitude: null};
+    await expect(withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: null, locationSnapshot: half, instagramMediaUrl: null} as never))).rejects.toThrow();
+    const book = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES('book','Not a place','manual') RETURNING id")).rows[0].id as string;
+    await expect(withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: book, locationSnapshot: null, instagramMediaUrl: null}))).rejects.toThrow();
+    const city = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES('place','Lisbon','manual') RETURNING id")).rows[0].id as string;
+    await withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: city, locationSnapshot: null, instagramMediaUrl: null}));
+    expect((await readPlaceCollectionDetails(pool, collectionId, accountId)).locationEntityId).toBe(city);
+    // A linked location must not be deleted out from under the lists that point at it.
+    await expect(pool.query("DELETE FROM entities WHERE id=$1", [city])).rejects.toThrow();
+  });
+
+  it("removes a list's location with the list and leaves the linked location entity", async () => {
+    const {accountId, recommendationId} = await place();
+    const collectionId = await publish(accountId, recommendationId, `cascade-${randomUUID().slice(0, 8)}`);
+    const city = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES('place','Porto','manual') RETURNING id")).rows[0].id as string;
+    await withClient(client => writePlaceCollectionDetails(client, collectionId, accountId, {locationEntityId: city, locationSnapshot: null, instagramMediaUrl: null}));
+    await pool.query("DELETE FROM collections WHERE id=$1", [collectionId]);
+    expect((await pool.query("SELECT count(*)::int AS count FROM place_collection_details WHERE collection_id=$1", [collectionId])).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS count FROM entities WHERE id=$1", [city])).rows[0].count).toBe(1);
   });
 
   it("refuses a place detail row on an entity of another kind", async () => {

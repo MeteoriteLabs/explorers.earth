@@ -1,6 +1,6 @@
 import type {Pool,PoolClient} from 'pg';
 import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,readPlaceCollectionDetails,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
-import {publicPlaceContact} from '../../shared/explorersPlaceContract';
+import {publicPlaceContact,legacyListNameDetails} from '../../shared/explorersPlaceContract';
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
 import {publicProfileCursorStart} from './publicProfileContract';
@@ -117,7 +117,10 @@ export async function publicPlacesProjection(pool:Pool,username:string,limit:num
    const page=await children(db,observed.id,row.id,slug?limit:12,slug?offset:0);
    lists.push({documentId:row.id,List_Name:row.title,list_description:row.description,slug:row.slug,Visibility:true,display_order:row.display_order,
     top_picks_heading:row.heading,
-    List_Name_Details:location.locationSnapshot,Instagram_Media_URL:location.instagramMediaUrl,
+    // The blob the cards read, assembled from the snapshot, the list note and the
+    // list's own cover media - never from a provider request.
+    List_Name_Details:legacyListNameDetails(location.locationSnapshot,{note:row.description,thumbnailUrl:row.cover_media_id?mediaUrl(row.cover_media_id):null}),
+    Instagram_Media_URL:location.instagramMediaUrl,
     cover_image:row.cover_media_id?{url:mediaUrl(row.cover_media_id),alternativeText:null}:null,
     account:{documentId:observed.id,username:observed.handle},recommended_places:page.places,recommended_places_next_cursor:page.nextCursor});
   }

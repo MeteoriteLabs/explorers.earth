@@ -5,7 +5,7 @@ import {migrateMusicDatabase} from "../../db/migrate";
 import {ExplorersRecommendationRepository} from "../../repositories/explorersRecommendationRepository";
 import {readAppScreenshotMediaIds} from "../../repositories/appCatalogRepository";
 import {readProductOffer} from "../../repositories/productCatalogRepository";
-import {readPlaceContext, readPlacePhotoMediaIds} from "../../repositories/placeCatalogRepository";
+import {readPlaceContext, readPlacePhotoMediaIds, readPlaceCollectionDetails} from "../../repositories/placeCatalogRepository";
 import {emptyPlaceContext} from "../../../shared/explorersPlaceContract";
 
 /**
@@ -191,6 +191,37 @@ describePg("owner write path for typed categories", () => {
     // latitude is outside the override vocabulary, so the command is refused outright.
     const next = await repository.observeRevision?.(row.id) ?? row.revision + 1;
     await expect(repository.updateRecommendation(accountId, row.id, next, {displayOverrides: {latitude: 0}} as never, key())).rejects.toThrow();
+  });
+
+  it("gives every Places list a location row from creation, so a list is never location-less", async () => {
+    // The storage for this existed and nothing wrote it: a list could be created and its
+    // location could never be set through a command.
+    const accountId = await account();
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`}, key());
+    expect((await pool.query("SELECT count(*)::int AS count FROM place_collection_details WHERE collection_id=$1", [list.id])).rows[0].count).toBe(1);
+    expect(await readPlaceCollectionDetails(pool, list.id, accountId)).toEqual({locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null});
+  });
+
+  it("creates a located list in one command and replaces its location on update", async () => {
+    const accountId = await account();
+    const snapshot = {version: 1 as const, name: "Lisbon", address: "Lisbon, Portugal", providerPlaceId: "ChIJ_city", latitude: 38.7223, longitude: -9.1393};
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: "https://example.com/reel"}}, key());
+    expect(await readPlaceCollectionDetails(pool, list.id, accountId)).toEqual({locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: "https://example.com/reel"});
+    const moved = {...snapshot, name: "Porto", providerPlaceId: "ChIJ_porto", latitude: 41.1579, longitude: -8.6291};
+    await repository.updateCollection(accountId, list.id, list.revision, {placeLocation: {locationEntityId: null, locationSnapshot: moved, instagramMediaUrl: null}}, key());
+    const after = await readPlaceCollectionDetails(pool, list.id, accountId);
+    // Replaced wholesale, not merged: a half-updated location is a different place.
+    expect(after).toEqual({locationEntityId: null, locationSnapshot: moved, instagramMediaUrl: null});
+  });
+
+  it("refuses a location aggregate on a list of another category, on create and on update", async () => {
+    const accountId = await account();
+    const location = {locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null};
+    await expect(repository.createCollection(accountId, {category: "books", title: "Reads", slug: `reads-${randomUUID()}`, placeLocation: location}, key())).rejects.toThrow();
+    const books = await repository.createCollection(accountId, {category: "books", title: "Reads", slug: `reads-${randomUUID()}`}, key());
+    await expect(repository.updateCollection(accountId, books.id, books.revision, {placeLocation: location}, key())).rejects.toThrow();
+    expect((await pool.query("SELECT count(*)::int AS count FROM place_collection_details WHERE collection_id=$1", [books.id])).rows[0].count).toBe(0);
   });
 
   it("refuses an App resolve without the URL its storage requires", async () => {
