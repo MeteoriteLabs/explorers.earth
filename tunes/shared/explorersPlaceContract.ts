@@ -106,6 +106,27 @@ export function publicPlaceContact(context:PlaceRecommendationContext){
 export const placePhotosSchema=z.object({photoMediaIds:z.array(z.string().uuid()).max(10)}).strict();
 export type PlacePhotos=z.infer<typeof placePhotosSchema>;
 
+/**
+ * The list's own location selection, which is what keeps a location list distinct from
+ * the place recommendations inside it. The snapshot is versioned display text; the
+ * location's identity is the separately linked entity. Conflating them is how a renamed
+ * city would silently rewrite history.
+ */
+export const placeLocationSnapshotSchema=z.object({
+ version:z.literal(1),
+ name:text(500).nullable(),address:text(1000).nullable(),
+ providerPlaceId:text(200).nullable(),
+ latitude:coordinate(90).nullable(),longitude:coordinate(180).nullable(),
+}).strict().refine(v=>(v.latitude===null)===(v.longitude===null),{message:'Snapshot coordinates must both be present or both absent',path:['latitude']});
+export const placeCollectionDetailsSchema=z.object({
+ locationEntityId:z.string().uuid().nullable(),
+ locationSnapshot:placeLocationSnapshotSchema.nullable(),
+ instagramMediaUrl:safePlaceUrlSchema.nullable(),
+}).strict();
+export type PlaceLocationSnapshot=z.infer<typeof placeLocationSnapshotSchema>;
+export type PlaceCollectionDetails=z.infer<typeof placeCollectionDetailsSchema>;
+export const emptyPlaceCollectionDetails=():PlaceCollectionDetails=>({locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null});
+
 export const placeEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('place'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:placeEntityDetailsSchema,origin:z.enum(['manual','provider'])}).strict();
 export const resolveManualPlaceSchema=z.object({kind:z.literal('manual'),category:z.literal('places'),details:z.object(entityFields).partial().extend({title:placeTitleSchema}).strict()}).strict();
 

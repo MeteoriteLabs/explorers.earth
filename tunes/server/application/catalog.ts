@@ -13,6 +13,7 @@ import {bookEntityDtoSchema} from '../../shared/explorersBookContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../shared/explorersAppContract';
 import {productEntityDtoSchema,resolveManualProductSchema} from '../../shared/explorersProductContract';
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../shared/explorersPersonContract';
+import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../shared/explorersPlaceContract';
 
 export class MovieGenreFailure extends Error {constructor(readonly status:422|503,readonly code:'INVALID_INPUT'|'READ_LIMIT'){super(code==='INVALID_INPUT'?'Genre parameters are not supported':'Movie genre configuration unavailable');}}
 export class GameCatalogFailure extends Error {
@@ -50,6 +51,7 @@ export class CatalogService {
       if(parsed.kind==='manual'&&parsed.category==='apps')return appEntityDtoSchema.parse(await repository.resolveAppEntity(actor.accountId,parseContent(resolveManualAppSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='products')return productEntityDtoSchema.parse(await repository.resolveProductEntity(actor.accountId,parseContent(resolveManualProductSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='people')return personEntityDtoSchema.parse(await repository.resolvePersonEntity(actor.accountId,parseContent(resolveManualPersonSchema,parsed),key));
+      if(parsed.kind==='manual'&&parsed.category==='places')return placeEntityDtoSchema.parse(await repository.resolvePlaceEntity(actor.accountId,parseContent(resolveManualPlaceSchema,parsed),key));
       if(parsed.kind==='provider'||parsed.category==='books'&&Object.keys(parsed.details).some(k=>k!=='title'))return bookEntityDtoSchema.parse(await repository.resolveBookEntity(actor.accountId,parsed as any,key,()=>this.books.resolve(actor.accountId,(parsed as any).externalId)));
       return entityCoreDtoSchema.parse(await repository.resolveManualEntity(actor.accountId,parsed as any,key));
     }

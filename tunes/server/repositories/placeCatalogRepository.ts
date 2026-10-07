@@ -1,6 +1,6 @@
 import type {Pool,PoolClient} from 'pg';
 import {placeEntityDtoSchema,placeEntityDetailsSchema,placeRecommendationContextSchema,placeAddressComponentSchema,
- emptyPlaceDetails,emptyPlaceContext,type PlaceEntityDetails,type PlaceRecommendationContext} from '../../shared/explorersPlaceContract';
+ emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,placeCollectionDetailsSchema,type PlaceEntityDetails,type PlaceRecommendationContext,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 import {RecommendationFailure} from './explorersRecommendationRepository';
 
 // Ticket 5.1. Two halves, read and written separately on purpose:
@@ -79,6 +79,25 @@ export async function writePlaceContext(db:PoolClient,recommendationId:string,ac
   [recommendationId,accountId,value.recommendationType,value.sourceOfRecommendation,value.contactName,value.contactNumber,
    value.contactVisibility,value.placeSocialUrl,value.placeWebsiteUrl,value.creatorSocialUrl,
    value.legacyPlaceNote===null?null:JSON.stringify(value.legacyPlaceNote),value.personProfileUrl,value.personAddress]);
+}
+
+/** The list's location selection. An absent row means the list has no location yet. */
+export async function readPlaceCollectionDetails(db:Pick<Pool,'query'>,collectionId:string,accountId:string):Promise<PlaceCollectionDetails>{
+ const row=(await db.query('SELECT location_entity_id,location_snapshot,instagram_media_url FROM place_collection_details WHERE collection_id=$1 AND account_id=$2',[collectionId,accountId])).rows[0];
+ if(!row)return emptyPlaceCollectionDetails();
+ return placeCollectionDetailsSchema.parse({locationEntityId:row.location_entity_id,
+  locationSnapshot:row.location_snapshot&&Object.keys(row.location_snapshot).length?row.location_snapshot:null,
+  instagramMediaUrl:row.instagram_media_url});
+}
+
+export async function writePlaceCollectionDetails(db:PoolClient,collectionId:string,accountId:string,details:PlaceCollectionDetails){
+ const parsed=placeCollectionDetailsSchema.safeParse(details);
+ if(!parsed.success)throw new RecommendationFailure(422,'Invalid place list location');
+ const value=parsed.data;
+ await db.query(`INSERT INTO place_collection_details(collection_id,account_id,location_entity_id,location_snapshot,instagram_media_url)
+   VALUES($1,$2,$3,$4::jsonb,$5)
+   ON CONFLICT(collection_id) DO UPDATE SET location_entity_id=EXCLUDED.location_entity_id,location_snapshot=EXCLUDED.location_snapshot,instagram_media_url=EXCLUDED.instagram_media_url`,
+  [collectionId,accountId,value.locationEntityId,JSON.stringify(value.locationSnapshot??{}),value.instagramMediaUrl]);
 }
 
 /**

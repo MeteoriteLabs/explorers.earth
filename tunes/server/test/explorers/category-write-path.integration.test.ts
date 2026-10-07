@@ -5,6 +5,8 @@ import {migrateMusicDatabase} from "../../db/migrate";
 import {ExplorersRecommendationRepository} from "../../repositories/explorersRecommendationRepository";
 import {readAppScreenshotMediaIds} from "../../repositories/appCatalogRepository";
 import {readProductOffer} from "../../repositories/productCatalogRepository";
+import {readPlaceContext, readPlacePhotoMediaIds} from "../../repositories/placeCatalogRepository";
+import {emptyPlaceContext} from "../../../shared/explorersPlaceContract";
 
 /**
  * Tickets 4.3 and 4.4. The owner write path for Apps and Products, end to end through the
@@ -141,6 +143,54 @@ describePg("owner write path for typed categories", () => {
     await expect(repository.updateRecommendation(accountId, row.id, row.revision, {productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
     // The refused offer left nothing behind.
     expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+  });
+
+  it("persists the typed Place facts and a context that starts private", async () => {
+    const accountId = await account();
+    const entity = await repository.resolvePlaceEntity(accountId, {kind: "manual", category: "places", details: {
+      title: "Corner Cafe", formattedAddress: "1 Example Street", latitude: 0, longitude: 0, providerTypes: ["cafe"],
+    }}, key());
+    expect(entity).toMatchObject({kind: "place", title: "Corner Cafe", origin: "manual"});
+    // Zero coordinates survive the write path, not just the repository.
+    expect(entity.details).toMatchObject({formattedAddress: "1 Example Street", latitude: 0, longitude: 0, providerTypes: ["cafe"]});
+
+    const parent = await collection(accountId, "places");
+    const created = await repository.createRecommendation(accountId, {category: "places", entityId: entity.id,
+      collectionId: parent.id, expectedCollectionRevision: parent.revision}, key());
+    // A fresh Places row is explicitly private rather than absent and later defaulted.
+    expect(await readPlaceContext(pool, created.id, accountId)).toEqual(emptyPlaceContext());
+    expect((await pool.query("SELECT count(*)::int AS count FROM place_recommendation_context WHERE recommendation_id=$1", [created.id])).rows[0].count).toBe(1);
+
+    const updated = await repository.updateRecommendation(accountId, created.id, created.revision, {placeContext: {
+      ...emptyPlaceContext(), contactName: "Ana", contactNumber: "+351 911 111 111", contactVisibility: "public"}}, key());
+    expect(await readPlaceContext(pool, created.id, accountId)).toMatchObject({contactName: "Ana", contactVisibility: "public"});
+
+    const photo = await readyMedia(accountId, `place-${accountId}`);
+    await repository.updateRecommendation(accountId, created.id, updated.revision, {placePhotos: {photoMediaIds: [photo]}}, key());
+    expect(await readPlacePhotoMediaIds(pool, created.id, accountId)).toEqual([photo]);
+  });
+
+  it("refuses a Places payload on another category and the reverse", async () => {
+    const accountId = await account();
+    const app = await repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "Wrong", appUrl: "https://example.com/wrong"}}, key());
+    const appList = await collection(accountId, "apps");
+    await expect(repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id,
+      expectedCollectionRevision: appList.revision, placeContext: emptyPlaceContext()}, key())).rejects.toThrow();
+    const place = await repository.resolvePlaceEntity(accountId, {kind: "manual", category: "places", details: {title: "Right"}}, key());
+    const placeList = await collection(accountId, "places");
+    await expect(repository.createRecommendation(accountId, {category: "places", entityId: place.id, collectionId: placeList.id,
+      expectedCollectionRevision: placeList.revision, productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
+  });
+
+  it("accepts a Place display override but never the coordinates", async () => {
+    const accountId = await account();
+    const entity = await repository.resolvePlaceEntity(accountId, {kind: "manual", category: "places", details: {title: "Editable", latitude: 1.5, longitude: 2.5}}, key());
+    const parent = await collection(accountId, "places");
+    const row = await repository.createRecommendation(accountId, {category: "places", entityId: entity.id, collectionId: parent.id, expectedCollectionRevision: parent.revision}, key());
+    await expect(repository.updateRecommendation(accountId, row.id, row.revision, {displayOverrides: {title: "Renamed", publicPhone: "+351 22 000 0000"}}, key())).resolves.toBeTruthy();
+    // latitude is outside the override vocabulary, so the command is refused outright.
+    const next = await repository.observeRevision?.(row.id) ?? row.revision + 1;
+    await expect(repository.updateRecommendation(accountId, row.id, next, {displayOverrides: {latitude: 0}} as never, key())).rejects.toThrow();
   });
 
   it("refuses an App resolve without the URL its storage requires", async () => {

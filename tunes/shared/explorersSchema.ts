@@ -234,6 +234,13 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 
+// 0048 owns the collection FK, the location kind guard and the snapshot shape. The
+// snapshot is presentation; location_entity_id is identity, linked separately.
+export const placeCollectionDetails=pgTable('place_collection_details',{
+ collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('places'),
+ locationEntityId:uuid('location_entity_id').references(()=>entities.id,{onDelete:'restrict'}),
+ locationSnapshot:jsonb('location_snapshot').notNull().default(sql`'{}'::jsonb`),instagramMediaUrl:text('instagram_media_url'),
+},t=>[index('place_collection_details_location_idx').on(t.accountId,t.locationEntityId)]);
 // 0047 owns composite ownership FKs, the image readiness guard and category revisions.
 // Provider photos are imported into owned media, so a place gallery is S3 bytes.
 export const recommendationPlacePhotos=pgTable('recommendation_place_photos',{

@@ -4,6 +4,7 @@ import {movieDisplayFieldsSchema} from '../../shared/explorersMovieContract';
 import {appDisplayFieldsSchema} from '../../shared/explorersAppContract';
 import {productDisplayFieldsSchema} from '../../shared/explorersProductContract';
 import {personDisplayFieldsSchema} from '../../shared/explorersPersonContract';
+import {placeDisplayFieldsSchema} from '../../shared/explorersPlaceContract';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
 import {readBookCovers} from '../repositories/bookCovers';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
@@ -37,6 +38,7 @@ function effectiveTitle(row:any) {
  else if(row.content_category==='apps'){const {title:_appTitle,...fields}=overrides.data;if(!appDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
  else if(row.content_category==='products'){const {title:_productTitle,...fields}=overrides.data;if(!productDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
  else if(row.content_category==='people'){const {title:_personTitle,...fields}=overrides.data;if(!personDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
+ else if(row.content_category==='places'){const {title:_placeTitle,...fields}=overrides.data;if(!placeDisplayFieldsSchema.safeParse(fields).success)throw new PublicContentFailure(400);}
  else if(row.content_category!=='books'&&Object.keys(overrides.data).some(k=>k!=='title'))throw new PublicContentFailure(400);
  return Object.hasOwn(overrides.data,'title')?overrides.data.title:title.data;
 }

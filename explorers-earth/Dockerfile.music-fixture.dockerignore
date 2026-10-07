@@ -1131,6 +1131,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersMovieMediaContract.ts
 !tunes/shared/explorersOwnerContentContract.ts
 !tunes/shared/explorersPersonContract.ts
+!tunes/shared/explorersPlaceContract.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersRichNoteContract.ts
