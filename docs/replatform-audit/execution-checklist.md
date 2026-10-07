@@ -70,3 +70,9 @@ Observer/manual paging tests must require current-scope final content and settle
 **Corrected (2026-10-05).** The manual Games slice is an independently reviewed **local** slice bound to an exact source freeze. The "canonical 82 PASS" figure attached to it is the **whole committed suite** (auth 6 · profile 2 · books 20 · lifecycle 10 · movies 24 · games 20), not a Games result; the **Games lane is 20**. Hosted proposed-commit qualification, real-provider parity and operational QA/release remain open — and the Games provider chain itself is currently dead code behind an unconditional failure, so provider parity is further away than the manual slice suggests. Do not mark shared checklist requirements universally complete, and do not restate a suite total as a lane total.
 
 *Historical:* the sentence previously here read "Latest finite local manual Games slice is independently reviewed canonical82 PASS, source104 exact."
+
+- **Every migration moves `SCHEMA_FLOOR`.** It is derived from `EXPECTED_MUSIC_MIGRATION_ID`
+  (`tunes/server/deployment/platform-release-contract.ts`), so adding a migration invalidates
+  all 71 independent OCI release claims. Rebase them with the real `canonicalDigest`, regenerate
+  `cases.json`'s byte receipt, and add the superseded floor to the historical-rejection set in
+  `platform-oci-evidence.test.ts`. Five migrations in a row have needed this.

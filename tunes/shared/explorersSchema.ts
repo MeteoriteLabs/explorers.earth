@@ -236,6 +236,15 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
 
 // 0048 owns the collection FK, the location kind guard and the snapshot shape. The
 // snapshot is presentation; location_entity_id is identity, linked separately.
+// 0049 owns both composite ownership FKs, the one-parent primary key and the category
+// CHECKs. The parent key includes the places category, so a place recommendation id has
+// nothing to reference.
+export const collectionLocationLinks=pgTable('collection_location_links',{
+ childCollectionId:uuid('child_collection_id').primaryKey(),accountId:uuid('account_id').notNull(),
+ childCategory:text('child_category').notNull(),locationCollectionId:uuid('location_collection_id').notNull(),
+ locationCategory:text('location_category').notNull().default('places'),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('collection_location_links_location_idx').on(t.accountId,t.locationCollectionId,t.childCategory)]);
 export const placeCollectionDetails=pgTable('place_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('places'),
  locationEntityId:uuid('location_entity_id').references(()=>entities.id,{onDelete:'restrict'}),

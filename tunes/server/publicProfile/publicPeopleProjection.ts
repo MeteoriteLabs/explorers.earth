@@ -72,6 +72,34 @@ async function children(db:PoolClient,account:string,collectionId:string,limit:n
  const hasMore=rows.length>limit;return {people:await projectRows(db,rows.slice(0,limit)),nextCursor:hasMore?`o${offset+limit}`:null};
 }
 
+/**
+ * Ticket 5.2. The People lists linked to one location, for the location's public page.
+ *
+ * The gates are this projection's own, applied again rather than copied: the account must
+ * be publicly eligible, the People category must be public, and the child list itself
+ * must be public and published. So a private child under a public location is absent, and
+ * unpublishing the People category removes every linked child from every location page
+ * without touching the links.
+ */
+export async function publicLinkedPeopleLists(db:PoolClient,accountId:string,locationCollectionId:string,limit=12){
+ const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id
+  FROM collection_location_links l
+  JOIN collections c ON c.id=l.child_collection_id AND c.account_id=l.account_id AND c.category=l.child_category
+  JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
+  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+  WHERE l.account_id=$1 AND l.location_collection_id=$2 AND l.child_category='people'
+   AND ${gate} AND ${listGate}
+  ORDER BY c.display_order,c.id LIMIT $3`,[accountId,locationCollectionId,limit])).rows;
+ const lists=[];
+ for(const row of rows){
+  const page=await children(db,accountId,row.id,12,0);
+  lists.push({documentId:row.id,List_Name:row.title,list_description:row.description,slug:row.slug,Visibility:true,display_order:row.display_order,
+   cover_image:row.cover_media_id?{url:`/api/explorers/v1/media/${row.cover_media_id}/content`,alternativeText:null}:null,
+   recommended_people:page.people,recommended_people_next_cursor:page.nextCursor});
+ }
+ return lists;
+}
+
 /** Live bounded offset compatibility for the existing public People routes. */
 export async function publicPeopleProjection(pool:Pool,username:string,limit:number,cursor?:string,slug?:string){
  const offset=publicProfileCursorStart(cursor);if(!Number.isInteger(limit)||limit<1||limit>24)throw new Error('Invalid People page size');

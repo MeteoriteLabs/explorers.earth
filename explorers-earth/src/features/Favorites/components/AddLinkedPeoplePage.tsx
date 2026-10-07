@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, Users, ChevronRight, Loader2, X
@@ -10,43 +8,18 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
-import { CREATE_PERSON_LIST } from "../../People/api/mutation";
-import { PERSON_LISTS_BY_ACCOUNT } from "../../People/api/query";
 import { generateSlug, buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
+// Ticket 5.2. Linking runs on the native owner API: the location and its linked lists
+// come from the owner reads, and attach/detach/create-linked are owner commands.
+import { usePlacesOwner } from "../hooks/usePlacesOwner";
+import { usePlacesCommands } from "../api/placesCommands";
+import { usePeopleOwner } from "../../People/hooks/usePeopleOwner";
+import { usePeopleCommands } from "../../People/api/query";
 
 // ── Get the location name + existing linked person lists ──────
-const LOCATION_WITH_PEOPLE = gql`
-  query LocationWithPeopleForLink($documentId: ID!) {
-    recommendationList(documentId: $documentId) {
-      documentId
-      List_Name
-      person_lists(pagination: { limit: 50 }) {
-        documentId
-        List_Name
-        slug
-        Visibility
-        recommended_people(pagination: { limit: 10 }) {
-          documentId
-          name
-          avatar_path
-          media_details
-        }
-      }
-    }
-  }
-`;
-
-const MY_ACCOUNT_FOR_PEOPLE = gql`
-  query MyAccountForPeopleLink($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        username
-      }
-    }
-  }
-`;
+// The location and its linked lists come from the owner reads; the two Strapi
+// documents that used to serve this page are gone with ticket 5.2.
 
 // ── PersonListCard for selection ──────────────────────────────
 const SelectPersonListCard = ({
@@ -114,23 +87,20 @@ const SelectPersonListCard = ({
 
 // ── Create New Linked List Form ───────────────────────────────
 const CreateLinkedListForm = ({
-  accountDocumentId,
   locationId,
   locationName,
   username,
-  currentListCount,
   onCreated,
   onCancel,
 }: {
-  accountDocumentId: string;
   locationId: string;
   locationName: string;
   username: string;
-  currentListCount: number;
   onCreated: (newListId: string) => void;
   onCancel: () => void;
 }) => {
-  const [createPersonList, { loading }] = useMutation(CREATE_PERSON_LIST);
+  const commands = usePeopleCommands();
+  const loading = commands.loading;
 
   const formik = useFormik({
     initialValues: { List_Name: "", list_description: "", slug: "" },
@@ -140,20 +110,15 @@ const CreateLinkedListForm = ({
     }),
     onSubmit: async (values) => {
       try {
-        const result = await createPersonList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-            recommendation_list: locationId,
-          },
-          refetchQueries: [PERSON_LISTS_BY_ACCOUNT],
+        // The list and its link are one command, so a failed parent leaves no orphan list.
+        const created = await commands.createList({
+          title: values.List_Name,
+          slug: values.slug || generateSlug(values.List_Name),
+          description: values.list_description || null,
+          parentLocationCollectionId: locationId,
         });
         toast.success("People list created and linked to location!");
-        onCreated(result?.data?.createPersonList?.documentId);
+        onCreated(created.id);
       } catch {
         toast.error("Failed to create list. Please try again.");
       }
@@ -241,22 +206,24 @@ const AddLinkedPeoplePage = () => {
   const { user } = useAuthStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT_FOR_PEOPLE, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
+  // Ticket 5.2. The location and the owner's own lists come from the owner reads; the
+  // location says which of those lists are linked to it.
+  // Every location, not just this one: the union of their linked ids is exactly the
+  // set of lists that already have a parent, which is what must not be offered here.
+  const places = usePlacesOwner();
+  const owner = usePeopleOwner();
+  const commands = usePlacesCommands();
+  const username = user?.username || "";
 
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-  const username = accountData?.usersPermissionsUser?.accounts?.[0]?.username || user?.username || "";
-
-  const { data: locationData, loading } = useQuery(LOCATION_WITH_PEOPLE, {
-    variables: { documentId: locationId },
-    skip: !locationId,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const location = locationData?.recommendationList;
-  const linkedPersonLists: any[] = location?.person_lists || [];
+  const location = places.data?.recommendationLists?.find((entry) => entry.documentId === locationId);
+  const loading = places.loading || owner.loading;
+  const linkedIds: string[] = location?.linked_person_list_ids ?? [];
+  const allLists: any[] = owner.data?.personLists ?? [];
+  const linkedLists = allLists.filter((list) => linkedIds.includes(list.documentId));
+  // A list is attachable when it has no location of its own yet. One parent per list, so
+  // a list already linked elsewhere is not offered here.
+  const linkedAnywhere = new Set<string>((places.data?.recommendationLists ?? []).flatMap((entry) => entry.linked_person_list_ids));
+  const attachableLists = allLists.filter((list) => !linkedAnywhere.has(list.documentId));
 
   const handleSelectExistingList = (listId: string) => {
     navigate(`/recommendations/people/${listId}/add?redirectBack=/recommendations`);
@@ -264,6 +231,31 @@ const AddLinkedPeoplePage = () => {
 
   const handleListCreated = (newListId: string) => {
     navigate(`/recommendations/people/${newListId}/add?redirectBack=/recommendations`);
+  };
+
+  const handleAttach = async (listId: string) => {
+    if (!locationId) return;
+    try {
+      await commands.setLocationLink(locationId, listId, true);
+      places.refetch();
+      owner.refetch();
+      toast.success("List linked to this location");
+    } catch {
+      toast.error("That list could not be linked. It may already belong to another location.");
+    }
+  };
+
+  const handleDetach = async (listId: string) => {
+    if (!locationId) return;
+    try {
+      // Detaching leaves the list and everything in it; only the link goes.
+      await commands.setLocationLink(locationId, listId, false);
+      places.refetch();
+      owner.refetch();
+      toast.success("List unlinked. It is still in your dashboard.");
+    } catch {
+      toast.error("That list could not be unlinked. Please try again.");
+    }
   };
 
   const handleBack = () => {
@@ -298,24 +290,58 @@ const AddLinkedPeoplePage = () => {
 
       {!loading && (
         <>
-          {/* Existing linked lists */}
-          {linkedPersonLists.length > 0 && (
+          {/* Lists already linked to this location, each unlinkable without losing it */}
+          {linkedLists.length > 0 && (
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-dashboard mb-3">Lists already linked to this location</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {linkedPersonLists.map((list) => (
-                  <SelectPersonListCard
-                    key={list.documentId}
-                    list={list}
-                    onSelect={() => handleSelectExistingList(list.documentId)}
-                  />
+                {linkedLists.map((list: any) => (
+                  <div key={list.documentId} className="flex flex-col gap-2">
+                    <SelectPersonListCard
+                      list={list}
+                      onSelect={() => handleSelectExistingList(list.documentId)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDetach(list.documentId)}
+                      disabled={commands.loading}
+                      className="self-end text-xs text-dashboard-muted hover:text-dashboard-danger transition-colors disabled:opacity-60"
+                    >
+                      Unlink from this location
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Lists of this kind that belong to no location yet */}
+          {attachableLists.length > 0 && !showCreateForm && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-dashboard mb-3">Link one of your other lists</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {attachableLists.map((list: any) => (
+                  <div key={list.documentId} className="flex flex-col gap-2">
+                    <SelectPersonListCard
+                      list={list}
+                      onSelect={() => handleAttach(list.documentId)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAttach(list.documentId)}
+                      disabled={commands.loading}
+                      className="self-end text-xs text-dashboard-accent hover:opacity-80 transition-opacity disabled:opacity-60"
+                    >
+                      Link to this location
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {/* Divider */}
-          {linkedPersonLists.length > 0 && !showCreateForm && (
+          {(linkedLists.length > 0 || attachableLists.length > 0) && !showCreateForm && (
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-white/10" />
               <span className="text-xs text-dashboard-muted">or</span>
@@ -326,17 +352,13 @@ const AddLinkedPeoplePage = () => {
           {/* Create new list */}
           <AnimatePresence>
             {showCreateForm ? (
-              accountDocumentId && (
-                <CreateLinkedListForm
-                  accountDocumentId={accountDocumentId}
-                  locationId={locationId!}
-                  locationName={location?.List_Name || "this location"}
-                  username={username}
-                  currentListCount={linkedPersonLists.length}
-                  onCreated={handleListCreated}
-                  onCancel={() => setShowCreateForm(false)}
-                />
-              )
+              <CreateLinkedListForm
+                locationId={locationId!}
+                locationName={location?.List_Name || "this location"}
+                username={username}
+                onCreated={handleListCreated}
+                onCancel={() => setShowCreateForm(false)}
+              />
             ) : (
               <motion.button
                 initial={{ opacity: 0 }}

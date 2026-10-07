@@ -38,6 +38,10 @@ vi.mock("../../api/placesCommands", () => ({
   usePlacesCommands: () => ({ archivePlace: mocks.archivePlace, publishList: mocks.publishList, loading: false }),
 }));
 
+// Ticket 5.2. The linked person and product lists come from their own categories' owner
+// reads; this surface asserts the places half, so those read empty.
+vi.mock("../../../People/hooks/usePeopleOwner", () => ({ usePeopleOwner: () => ({ data: { personLists: [] }, loading: false, refetch: vi.fn() }) }));
+vi.mock("../../../Products/hooks/useProductsOwner", () => ({ useProductsOwner: () => ({ data: { productLists: [] }, loading: false, refetch: vi.fn() }) }));
 vi.mock("../../hooks/useMenuItems", () => ({ useMenuItems: () => ({ isPublished: false }) }));
 vi.mock("../../../../hooks/useRecommendationsWalkthrough", () => ({
   useRecommendationsWalkthrough: () => ({ advanceToNextStep: vi.fn(), advanceToNextStepRef: { current: null } }),

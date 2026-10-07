@@ -14,6 +14,8 @@ import {productDisplayFieldsSchema,productEntityDetailsSchema,emptyProductOffer,
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
+import {writeLocationLink,deleteLocationLink} from './placeLinkRepository';
+import {linkableChildCategorySchema,type LinkableChildCategory} from '../../shared/explorersPlaceLinkContract';
 import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -223,7 +225,7 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails},key:string):Promise<CollectionRecord> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string},key:string):Promise<CollectionRecord> {
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
@@ -235,6 +237,13 @@ export class ExplorersRecommendationRepository {
       // A Places list always owns a location row from the start, so the location is this
       // list's own from creation; an unset location is explicitly empty, not missing.
       if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
+      // Ticket 5.2. Creating a list from a location links it in the same transaction, so a
+      // failed parent leaves no orphan child - the whole create rolls back.
+      if(input.parentLocationCollectionId!==undefined){
+        const child=linkableChildCategorySchema.safeParse(input.category);
+        if(!child.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
+        await writeLocationLink(db,{childCollectionId:result.rows[0].id,accountId,childCategory:child.data,locationCollectionId:input.parentLocationCollectionId});
+      }
       return this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null});
     });
   }
@@ -334,6 +343,38 @@ export class ExplorersRecommendationRepository {
       const list=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[collectionId]);
       const row=await db.query('UPDATE recommendations SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[recommendationId]);
       return{collection:await this.collectionRecord(db,list.rows[0]),recommendation:await this.recommendationRecord(db,row.rows[0]),attached};
+    });
+  }
+  /**
+   * Links an existing child list to a location, or unlinks it.
+   *
+   * Both revisions are checked under their locks, so a stale view cannot link a pair the
+   * creator was not looking at. The child's revision moves either way, because what the
+   * list belongs to is part of the list.
+   */
+  async writeLocationMembership(accountId:string,input:{childCollectionId:string;expectedChildRevision:number;locationCollectionId?:string;expectedLocationRevision?:number},key:string,attached:boolean) {
+    return this.command(accountId,attached?'attachLocationLink':'detachLocationLink',{childCollectionId:input.childCollectionId,expectedChildRevision:input.expectedChildRevision,locationCollectionId:input.locationCollectionId??null,expectedLocationRevision:input.expectedLocationRevision??null},key,async db=>{
+      // A link spans two categories, so both are locked before any row is - the
+      // wrapper derives one category from `id` and this command is addressed by the
+      // child, so it takes its own locks in the same account -> category -> row order.
+      const observed=(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[input.childCollectionId,accountId])).rows[0];
+      if(!observed)throw new RecommendationFailure(404,'Collection unavailable');
+      const childCategory=linkableChildCategorySchema.safeParse(observed.category);
+      if(!childCategory.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
+      await lockContentCategories(db,accountId,[childCategory.data,'places']);
+      await this.lockCollection(db,accountId,input.childCollectionId,input.expectedChildRevision);
+      if(attached){
+        if(input.locationCollectionId===undefined||input.expectedLocationRevision===undefined)throw new RecommendationFailure(422,'A location list is required');
+        // Locked for its revision, and its category checked here so the refusal says which
+        // rule was broken rather than surfacing a foreign key.
+        const parent=await this.lockCollection(db,accountId,input.locationCollectionId,input.expectedLocationRevision);
+        if(parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
+        await writeLocationLink(db,{childCollectionId:input.childCollectionId,accountId,childCategory:childCategory.data,locationCollectionId:input.locationCollectionId});
+      }else{
+        await deleteLocationLink(db,input.childCollectionId,accountId);
+      }
+      const row=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[input.childCollectionId]);
+      return{collection:await this.collectionRecord(db,row.rows[0]),attached};
     });
   }
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {

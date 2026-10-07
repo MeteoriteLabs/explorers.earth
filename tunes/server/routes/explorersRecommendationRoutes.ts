@@ -59,6 +59,10 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.post('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,true),'membership')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,false),'membership')(req,res));
   routes.all('/api/explorers/v1/collections/:id/memberships/:recommendationId',unsupported);
+  // Ticket 5.2. The one location a Products or People list may belong to.
+  routes.post('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,true),'collection'));
+  routes.delete('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,false),'collection'));
+  routes.all('/api/explorers/v1/collections/:id/location',unsupported);
   routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
   routes.get('/api/explorers/v1/collections/:id/editable',read((a,id,q)=>ownerContent.getCollection(a,id,q,true),'collection'));
   routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));

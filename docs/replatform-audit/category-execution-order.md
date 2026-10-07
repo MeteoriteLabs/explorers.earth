@@ -59,7 +59,7 @@ and anything behind the 2.4/3.5 deployment-authority gates.
 | 2 — 4.4 Products | **complete** (`4190600c`, `b832bb4f`, `88b2297c`, `2901093d`) |
 | 2 — 4.5 People | **complete** (`a1b5cd61`, `233b1bd1`, `8d9fc37a`, `5386bfac`) |
 | 3 - 5.1 Places | **complete** (`8ba664e4`, `6afe0c4f`, `c5eba1f8`, `2ecb315c`, `6b466f94`, `26fe7608`, `7ac28fc4`, `ced36a10`, `36e8f98e`); both owner decisions answered 2026-10-07, taxonomy deferred to its own ticket |
-| 4 — 5.2 Guides attachment | not started; consumes the order 2 and 3 attachment contracts |
+| 4 - 5.2 Guides/place-links attachment | **complete**; migration `0049`, the link commands, public nested traversal, both linked-list pages and the decoded-QR assertions. `place-links.spec.ts` needs the reserved fixture runner |
 
 One input is outstanding and it belongs to order 3: the Places category/subcategory
 vocabulary lives in Strapi content (`recommendationCategories`, fetched at runtime) rather
@@ -81,3 +81,20 @@ Still owed on this order, each recorded in [ticket 5.1](tickets/ticket-5-1.md):
 - `tunes/server/test/explorers/places.test.ts`, the unit-level suite the ticket names;
 - `explorers-earth/e2e/replatform/places.spec.ts`, which needs a Docker fixture runner and
   identities in `e2e/replatform/suite-manifest.json` - reserved to the coordinator.
+
+## Order 4 closing note (2026-10-08)
+
+Ticket 5.2 is delivered: `collection_location_links` (migration `0049`), attach/detach and
+create-linked commands, the public nested traversal that re-gates every hop, both
+linked-list pages on the owner API with a detach control they never had, and the QR
+destination proven by decoding rather than by asserting an element exists.
+
+With this, every category in orders 1 to 4 is off Strapi. What remains under
+`features/Favorites` is `services/claimablePlaceProfileService.ts`, which belongs to 5.4
+and is no longer called, and `api/query.ts` / `api/mutation.ts`, which Epic 8 removes after
+checking callers.
+
+Still owed across orders 3 and 4, each recorded in its ticket: the seeded Places taxonomy
+and its sector browse, `places.test.ts`, and the two protected browser lanes
+(`places.spec.ts`, `place-links.spec.ts`), which need a Docker fixture runner and
+`suite-manifest.json` identities reserved to the coordinator.

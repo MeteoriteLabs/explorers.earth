@@ -97,6 +97,19 @@ export const PlacesClient={
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },
  /**
+  * Ticket 5.2. Links a Products or People list to this location list, or unlinks it.
+  *
+  * Both observations are checked here, because the pair is what the command links: the
+  * parent must be one of the owner's location lists, and the child must not be.
+  */
+ async setLocationLink(location:CollectionObservation,child:CollectionObservation,attached:boolean,commandKey:string,signal?:AbortSignal){
+  collection(location);
+  assertOwnerDetailObservation(child,'collection');
+  if(child.detail.category!=='products'&&child.detail.category!=='people')fail();
+  if(child.accountId!==location.accountId||child.generation!==location.generation)fail();
+  return explorersApiClient.setMyCollectionLocation(child,attached?location:null,commandKey,signal);
+ },
+ /**
   * Correct a shared place's provider facts for this owner alone.
   *
   * The facts belong to the entity, which everyone recommending that place shares, so

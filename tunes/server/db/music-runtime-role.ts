@@ -27,6 +27,7 @@ const expectedRuntimeTables = [
   "book_recommendation_context",
   "category_recommendation_pins",
   "collection_items",
+  "collection_location_links",
   "collection_media",
   "collections",
   "creator_accounts",
@@ -643,6 +644,8 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details() FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
+      ON collection_location_links FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -794,6 +797,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, false]
       : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || row.object_name === "product_entity_details" || row.object_name === "person_entity_details" || row.object_name === "place_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
         ? [true, true, false, false]
+      : row.object_name === "collection_location_links"
+        ? [true, true, false, true]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
       : row.object_name === "music_credential_revocation_operations"

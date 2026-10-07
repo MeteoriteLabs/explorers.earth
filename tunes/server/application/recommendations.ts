@@ -8,6 +8,7 @@ import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { normalizeRichNote } from './richNote';
 import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
+import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../shared/explorersPlaceLinkContract';
 import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shared/explorersGameOwnerContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
@@ -38,6 +39,20 @@ export class RecommendationService {
       parseContent(contentIdSchema,collectionId);parseContent(contentIdSchema,recommendationId);
       const command=parseContent(gameMembershipCommandSchema,input);
       return gameMembershipResultSchema.parse(await this.repository.writeGameMembership(actor.accountId,collectionId,recommendationId,command,this.key(context),attached));
+    });
+  }
+  /**
+   * Ticket 5.2. Links a Products or People list to one of the owner's location lists, or
+   * unlinks it. Addressed by the child, because the child is what has at most one parent.
+   */
+  async locationLink(actor:Actor,childCollectionId:string,input:unknown,context:RequestContext,attached:boolean){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,childCollectionId);
+      const command=attached
+        ? parseContent(attachLocationLinkSchema,{...(input as object),childCollectionId})
+        : parseContent(detachLocationLinkSchema,{...(input as object),childCollectionId});
+      const result=await this.repository.writeLocationMembership(actor.accountId,command,this.key(context),attached);
+      return collectionCoreDtoSchema.parse(result.collection);
     });
   }
   async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {

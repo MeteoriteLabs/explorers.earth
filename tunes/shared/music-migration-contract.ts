@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0048_explorers_place_location_aggregate" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0049_explorers_collection_location_links" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -47,6 +47,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0045_explorers_people_catalog",
   "0046_explorers_places_catalog",
   "0047_explorers_place_photo_media",
+  "0048_explorers_place_location_aggregate",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -99,6 +100,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0045_explorers_people_catalog",
   "0046_explorers_places_catalog",
   "0047_explorers_place_photo_media",
+  "0048_explorers_place_location_aggregate",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

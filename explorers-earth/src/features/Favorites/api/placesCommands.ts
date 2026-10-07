@@ -66,6 +66,15 @@ export function usePlacesCommands() {
    const intent=PlacesClient.prepareManualPersonIntent(parent,draft);assert();
    const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
   }),
+  // Ticket 5.2. Linking a Products or People list to a location, and unlinking it.
+  // Keyed by both lists, so a retry of the same intent is the same command.
+  setLocationLink:(locationId:string,childId:string,attached:boolean)=>run(async(assert,signal)=>{
+   const signature=`location-link:${locationId}:${childId}:${attached}`;begin(`collection:${childId}`,signature);
+   const location=await observeCollection(`${signature}:location`,locationId,assert,signal);assert();
+   const child=await observeCollection(signature,childId,assert,signal);assert();
+   const result=await PlacesClient.setLocationLink(location,child,attached,key(signature),signal);assert();
+   forget(signature);forget(`${signature}:location`);return result;
+  }),
   // Correcting the provider facts repoints this owner's recommendation at their own
   // corrected place rather than rewriting the shared one.
   correctFacts:(id:string,title:string,details:Partial<PlaceEntityDetails>)=>run(async(assert,signal)=>{

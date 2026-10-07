@@ -4,6 +4,8 @@ import {publicPlaceContact,legacyListNameDetails} from '../../shared/explorersPl
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
 import {publicProfileCursorStart} from './publicProfileContract';
+import {publicLinkedPeopleLists} from './publicPeopleProjection';
+import {publicLinkedProductsLists} from './publicProductsProjection';
 
 /**
  * Ticket 5.1. Before this, the public Places read fell through to an empty page and
@@ -115,10 +117,18 @@ export async function publicPlacesProjection(pool:Pool,username:string,limit:num
    // than a bag of places.
    const location=await readPlaceCollectionDetails(db,row.id,observed.id);
    const page=await children(db,observed.id,row.id,slug?limit:12,slug?offset:0);
+   // Ticket 5.2. The lists linked to this location, each gated again by its own
+   // projection: a private child under a public location is absent, and unpublishing
+   // the People or Products category removes them without touching the links.
+   const [personLists,productLists]=await Promise.all([
+    publicLinkedPeopleLists(db,observed.id,row.id),
+    publicLinkedProductsLists(db,observed.id,row.id),
+   ]);
    lists.push({documentId:row.id,List_Name:row.title,list_description:row.description,slug:row.slug,Visibility:true,display_order:row.display_order,
     top_picks_heading:row.heading,
     // The blob the cards read, assembled from the snapshot, the list note and the
     // list's own cover media - never from a provider request.
+    person_lists:personLists,product_lists:productLists,
     List_Name_Details:legacyListNameDetails(location.locationSnapshot,{note:row.description,thumbnailUrl:row.cover_media_id?mediaUrl(row.cover_media_id):null}),
     Instagram_Media_URL:location.instagramMediaUrl,
     cover_image:row.cover_media_id?{url:mediaUrl(row.cover_media_id),alternativeText:null}:null,

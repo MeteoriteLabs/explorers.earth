@@ -13,11 +13,9 @@ import {
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { AddIcon } from "../../../assets/icons/AddIcon";
-import { useQuery } from "@apollo/client";
 import { toast } from "sonner";
-// recommendedListByIdQuery stays: the linked person and product lists it reads are
-// ticket 5.2's attachment contract, not this ticket's to migrate.
-import { recommendedListByIdQuery } from "../api/query";
+import { usePeopleOwner } from "../../People/hooks/usePeopleOwner";
+import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
 import { useNavigate } from "react-router-dom";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import Modal from "../../../components/ui/Modal";
@@ -232,18 +230,31 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // ref for the entire suggestions section (button + content)
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch linked person_lists and product_lists for this location
-  const { data: locationLinkedData } = useQuery(recommendedListByIdQuery, {
-    variables: {
-      documentId: selectedCity?.documentId,
-      pagination: { page: 1, pageSize: 1 }, // minimal places — we only need the linked lists
-    },
-    fetchPolicy: "cache-and-network",
-    skip: !selectedCity?.documentId,
-  });
 
-  const linkedPersonLists: any[] = locationLinkedData?.recommendationList?.person_lists || [];
-  const linkedProductLists: any[] = locationLinkedData?.recommendationList?.product_lists || [];
+
+  // The owner read returns this list complete and bounded, so the two Strapi reads - one
+  // paginated for the grid and one unpaginated for the suggestion comparison - become one
+  // read, and the ten-at-a-time reveal is a window over it rather than another round trip.
+  const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId));
+  const loading = owner.loading;
+  const ownerList = useMemo(
+    () => owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId),
+    [owner.data, selectedCity?.documentId]
+  );
+  const ownerPlaces = useMemo(() => ownerList?.recommended_places ?? [], [ownerList]);
+  // Ticket 5.2. The lists linked to this location come from the owner reads: the location
+  // says which ids are linked, and each category's own read supplies those lists. Copying
+  // their contents into the location's read would make two sources for one list.
+  const peopleOwner = usePeopleOwner(undefined, Boolean(selectedCity?.documentId));
+  const productsOwner = useProductsOwner(undefined, Boolean(selectedCity?.documentId));
+  const linkedPersonLists: any[] = useMemo(() => {
+    const ids = new Set(ownerList?.linked_person_list_ids ?? []);
+    return (peopleOwner.data?.personLists ?? []).filter((list) => ids.has(list.documentId));
+  }, [peopleOwner.data, ownerList]);
+  const linkedProductLists: any[] = useMemo(() => {
+    const ids = new Set(ownerList?.linked_product_list_ids ?? []);
+    return (productsOwner.data?.productLists ?? []).filter((list) => ids.has(list.documentId));
+  }, [productsOwner.data, ownerList]);
 
   // Flatten all linked people and products
   const linkedPeople = useMemo(() => {
@@ -266,16 +277,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     );
     return deduplicateProducts(raw);
   }, [linkedProductLists]);
-
-  // The owner read returns this list complete and bounded, so the two Strapi reads - one
-  // paginated for the grid and one unpaginated for the suggestion comparison - become one
-  // read, and the ten-at-a-time reveal is a window over it rather than another round trip.
-  const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId));
-  const loading = owner.loading;
-  const ownerPlaces = useMemo(
-    () => owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId)?.recommended_places ?? [],
-    [owner.data, selectedCity?.documentId]
-  );
   const [revealed, setRevealed] = useState<number>(10);
   const placesData = useMemo(() => ({ recommendedPlaces: ownerPlaces.slice(0, revealed) }), [ownerPlaces, revealed]);
   const allPlacesData = useMemo(() => ({ recommendationList: { recommended_places: ownerPlaces } }), [ownerPlaces]);

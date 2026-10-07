@@ -64,3 +64,73 @@ Create-and-link input includes parentLocationCollectionId and a required parentE
 This ticket owns `parentExpectedRevision`, the atomic create-and-link transaction and idempotent receipts (per `:50-52` above and `:43-44`). But the shared **core create extension** it needs is coordinator-reserved: `ticket-5-2.md:17` reserves shared schema and `:52` states the extension is "jointly allocated by the coordinator", and the shared contract file `tunes/shared/explorersContract.ts` is not in any single ticket's writer allowlist. **This ticket therefore has no allocated owner for the change it cannot proceed without.** Allocation is a coordinator preflight, not something a 5.2 writer may self-grant by editing the shared contract.
 
 The `:43` constraint "consume the same core create operation, not another list creator" is the reason this cannot be worked around: forking a second create path to avoid the shared file would violate the ticket's own gate.
+
+## Delivery status (2026-10-08)
+
+Delivered and verified against PostgreSQL 15. `place-links.spec.ts` is the one mandated
+path not created: it needs a Docker fixture runner and identities in
+`e2e/replatform/suite-manifest.json`, which the preflights reserve to the coordinator.
+
+| Mandated path | State |
+|---|---|
+| `tunes/shared/explorersPlaceLinkContract.ts` (not in the original list) | delivered |
+| `tunes/migrations/0049_explorers_collection_location_links.sql` | delivered, chain-registered |
+| `tunes/server/repositories/placeLinkRepository.ts` (not in the original list) | delivered |
+| `tunes/server/test/explorers/placeLinks.integration.test.ts` | delivered, 18 cases |
+| `explorers-earth/src/utils/__tests__/qrCodeService.replatform.test.ts` | delivered, 5 cases |
+| `components/AddLinkedProductsPage.tsx`, `AddLinkedPeoplePage.tsx` | migrated, with attach and detach |
+| `components/LinksAndQR.tsx`, `QRSticker.tsx` | no change needed - they render the QR from the URL builders, which are unchanged |
+| `features/PublicHome/components/MapView.tsx`, `PlaceMapView.tsx` | no change needed - map presentation is unchanged, and `Geometry` keeps the flat shape 5.1 corrected |
+| `src/utils/qrCodeService.ts`, `src/hooks/useQRActions.tsx` | no change needed - the canonical destination and UTM behaviour are preserved, now proven by decoding |
+| `explorers-earth/e2e/replatform/place-links.spec.ts` | **not started** - needs the reserved fixture runner |
+
+### The three rules are storage, not application checks
+
+`collection_location_links` is keyed by the child, so a second parent cannot be written at
+all; both foreign keys carry `account_id`, so a cross-account attachment is impossible
+rather than refused after the fact; and the parent key includes the places category, so a
+bare place recommendation id has nothing to reference. Each is asserted by trying to break
+it, and the repository's only job is translating the resulting refusal into a status a
+caller can act on.
+
+Re-pointing is an explicit detach then attach. Attaching a list that already has a parent
+is 409 with the original relation untouched - the ticket's own case - because a silent move
+loses where the list was without anyone asking. There is no `UPDATE` grant on the table for
+the same reason: a link's identity is the pair it names.
+
+### Public traversal re-gates every hop
+
+`publicLinkedPeopleLists` and `publicLinkedProductsLists` apply their own projections'
+gates again rather than copying them: the account must be publicly eligible, the child's
+category must be public, and the child list itself must be public and published. So a
+private child under a public location is absent rather than redacted, and unpublishing the
+People or Products category removes every linked child from every location page without
+touching a single link row. Each of those is a case in the suite.
+
+### Create-from-a-location is one command
+
+`parentLocationCollectionId` on `CreateCollectionInput` links the new list in the same
+transaction as the create, through the same core create operation rather than a second list
+creator. A bad parent rolls the whole create back, which the suite asserts by counting the
+owner's lists before and after.
+
+### The QR is decoded, not merely rendered
+
+`qrcode.react@4.2.0` exports only `QRCodeCanvas` and `QRCodeSVG` and cannot decode, so
+`jsqr` is a dev dependency, as this ticket permits once that is verified. The test renders
+the component the app renders, recovers the module matrix from the SVG and decodes it, then
+asserts the exact canonical route and the supplied UTM parameters. Decoding goes through the
+matrix rather than a canvas, so jsdom needs no rasteriser.
+
+One finding recorded rather than asserted as encoding: the URL builders concatenate without
+percent-encoding, which is safe **only** because `0022` constrains a handle to
+`[a-z][a-z0-9-]*` and `0029` a slug to the same alphabet. A handle with a space would reach
+the QR as a broken URL; what prevents it is that such a handle cannot be stored. The test
+asserts that rule directly, so relaxing it fails this case and forces the builder to encode.
+
+### Narrowed
+
+The nested linked lists on the location page come from each category's own owner read,
+intersected with the ids the location reports. Copying the children's contents into the
+location's read would make two sources for one list, and the lists are already loaded by
+the category hooks the page mounts.

@@ -9,6 +9,7 @@ import {placeEntityDtoSchema,placeEntityDetailsSchema,placeDisplayFieldsSchema,p
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
+import {locationLinkDtoSchema} from './explorersPlaceLinkContract';
 import {bookEntityDtoSchema,bookEntityDetailsSchema,bookRecommendationContextSchema,bookDisplayFieldsSchema} from './explorersBookContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
@@ -27,8 +28,18 @@ const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSaf
 // for "this category has locations".
 // pinOrder is the list's own pin among its category's lists, which is not the same thing
 // as the pinned recommendations inside it. Null means not pinned.
-export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,pinOrder:z.number().int().nonnegative().nullable(),placeLocation:placeCollectionDetailsSchema.optional()}).strict()
- .superRefine((v,ctx)=>{if((v.placeLocation!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent location aggregate'});});
+export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,pinOrder:z.number().int().nonnegative().nullable(),placeLocation:placeCollectionDetailsSchema.optional(),
+ // Ticket 5.2. Where this list belongs, for a list that can belong somewhere; and for
+ // a location list, the lists that belong to it. Absent where the question does not
+ // apply, because an empty array would claim it does.
+ locationLink:locationLinkDtoSchema.nullable().optional(),linkedChildren:z.array(locationLinkDtoSchema).max(200).optional()}).strict()
+ .superRefine((v,ctx)=>{
+  if((v.placeLocation!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent location aggregate'});
+  if((v.linkedChildren!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent linked children'});
+  if((v.locationLink!==undefined)!==(v.category==='products'||v.category==='people'))ctx.addIssue({code:'custom',message:'Inconsistent location link'});
+  if(v.locationLink&&(v.locationLink.childCollectionId!==v.id||v.locationLink.childCategory!==v.category))ctx.addIssue({code:'custom',message:'Location link identity mismatch'});
+  if(v.linkedChildren?.some(child=>child.locationCollectionId!==v.id))ctx.addIssue({code:'custom',message:'Linked child belongs to another location'});
+ });
 export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema,personEntityDtoSchema,placeEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional(),effectivePersonDetails:personEntityDetailsSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),effectivePlaceDetails:placeEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
  if(v.category==='games'?!v.gamePresentation||v.gamePresentation.images.length!==v.mediaIds.length||v.gamePresentation.images.some((image,index)=>image.mediaId!==v.mediaIds[index]):v.gamePresentation!==undefined)ctx.addIssue({code:'custom',message:'Inconsistent Game presentation'});
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};

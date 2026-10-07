@@ -66,8 +66,12 @@ export const createCollectionSchema = z.object({category:contentCategorySchema,t
   description:collectionPlainText.default(null),heading:collectionHeading.default(null),coverMediaId:contentIdSchema.nullable().default(null),
   // The list's own location selection, for Places only: a location list is distinct
   // from the place recommendations inside it.
-  placeLocation:placeCollectionDetailsSchema.optional()}).strict()
-  .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category');
+  placeLocation:placeCollectionDetailsSchema.optional(),
+  // Ticket 5.2. Creating a Products or People list from a location links it atomically,
+  // so a failed parent leaves no orphan child.
+  parentLocationCollectionId:contentIdSchema.optional()}).strict()
+  .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category')
+  .refine(v=>v.parentLocationCollectionId===undefined||v.category==='products'||v.category==='people','Only Products and People lists link to a location');
 export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),
   visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
   heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional(),placeLocation:placeCollectionDetailsSchema.optional(),

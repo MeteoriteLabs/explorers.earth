@@ -17,6 +17,7 @@ import { createCollectionSchema,updateCollectionSchema,createRecommendationSchem
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
+import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../../tunes/shared/explorersPlaceLinkContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
 import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/shared/explorersProductContract';
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
@@ -461,6 +462,26 @@ export const explorersApiClient = {
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  /**
+   * Ticket 5.2. Links this list to one of the owner's location lists, or unlinks it.
+   *
+   * Both observations travel, because the command links a pair and a stale view of either
+   * side would link the wrong one. The child's revision advances either way, so the
+   * caller receives the list it just changed.
+   */
+  async setMyCollectionLocation(child:CollectionObservation,location:CollectionObservation|null,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(child,'collection');
+   if(location!==null){
+    assertOwnerDetailObservation(location,'collection');
+    if(location.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','A location list is required');
+    if(location.accountId!==child.accountId||location.generation!==child.generation)throw new ExplorersApiError(409,'CONFLICT','Owner changed between the two lists');
+   }
+   const body=location===null
+    ?commandInput(detachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision})
+    :commandInput(attachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision,
+      locationCollectionId:location.resourceId,expectedLocationRevision:location.resourceRevision});
+   return contentCommand(`/collections/${child.resourceId}/location`,location===null?'DELETE':'POST',body,key,'collection',collectionCoreDtoSchema,signal,child,child.resourceId,child.resourceRevision+1);
   },
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
