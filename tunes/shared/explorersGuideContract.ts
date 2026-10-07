@@ -222,20 +222,37 @@ export const guideSectionDtoSchema=z.object({
  createdAt:z.string().datetime(),updatedAt:z.string().datetime(),
 }).strict();
 
-// The aggregate the owner editor reads: the parent's guide fields, its cover, and every
-// section in order, at one revision. Sections travel with the parent because every micro
-// editor saves against the current revision of the whole guide, and a per-section revision
-// would let two modals disagree about what "current" means.
+// How many sections a guide may hold. guide_sections.display_order is bounded to the same
+// number in 0050, so the two cannot disagree.
+export const GUIDE_SECTION_LIMIT=200;
+// How many travel in one response. A section may be 256KB and the owner page budget is
+// 4MB, so all 200 cannot travel together - twenty is the largest page that leaves room for
+// the parent. The service still measures the real bytes and answers 413 rather than
+// trusting this number, because twenty maximal sections would still exceed the budget.
+export const GUIDE_SECTION_PAGE_LIMIT=20;
+
+// The aggregate the owner editor reads: the parent's guide fields, its cover, and a page of
+// sections in order, all at ONE revision. The revision belongs to the guide rather than to
+// each section, because every micro editor saves against the current state of the whole
+// guide, and a per-section revision would let two modals disagree about what "current"
+// means. sectionCount is the whole guide's count rather than the page's, so the editor can
+// say "8 sections" without walking every page.
 export const guideAggregateDtoSchema=z.object({
  collectionId:z.string().uuid(),revision,
  details:guideCollectionDetailsSchema,
  coverMediaId:z.string().uuid().nullable(),
- sections:z.array(guideSectionDtoSchema).max(200),
+ sections:z.array(guideSectionDtoSchema).max(GUIDE_SECTION_PAGE_LIMIT),
+ sectionCount:z.number().int().nonnegative().max(GUIDE_SECTION_LIMIT),
+ nextCursor:z.string().min(1).max(4096).nullable(),
 }).strict().superRefine((v,ctx)=>{
  if(v.sections.some(s=>s.collectionId!==v.collectionId))ctx.addIssue({code:'custom',message:'Section belongs to another guide',path:['sections']});
  const orders=v.sections.map(s=>s.displayOrder);
  if(new Set(orders).size!==orders.length)ctx.addIssue({code:'custom',message:'Duplicate section order',path:['sections']});
  if(orders.some((o,i)=>i>0&&o<=orders[i-1]))ctx.addIssue({code:'custom',message:'Sections must be strictly ordered',path:['sections']});
+ if(v.sections.length>v.sectionCount)ctx.addIssue({code:'custom',message:'Page holds more sections than the guide has',path:['sectionCount']});
+ // A page that already carries every section has nothing left to continue to, and a
+ // lingering cursor there is how a reader ends up looping forever.
+ if(v.nextCursor!==null&&v.sections.length===v.sectionCount)ctx.addIssue({code:'custom',message:'A complete page cannot continue',path:['nextCursor']});
 });
 
 // ---- writes ----------------------------------------------------------------------------
@@ -256,13 +273,13 @@ export const writeGuideSectionSchema=at.extend({
 
 export const createGuideSectionSchema=writeGuideSectionSchema.extend({
  // Where to insert. Omitted appends, which is what the wizard does.
- position:z.number().int().nonnegative().max(199).optional(),
+ position:z.number().int().nonnegative().max(GUIDE_SECTION_LIMIT-1).optional(),
 }).strict();
 
 // A reorder names the complete new order, not a move. The server rejects any list that is
 // not exactly the guide's current section set, so a reorder composed against a guide
 // someone else has added a section to fails loudly instead of dropping that section.
-export const reorderGuideSectionsSchema=at.extend({sectionIds:z.array(z.string().uuid()).min(1).max(200)}).strict()
+export const reorderGuideSectionsSchema=at.extend({sectionIds:z.array(z.string().uuid()).min(1).max(GUIDE_SECTION_LIMIT)}).strict()
  .refine(v=>new Set(v.sectionIds).size===v.sectionIds.length,{message:'Duplicate section',path:['sectionIds']});
 
 export const attachGuideCoverSchema=at.extend({mediaId:z.string().uuid()}).strict();

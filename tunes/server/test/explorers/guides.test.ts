@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  GUIDE_SECTION_BLOCK_VERSION, guideAggregateDtoSchema, guideBudgetPlaceSchema, guideCollectionDetailsSchema,
+  GUIDE_SECTION_BLOCK_VERSION, GUIDE_SECTION_PAGE_LIMIT, guideAggregateDtoSchema, guideBudgetPlaceSchema, guideCollectionDetailsSchema,
   guideDayPlaceSchema, guideEmptySectionBlocks, guideSectionBlocksSchema, guideSectionDtoSchema,
   reorderGuideSectionsSchema, writeGuideSectionSchema, type GuideSectionBlocks,
 } from "../../../shared/explorersGuideContract";
@@ -187,15 +187,15 @@ describe("guide aggregate", () => {
     blocks: guideEmptySectionBlocks, archived: false,
     createdAt: "2026-10-08T00:00:00.000Z", updatedAt: "2026-10-08T00:00:00.000Z",
   });
-  const aggregate = (sections: unknown[]) => ({
-    collectionId: uuid(9), revision: 7,
+  const aggregate = (sections: unknown[], extra: Record<string, unknown> = {}) => ({
+    collectionId: uuid(9), revision: 7, sectionCount: sections.length, nextCursor: null,
     details: guideCollectionDetailsSchema.parse({
       guideType: null, multiCity: false, numberOfDays: null, estimatedBudget: null, budgetCurrency: null,
       budgetType: null, bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null,
       place: { name: null, address: null, placeId: null, rating: null, ratingsCount: null, lat: null, lng: null },
       locationEntityId: null,
     }),
-    coverMediaId: null, sections,
+    coverMediaId: null, sections, ...extra,
   });
 
   it("accepts strictly ordered sections", () => {
@@ -210,6 +210,23 @@ describe("guide aggregate", () => {
   it("refuses a section that belongs to another guide", () => {
     const foreign = { ...section(uuid(1), 0), collectionId: uuid(8) };
     expect(guideAggregateDtoSchema.safeParse(aggregate([foreign])).success).toBe(false);
+  });
+
+  it("paginates sections, because twenty maximal ones already exceed the page budget", () => {
+    const page = Array.from({ length: GUIDE_SECTION_PAGE_LIMIT }, (_unused, index) => section(uuid(index + 1), index));
+    expect(guideAggregateDtoSchema.safeParse(aggregate(page, { sectionCount: 31, nextCursor: "next" })).success).toBe(true);
+    // One more than a page may ever carry.
+    const over = [...page, section(uuid(99), GUIDE_SECTION_PAGE_LIMIT)];
+    expect(guideAggregateDtoSchema.safeParse(aggregate(over, { sectionCount: 31, nextCursor: "next" })).success).toBe(false);
+  });
+
+  it("refuses a page claiming more sections than the guide holds", () => {
+    expect(guideAggregateDtoSchema.safeParse(aggregate([section(uuid(1), 0), section(uuid(2), 1)], { sectionCount: 1 })).success).toBe(false);
+  });
+
+  it("refuses a cursor on a page that already carries every section", () => {
+    expect(guideAggregateDtoSchema.safeParse(aggregate([section(uuid(1), 0)], { sectionCount: 1, nextCursor: "next" })).success).toBe(false);
+    expect(guideAggregateDtoSchema.safeParse(aggregate([section(uuid(1), 0)], { sectionCount: 4, nextCursor: "next" })).success).toBe(true);
   });
 });
 
