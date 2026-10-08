@@ -17,10 +17,6 @@ vi.mock("../../hooks/useGuidesOwner", () => ({
     loading: false,
   }),
 }));
-vi.mock("../../../../hooks/useAIGuideQuota", () => ({
-  useAIGuideQuota: () => ({ shouldDisableGeneration: true, disableReason: "", refetch: vi.fn() }),
-}));
-vi.mock("../../../../services/geminiService", () => ({ generateGuideWithAI: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import CreateGuideStep2 from "../CreateGuideStep2";

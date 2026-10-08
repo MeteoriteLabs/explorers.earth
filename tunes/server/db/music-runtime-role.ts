@@ -33,6 +33,7 @@ const expectedRuntimeTables = [
   "creator_accounts",
   "deletion_feedback",
   "email_logs",
+  "email_suppressions",
   "email_templates",
   "entities",
   "entity_identifiers",
@@ -55,6 +56,7 @@ const expectedRuntimeTables = [
   "music_publication_operation_archive",
   "music_publication_operations",
   "music_reactivation_tokens",
+  "music_request_quota",
   "music_schema_migrations",
   "page_contents",
   "person_entity_details",
@@ -651,6 +653,16 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
       ON collection_location_links,guide_section_photos FROM ${capabilityRole}`);
+    // Decision D2. A suppression is a fact, not a field: no UPDATE, and no DELETE,
+    // because un-suppressing an address is the one operation here that can cause mail
+    // to reach somebody who asked for none. The GRANT ON ALL TABLES above re-grants
+    // what migration 0051 revoked, so this is what actually holds the boundary.
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON email_suppressions FROM ${capabilityRole}`);
+    // Decision D1. The monthly counter keeps UPDATE - incrementing is an amendment -
+    // but not DELETE: a runtime that can delete a period can reset a venue to zero.
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON music_request_quota FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -759,6 +771,9 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
     "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
     "DELETE FROM music_publication_operation_archive WHERE false",
+    "UPDATE email_suppressions SET reason=reason WHERE false",
+    "DELETE FROM email_suppressions WHERE false",
+    "DELETE FROM music_request_quota WHERE false",
     "DELETE FROM music_identity_tombstones WHERE false",
     "DELETE FROM music_reactivation_tokens WHERE false",
     "UPDATE music_schema_migrations SET checksum=checksum WHERE false",
@@ -809,6 +824,10 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       : row.object_name === "music_credential_revocation_operations"
         ? [true, true, false, false]
       : row.object_name === "music_publication_operations"
+          ? [true, true, true, false]
+      : row.object_name === "email_suppressions"
+          ? [true, true, false, false]
+      : row.object_name === "music_request_quota"
           ? [true, true, true, false]
       : row.object_name === "music_owner_operations"
           ? [true, true, false, true]

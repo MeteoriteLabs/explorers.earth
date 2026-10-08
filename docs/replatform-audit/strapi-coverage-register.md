@@ -863,6 +863,9 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 
 ### 7.1 `unsubscribe` — the email suppression list
 
+**DECIDED 2026-10-08 — in scope.** Build it, on Resend (already the provider).
+See [owner decisions](owner-decisions-2026-10-08.md#d2--unsubscribe-on-resend).
+
 **Evidence.** `unsubscribe@50b6c6e1`: `email` is `type:"email", required:true, unique:true` — **the only `unique:true` attribute in the entire legacy app outside `up_users`** (mechanically confirmed: exactly 2 `unique:true` attributes across all 401). Plus `feedback` and `unsubscribedAt`. No canonical table, column, route, contract or test exists.
 
 **Why it is a decision and not a ticket.** Resend is the configured mail provider (`revised-direction.md:51`). A fresh database with no suppression list means every previously-unsubscribed address becomes mailable on launch day. That is an opt-out-persistence exposure (consent withdrawal does not expire with a backend migration) and a deliverability exposure (complaint rate degrades the sending domain). "No existing users to migrate" (`revised-direction.md:13`) authorizes starting with **zero rows**; it does not authorize having **no table**, because new unsubscribes must still be recorded and honored from the first email sent.
@@ -872,6 +875,10 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 **Owner.** Product owner for the opt-out policy decision; ticket **7.2** for the canonical table and route.
 
 ### 7.2 Per-field i18n localization on `account`, `faq`, `platform-term`, `recommendation-category`
+
+**DECIDED 2026-10-08 — per-field `account` i18n dropped**; frontend UI i18n is
+unaffected and the `locale` enum widens. See
+[owner decisions](owner-decisions-2026-10-08.md#d7--per-field-account-i18n-dropped).
 
 **Evidence.** Legacy localizes 4 types; per-field `pluginOptions.i18n.localized` appears on **19** `account` attributes (including `username`, `Account_Name`, `Bio`, `Bio_1`, `Primary_Address`, `Public_Profile_Address`, `social_media`, `profile_picture`, `bg_picture`, `Account_Type`, and four `public_*` flags), 3 on `faq`, 3 on `platform-term`, 1 on `recommendation-category`. Canonical has exactly **one** locale column — `creator_accounts.locale` (`0022:72`), write-constrained to `["en","hi"]` (`explorersContract.ts:202`) — plus a genuine translation table **only** for taxonomy (`taxonomy_term_translations`, `0037:24-26`).
 
@@ -883,6 +890,10 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 
 ### 7.3 Instagram OAuth token storage and `recommendation_list.Instagram_Media_URL`
 
+**DECIDED 2026-10-08 — dropped for launch.** A live Instagram UI still points at the
+already-tombstoned `/api/instagram` and needs its own scope call. See
+[owner decisions](owner-decisions-2026-10-08.md#d6--instagram-import-dropped-for-launch).
+
 **Evidence.** `users-permissions/user@50b6c6e1`: `instagramUserId`, `instagramUsername`, `instagramAccountType`, `instagramAccessToken` (`type:"text"`). `recommendation-list@50b6c6e1`: `Instagram_Media_URL`. Canonical: `profile_feed_items.source` admits `'instagram'` (`0024:59`) and the DTO carries it (`explorersContract.ts:152`), so imported items have a home — but there is no linked-account or token storage, and no list-level social URL column. `Instagram_Media_URL` is **live in the current frontend**: written at `explorers-earth/src/features/Favorites/hooks/useCreateLocation.ts:147`, read at `features/Favorites/api/query.ts:29` and `api/mutation.ts:6,68`.
 
 **Why it is a decision.** Without token storage, Instagram feed import works exactly once, at the moment of authorization, and can never refresh. `auth_account` already has `access_token`/`refresh_token`/`scope`/`access_token_expires_at` (`0022:31-36`), so the storage shape exists — but `revised-direction.md:19` sets Google-only sign-in and implicit provider linking is disabled, so using it is a policy change, not an implementation detail. Separately, `Instagram_Media_URL` is an **in-use authoring field** that will silently lose its value.
@@ -893,6 +904,10 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 
 ### 7.4 The whole claim flow — `claimable-place-profile`, `verify-claim`, `account.Is_Claimable`
 
+**DECIDED 2026-10-08 — dropped, and removed in `7399cfe1`.** `Is_Claimable` and
+`claimable_place_profile` are DROPPED-AUTHORIZED. See
+[owner decisions](owner-decisions-2026-10-08.md#d4--the-claim-flow-is-dropped).
+
 **Evidence.** 12 + 5 + 1 = **18 fields, all MISSING**, with zero canonical surface (`grep -rli 'claimable\|verify_claim' tunes/migrations tunes/shared` → nothing). The live frontend still carries the flow: `explorers-earth/src/features/Favorites/services/claimablePlaceProfileService.ts`, `features/Authentication/components/PlaceProfileCard.tsx`, `features/Authentication/api/queries.ts`, `features/Favorites/api/mutation.ts`, `features/Favorites/hooks/useAddRecommendation.ts`. Notably, `account.Is_Claimable` and `claimable-place-profile.Is_Claimed` have **zero references anywhere in the live codebase**.
 
 **Why it is a decision.** `revised-direction.md:27` says "'Preserve everything' … does not mean restoring previously retired endpoints or implementing unused Strapi models" — but the claim flow is **not unused**: it has live frontend services and an authentication-surface card. Nothing in the planning package excludes it. Meanwhile the safety invariant "a pending claim must not grant ownership" has nowhere to be enforced, because `Is_Claimed` has no canonical column.
@@ -902,6 +917,11 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 **Owner.** Product owner for launch scope; ticket **5.4** for implementation.
 
 ### 7.5 Residual unaccounted fields — `account.profile_place_media_details`, `account.localtunes_public`, `recommendation_list.List_Name_Details`
+
+**PARTLY DECIDED 2026-10-08.** `profile_place_media_details` is DROPPED-AUTHORIZED;
+`localtunes_public` maps onto `account_category_settings` for `music` and its unread
+typed field is removed. **`List_Name_Details` is still open** — three live readers.
+See [owner decisions](owner-decisions-2026-10-08.md#d8--two-resolved-one-still-open).
 
 **Evidence and live status differ sharply across the three, which is why they need separate answers:**
 
@@ -916,6 +936,11 @@ Each of these is **MISSING with no authorization record**. They are ordered by c
 **Owner.** Product owner for the `profile_place_media_details` confirmation; ticket **7.1** for `localtunes_public`; ticket **5.1/5.2** for `List_Name_Details`.
 
 ### 7.6 `song-limit` — song and AI-guide request quotas
+
+**DECIDED 2026-10-08.** No AI features (removed in `76224913`; they were already
+unserved). Song/YouTube requests cap at **100 per creator per month**, surface
+labelled beta. The AI-guide half of this table has no remaining consumer. See
+[owner decisions](owner-decisions-2026-10-08.md#d1--no-ai-and-the-measurement-changed-the-job).
 
 **Evidence.** `song-limit@50b6c6e1`: `username`, `song_requests`, `ai_guide_requests` (default 0) — all MISSING, no canonical counter table. Live consumers: `explorers-earth/src/features/Settings/components/BillingTab.tsx:153,154,256,259`, `src/pages/Checkout.tsx:314`, `src/hooks/useAIGuideQuota.ts`.
 

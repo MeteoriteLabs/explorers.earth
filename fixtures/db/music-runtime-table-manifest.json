@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0050_explorers_guide_sections",
+    "expectedId": "0051_explorers_launch_controls",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -46,13 +46,15 @@
       "0040_canonical_music_venue_provisioning.sql",
       "0041_canonical_music_venue_release.sql",
       "0042_canonical_music_venue_release_function.sql",
-      "0043_explorers_apps_provider_context.sql",        "0044_explorers_products_offer_context.sql",
-        "0045_explorers_people_catalog.sql",
-        "0046_explorers_places_catalog.sql",
-        "0047_explorers_place_photo_media.sql",
-        "0048_explorers_place_location_aggregate.sql",
-        "0049_explorers_collection_location_links.sql",
-        "0050_explorers_guide_sections.sql"
+      "0043_explorers_apps_provider_context.sql",
+      "0044_explorers_products_offer_context.sql",
+      "0045_explorers_people_catalog.sql",
+      "0046_explorers_places_catalog.sql",
+      "0047_explorers_place_photo_media.sql",
+      "0048_explorers_place_location_aggregate.sql",
+      "0049_explorers_collection_location_links.sql",
+      "0050_explorers_guide_sections.sql",
+      "0051_explorers_launch_controls.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -74,90 +76,6 @@
   ],
   "tables": [
     {
-      "name": "analytics_events",
-      "managedBy": "drizzle",
-      "family": "analytics",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "analytics_event_receipts",
-      "managedBy": "drizzle",
-      "family": "analytics",
-      "lifecycle": "retain-minimized-retry-markers"
-    },
-    {
-      "name": "app_entity_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "product_entity_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "person_entity_details",
-      "managedBy": "drizzle",
-      "family": "pii",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "place_entity_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "place_collection_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "collection_location_links",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "guide_collection_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "guide_sections",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "place_recommendation_context",
-      "managedBy": "drizzle",
-      "family": "pii",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "product_recommendation_context",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "book_entity_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "book_recommendation_context",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
       "name": "account_category_content_state",
       "managedBy": "drizzle",
       "family": "user-content",
@@ -170,94 +88,16 @@
       "lifecycle": "strip-on-deletion"
     },
     {
-      "name": "category_recommendation_pins",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "collections",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "collection_items",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "collection_media",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "entities",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "entity_identifiers",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "recommendations",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "recommendation_display_overrides",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "recommendation_app_screenshots",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "recommendation_place_photos",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "guide_section_photos",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "recommendation_book_covers",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "recommendation_movie_media",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "recommendation_media",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
       "name": "account_category_settings",
       "managedBy": "drizzle",
       "family": "profile",
       "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "account_lifecycle_operations",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-minimal"
     },
     {
       "name": "account_memberships",
@@ -284,22 +124,22 @@
       "lifecycle": "expire-delete"
     },
     {
-      "name": "account_lifecycle_operations",
-      "managedBy": "unmanaged-raw-sql",
-      "family": "security-audit",
-      "lifecycle": "retain-minimal"
-    },
-    {
-      "name": "application_command_receipts",
-      "managedBy": "unmanaged-raw-sql",
-      "family": "security-audit",
-      "lifecycle": "retire-response"
-    },
-    {
       "name": "activity_logs",
       "managedBy": "drizzle",
       "family": "security-audit",
       "lifecycle": "retain-policy"
+    },
+    {
+      "name": "analytics_event_receipts",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "retain-minimized-retry-markers"
+    },
+    {
+      "name": "analytics_events",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "strip-on-deletion"
     },
     {
       "name": "analytics_snapshots",
@@ -312,6 +152,18 @@
       "managedBy": "drizzle",
       "family": "security-audit",
       "lifecycle": "revoke-delete"
+    },
+    {
+      "name": "app_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "application_command_receipts",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retire-response"
     },
     {
       "name": "auth_account",
@@ -338,6 +190,48 @@
       "lifecycle": "expire-delete"
     },
     {
+      "name": "book_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "book_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "category_recommendation_pins",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_items",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_location_links",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "collections",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
       "name": "creator_accounts",
       "managedBy": "drizzle",
       "family": "profile",
@@ -348,6 +242,66 @@
       "managedBy": "unmanaged-raw-sql",
       "family": "pii",
       "lifecycle": "purge-on-deletion-or-30-days"
+    },
+    {
+      "name": "email_logs",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "anonymize-retain-policy"
+    },
+    {
+      "name": "email_suppressions",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "retain-policy"
+    },
+    {
+      "name": "email_templates",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-owner-policy"
+    },
+    {
+      "name": "entities",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "entity_identifiers",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "guest_interactions",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "guide_collection_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "guide_section_photos",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "guide_sections",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "initial_account_bindings",
+      "managedBy": "drizzle",
+      "family": "identity",
+      "lifecycle": "retain-tombstone-binding"
     },
     {
       "name": "media_assets",
@@ -362,46 +316,64 @@
       "lifecycle": "delete-after-storage-cleanup"
     },
     {
-      "name": "profile_feed_items",
+      "name": "movie_entity_details",
       "managedBy": "drizzle",
-      "family": "profile",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_entity_provider_genres",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_provider_genre_terms",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
       "lifecycle": "strip-on-deletion"
     },
     {
-      "name": "profile_media",
-      "managedBy": "drizzle",
-      "family": "media",
-      "lifecycle": "detach-on-deletion"
-    },
-    {
-      "name": "email_logs",
-      "managedBy": "drizzle",
-      "family": "pii",
-      "lifecycle": "anonymize-retain-policy"
-    },
-    {
-      "name": "email_templates",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-owner-policy"
-    },
-    {
-      "name": "guest_interactions",
-      "managedBy": "drizzle",
+      "name": "music_request_quota",
+      "managedBy": "unmanaged-raw-sql",
       "family": "analytics",
-      "lifecycle": "anonymize-retain"
-    },
-    {
-      "name": "initial_account_bindings",
-      "managedBy": "drizzle",
-      "family": "identity",
-      "lifecycle": "retain-tombstone-binding"
+      "lifecycle": "delete-with-music-owner"
     },
     {
       "name": "page_contents",
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "retain-owner-policy"
+    },
+    {
+      "name": "person_entity_details",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "place_collection_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "place_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "strip-on-deletion"
     },
     {
       "name": "playback_states",
@@ -428,6 +400,78 @@
       "lifecycle": "delete"
     },
     {
+      "name": "product_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "product_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "profile_feed_items",
+      "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "profile_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_app_screenshots",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_book_covers",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_display_overrides",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "recommendation_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_movie_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_place_photos",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_taxonomy",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "recommendations",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
       "name": "seo_settings",
       "managedBy": "drizzle",
       "family": "analytics",
@@ -450,6 +494,18 @@
       "managedBy": "drizzle",
       "family": "security-audit",
       "lifecycle": "rotate-delete-secrets"
+    },
+    {
+      "name": "taxonomy_term_translations",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "taxonomy_terms",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
     },
     {
       "name": "team_members",
@@ -528,48 +584,6 @@
       "managedBy": "unmanaged-raw-sql",
       "family": "security-audit",
       "lifecycle": "revoke-delete"
-    },
-    {
-      "name": "movie_entity_details",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "movie_entity_provider_genres",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "movie_provider_genre_terms",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "movie_recommendation_context",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "recommendation_taxonomy",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "strip-on-deletion"
-    },
-    {
-      "name": "taxonomy_term_translations",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
-    },
-    {
-      "name": "taxonomy_terms",
-      "managedBy": "drizzle",
-      "family": "user-content",
-      "lifecycle": "retain-shared-catalog"
     }
   ],
   "systemReferences": [

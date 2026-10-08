@@ -79,7 +79,8 @@
     "0047_explorers_place_photo_media",
     "0048_explorers_place_location_aggregate",
     "0049_explorers_collection_location_links",
-    "0050_explorers_guide_sections"
+    "0050_explorers_guide_sections",
+    "0051_explorers_launch_controls"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

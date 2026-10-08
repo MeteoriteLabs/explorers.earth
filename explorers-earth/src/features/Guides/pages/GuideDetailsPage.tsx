@@ -10,11 +10,6 @@ import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
 import { GuidesClient } from "../api/guidesClient";
 import { setGuidePublished } from "../api/guideListWrites";
-import {
-  generateSingleSectionWithAI,
-  enrichAndFormatSection,
-} from "../services/aiSectionGenerationService";
-import { useAIGuideQuota } from "../../../hooks/useAIGuideQuota";
 import { toast } from "sonner";
 import Button from "../../../components/ui/Button";
 // SectionFormModal no longer used – all section editing navigates to GuideSectionFormPage
@@ -55,15 +50,11 @@ const GuideDetailsPage = () => {
     place: null,
   });
   const kebabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isMainTabsSticky, setIsMainTabsSticky] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState('256px');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const guideHeaderRef = useRef<HTMLDivElement>(null);
-
-  // Check AI guide quota
-  const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
 
   const navigation = useCategoryNavigation();
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
@@ -396,69 +387,6 @@ const GuideDetailsPage = () => {
   };
 
 
-  /**
-   * Generate a single AI section and open in editable form modal
-   * Uses the single_day pipeline for focused content generation
-   */
-  const handleGenerateAISection = async () => {
-    if (isGeneratingAI) return;
-
-    // Check quota before proceeding
-    if (shouldDisableGeneration) {
-      toast.error(disableReason || "AI generation is currently unavailable");
-      return;
-    }
-
-    // Calculate next day number
-    const maxSequence =
-      sections.length > 0
-        ? Math.max(...sections.map((s: any) => s.Sequence || 0))
-        : 0;
-    const nextDayNumber = maxSequence + 1;
-
-    setIsGeneratingAI(true);
-
-    try {
-      // Generate AI section
-      const aiSection = await generateSingleSectionWithAI({
-        guide: guide,
-        dayNumber: nextDayNumber,
-      });
-
-      // Enrich and format for database
-      const sectionData = await enrichAndFormatSection(
-        aiSection,
-        guide,
-        guideId!
-      );
-
-      // Format as initialData for the form
-      const formInitialData = {
-        Title: sectionData.Title,
-        Sequence: sectionData.Sequence,
-        Description: sectionData.Description,
-        Timeline: sectionData.Timeline,
-        Map_Details: sectionData.Map_Details,
-        _isAIGenerated: true,
-      };
-
-      // Navigate to the section form page with AI-generated data
-      // AI sections still use the page (not modal) with the AI tip banner visible
-      navigate(`/guides/${guideId}/sections/new`, {
-        state: { editingSection: formInitialData },
-      });
-
-      toast.success("✨ AI content generated! Review and edit as needed, then save.");
-      await refetchQuota();
-    } catch (error: any) {
-      const errorMessage =
-        error.message || "Failed to generate section with AI. Please try again.";
-      toast.error(errorMessage);
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
-
   // Journey Tab Content (Itinerary)
   function renderJourneyTab() {
     return (
@@ -485,10 +413,6 @@ const GuideDetailsPage = () => {
           onAddSection={() =>
             navigate(`/guides/${guideId}/sections/new`)
           }
-          onGenerateAISection={handleGenerateAISection}
-          isGeneratingAI={isGeneratingAI}
-          shouldDisableAI={shouldDisableGeneration}
-          disableAIReason={disableReason}
           onSectionSelect={(section) => {
             setSelectedSection(section);
           }}

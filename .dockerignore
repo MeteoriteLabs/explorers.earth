@@ -136,8 +136,6 @@ explorers-earth/src/features/Favorites/api/*
 explorers-earth/src/features/Favorites/components/*
 !explorers-earth/src/features/Favorites/hooks/
 explorers-earth/src/features/Favorites/hooks/*
-!explorers-earth/src/features/Favorites/services/
-explorers-earth/src/features/Favorites/services/*
 !explorers-earth/src/features/Games/api/
 explorers-earth/src/features/Games/api/*
 !explorers-earth/src/features/Games/components/
@@ -557,11 +555,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/AppsAndTools/types/index.ts
 !explorers-earth/src/features/AppsAndTools/utils/appHelpers.ts
 !explorers-earth/src/features/Authentication/api/mutation.ts
-!explorers-earth/src/features/Authentication/api/queries.ts
 !explorers-earth/src/features/Authentication/api/userQueries.ts
 !explorers-earth/src/features/Authentication/components/AuthForm.tsx
-!explorers-earth/src/features/Authentication/components/PlaceProfileCard.tsx
-!explorers-earth/src/features/Authentication/components/VerificationForm.tsx
 !explorers-earth/src/features/Authentication/data.ts
 !explorers-earth/src/features/Authentication/hooks/useCurrentUser.ts
 !explorers-earth/src/features/Books/api/booksClient.ts
@@ -614,7 +609,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/hooks/usePlacesOwner.ts
 !explorers-earth/src/features/Favorites/hooks/useRecommedationFields.ts
 !explorers-earth/src/features/Favorites/hooks/useTaggableFields.ts
-!explorers-earth/src/features/Favorites/services/claimablePlaceProfileService.ts
 !explorers-earth/src/features/Games/api/explorersAdapter.ts
 !explorers-earth/src/features/Games/api/gamesClient.ts
 !explorers-earth/src/features/Games/api/gamesViewModel.ts
@@ -691,9 +685,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/pages/GuideDetailsPage.tsx
 !explorers-earth/src/features/Guides/pages/GuideSectionFormPage.tsx
 !explorers-earth/src/features/Guides/services/activityPhotoService.ts
-!explorers-earth/src/features/Guides/services/aiSectionGenerationService.ts
 !explorers-earth/src/features/Guides/services/locationImageService.ts
-!explorers-earth/src/features/Guides/services/placeEnrichmentService.ts
 !explorers-earth/src/features/Guides/types/guideSectionTypes.ts
 !explorers-earth/src/features/Guides/types/index.ts
 !explorers-earth/src/features/Guides/utils/accommodationDetector.ts
@@ -959,7 +951,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/canonicalNavigationMapping.ts
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
-!explorers-earth/src/hooks/useAIGuideQuota.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
 !explorers-earth/src/hooks/useDistanceValidation.ts
 !explorers-earth/src/hooks/useFileUpload.ts
@@ -1043,7 +1034,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/About.tsx
 !explorers-earth/src/pages/Analytics.tsx
 !explorers-earth/src/pages/Checkout.tsx
-!explorers-earth/src/pages/ClaimAccount.tsx
 !explorers-earth/src/pages/Contact.tsx
 !explorers-earth/src/pages/Cookies.tsx
 !explorers-earth/src/pages/EmailConfirmed.tsx
@@ -1088,16 +1078,13 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/routes/validators/UsernameValidator.tsx
 !explorers-earth/src/routes/validators/index.ts
 !explorers-earth/src/services/accountLifecycleService.ts
-!explorers-earth/src/services/aiGuideService.ts
 !explorers-earth/src/services/analyticsService.ts
 !explorers-earth/src/services/explorersAnalyticsClient.ts
-!explorers-earth/src/services/geminiService.ts
 !explorers-earth/src/services/googleBooksService.ts
 !explorers-earth/src/services/igdbService.ts
 !explorers-earth/src/services/instagramService.ts
 !explorers-earth/src/services/lazyAccountLifecycleService.ts
 !explorers-earth/src/services/paymentService.ts
-!explorers-earth/src/services/requestTrackingService.ts
 !explorers-earth/src/services/subscriptionService.ts
 !explorers-earth/src/services/tmdbService.ts
 !explorers-earth/src/services/useAccountLifecycleIdentity.ts

@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0050_explorers_guide_sections"
+readonly production_current_marker="0051_explorers_launch_controls"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -68,6 +68,7 @@ readonly -a known_markers=(
   "0047_explorers_place_photo_media"
   "0048_explorers_place_location_aggregate"
   "0049_explorers_collection_location_links"
+  "0050_explorers_guide_sections"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"

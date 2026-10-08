@@ -31,6 +31,21 @@ export const catalogKindSchema = z.enum(['place','movie','book','game','app','pr
 const contentRevision = z.number().int().positive().safe();
 const contentTitle = z.string().trim().min(1).max(200);
 const contentSlug = z.string().max(200).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+// Decision D7, 2026-10-08. This was z.enum(["en","hi"]) while the frontend ships 47 i18n
+// locale bundles, so 45 of the languages a creator can pick in the UI could never be stored
+// as their preference. Latent rather than live - no frontend write sends `locale` yet - but
+// it would have failed the moment one did.
+//
+// The shape is migration 0037's, which already validates `taxonomy_term_translations.locale`
+// as `^[a-z]{2}(-[A-Z]{2})?$`, so locale validation is one rule in this codebase rather than
+// two. `creator_accounts.locale` is plain `text NOT NULL DEFAULT 'en'` (0022:72) with no
+// CHECK, so no migration is needed to widen it.
+//
+// Deliberately a pattern and not a closed list of the ten locales that carry reference
+// content: storing a preference the content layer then falls back from is strictly better
+// than refusing the write. That is already the resolution rule ticket 7.2 chose, where a
+// locale without a Privacy policy gets the English one per section rather than a blank page.
+const accountLocale = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/);
 const publicationState = z.enum(['draft','published']);
 const contentVisibility = z.enum(['private','public']);
 const userRating = z.number().int().min(1).max(10).nullable();
@@ -211,7 +226,7 @@ export const updateAccountInputSchema = z.object({
   onboardingStatus: z.enum(["complete"]).optional(),
   publicProfile: z.boolean().optional(),
   autoPinning: z.boolean().optional(),
-  locale: z.enum(["en", "hi"]).optional(),
+  locale: accountLocale.optional(),
   mobileNumber: nullableText.optional(),
   mobileNumberVisible: z.boolean().optional(),
   bioPlain: nullableText.optional(),

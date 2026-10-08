@@ -66,7 +66,6 @@ import BookListView from '../../Books/components/dashboard/BookListView';
 import MovieListView from '../../Movies/components/dashboard/MovieListView';
 import { Route, Routes } from 'react-router-dom';
 import { useCityStore } from '../../../store/useCityStore';
-vi.mock('../../../hooks/useAIGuideQuota', () => ({ useAIGuideQuota: () => ({ shouldDisableGeneration: true, disableReason: 'Test', refetch: vi.fn() }) }));
 vi.mock('../../Favorites/components/Recommendations', () => ({ default: () => null }));
 vi.mock('../../Settings/components/ProfileAccountSettings', () => ({ default: () => null }));
 vi.mock('../../Settings/components/BillingTab', () => ({ default: () => null }));

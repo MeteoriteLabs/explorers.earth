@@ -58,6 +58,18 @@ export interface PublicMusicResource {
   playlists: { items: PublicMusicPlaylist[]; total: number; truncated: boolean };
 }
 
+/**
+ * The monthly guest song request ceiling, per Music owner. Decision D1, 2026-10-08: TK set
+ * it at 100 per calendar month with the surface labelled beta.
+ *
+ * This is an abuse and cost control, not a billing surface. Every accepted request is a
+ * YouTube Data API call, so without a durable ceiling the launch has no bound on
+ * third-party spend. It is deliberately separate from the two limits beside it: the
+ * per-minute `recentForSource` check stops one client flooding, and the 500-row active
+ * queue check bounds how long a queue can get. Neither bounds a month's total.
+ */
+export const MONTHLY_GUEST_REQUEST_CAP = 100;
+
 export class MusicDomainRepository {
   private readonly publicIdHmacKey?: Buffer;
 
@@ -1018,6 +1030,7 @@ export class MusicDomainRepository {
   ): Promise<
     | { status: "completed"; replayed: boolean; response: { accepted: true } }
     | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+    | { status: "quota_exceeded"; cap: number; retryAfterSeconds: number }
   > {
     assertCanonicalYouTubeVideoId(input.youtubeId);
     const operationFamily = "guest.song.request:";
@@ -1083,6 +1096,37 @@ export class MusicDomainRepository {
         "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [musicUserId],
       )).rows[0]?.count ?? 0);
       if (activeCount >= 500) { await client.query("ROLLBACK"); return { status: "limit" }; }
+      /*
+       * The monthly cap. Decision D1.
+       *
+       * Counted by upsert-and-read rather than check-then-increment, so the count and the
+       * queue insert commit together or not at all. The ROLLBACK below therefore undoes the
+       * increment too: a refused request does not consume quota, which it would under a
+       * read followed by a separate write.
+       *
+       * Neither of the two tables that look like they already count this can. Rows in
+       * `music_owner_operations` expire after 24 hours and are swept by this very function,
+       * and `songs` churns as the queue plays, so one gives a daily figure and the other
+       * gives a queue length.
+       */
+      const monthlyCount = Number((await client.query(
+        `INSERT INTO music_request_quota(music_user_id,period_start,accepted_count)
+         VALUES ($1,date_trunc('month',transaction_timestamp())::date,1)
+         ON CONFLICT (music_user_id,period_start)
+         DO UPDATE SET accepted_count=music_request_quota.accepted_count+1,updated_at=now()
+         RETURNING accepted_count`,
+        [musicUserId],
+      )).rows[0]?.accepted_count ?? 0);
+      if (monthlyCount > MONTHLY_GUEST_REQUEST_CAP) {
+        // Seconds until the next calendar month, from the database clock rather than the
+        // node process, because the period boundary above is the database's.
+        const retryAfterSeconds = Math.max(1, Math.ceil(Number((await client.query(
+          `SELECT EXTRACT(EPOCH FROM (date_trunc('month',transaction_timestamp())
+             + interval '1 month' - transaction_timestamp())) AS seconds`,
+        )).rows[0]?.seconds ?? 3600)));
+        await client.query("ROLLBACK");
+        return { status: "quota_exceeded", cap: MONTHLY_GUEST_REQUEST_CAP, retryAfterSeconds };
+      }
       await client.query(
         `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
          VALUES ($1,$2,$3,$4,$5,$6,'queued')`,
