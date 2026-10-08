@@ -189,11 +189,69 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
    travel in the payload. The UI contract is the `review` state in `ReactivateConfirm.tsx`,
    which shows the reference and deliberately offers **no action**, since re-entering a
    stuck flow is how one stuck account becomes a loop.
-3. **The real Google callback acceptance — OPEN and not satisfiable by a fixture.** The
-   provider-adapter boundary is well covered
+3. **The real Google callback acceptance — DISCHARGED 2026-10-09, executed and observed.**
+   The provider-adapter boundary was already well covered
    (`server/test/explorers-recovery-callback.integration.test.ts`, 8 cases), but every one
-   of those drives a simulated callback. 2.4's grooming focus states a fixture cannot stand
-   in for the live callback, and C6 keeps it mandatory.
+   of those drives a *simulated* callback. 2.4's grooming focus states a fixture cannot
+   stand in for the live callback, and C6 kept it mandatory. So it was run for real.
+
+   **Run.** `tunes/scripts/live-google-local.ts --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15`
+   at commit `f16b6202` on a clean tree, 2026-10-08T21:30Z. The harness starts a disposable
+   PostgreSQL 15, migrates it, composes `createCanonicalApp` with a freshly generated
+   `EXPLORERS_AUTH_SECRET` and the Google client from `tunes/.env.oauth.local`, and serves
+   the real Vite app at `http://localhost:5175`. Configured callback:
+   `http://localhost:5175/api/auth/callback/google`. Database
+   `music_uat_fa41c9b9aed1194cff0e2e1c69711226`, at floor
+   **`0051_explorers_launch_controls`** — so this also exercised the new schema floor.
+
+   **This is the canonical Better Auth callback, not the legacy one.** Worth stating because
+   the live product's Google flow goes to `https://api.localqr.earth/api/connect/google`
+   (Strapi), and a receipt against that would attest to the wrong thing. The harness passes
+   only `EXPLORERS_PUBLIC_ORIGIN`, `EXPLORERS_AUTH_SECRET` and the Google client into
+   `createCanonicalApp`; no `STRAPI_*` variable reaches it, and the run log contains no
+   Strapi contact.
+
+   **Who did what.** TK completed Google consent in a browser with their own account. The
+   before and after state was read directly out of the disposable database. No credential
+   was handled by the writer of this receipt.
+
+   **Before — captured empty, which is what makes the after evidence:**
+
+       auth_user=0  auth_account=0  auth_session=0  creator_accounts=0
+
+   **After:**
+
+   | Observation | Value |
+   |---|---|
+   | `auth_user` | 1 |
+   | `auth_account` | 1, `provider_id='google'`, provider subject 21 chars, access and id tokens both present |
+   | `auth_session` | 1, expires in 168h, `ip_address` present, token 32 chars |
+   | `creator_accounts` | 1, `handle` **NULL**, `onboarding_status='incomplete'`, `status='active'`, `locale='en'`, `public_profile=true`, `revision=1` |
+   | `initial_account_bindings` | one row binding user `uQ3Ak2…` to account `75341800-ddb1-4b4a-bfff-d9129bc98b49` |
+   | `account_music_identity` | **0** |
+
+   **What that demonstrates.** An inactive-to-active first login through the real provider
+   completes; a normal session is issued with the ordinary 7-day lifetime; exactly one
+   canonical account is provisioned, keyed by a **UUID** rather than a Strapi document id;
+   the account-to-identity binding is recorded once; and the owner is routed to onboarding
+   because `onboarding_status` is `incomplete` with no handle yet — which is the lifecycle
+   screen 2.4's line 48 asks to see working, and is what TK observed in the browser.
+
+   `account_music_identity` staying at 0 is correct, not a gap: `AuthSyncManager` provisions
+   the Music identity only after verified authentication **and completed onboarding**, so a
+   first login that stops at onboarding must not create one.
+
+   **What this receipt does NOT cover**, so it is not read wider than it is:
+
+   - Completing onboarding, and the transition to `onboarding_status='complete'`.
+   - "A deleted account must not be automatically recreated with the old content merely by
+     repeating Google login" (2.4's lifecycle boundary). That needs a prior deletion in the
+     same database and a second consent; it is covered by simulation in
+     `explorers-recovery-callback.integration.test.ts` and not by this run.
+   - Cancelled consent, wrong identity, ambiguous binding and issuance failure. All eight
+     of those remain covered by the simulated suite, which 2.4 treats as separate evidence —
+     this receipt does not replace it.
+   - Hosted execution. This ran on a developer machine; obligation 5 is still open.
 4. **Music socket revocation — OPEN, owned by 6.1, not by this map.** The review-focus item
    "a logged-out or suspended owner must lose socket authority as well as HTTP access" has
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
@@ -223,10 +281,13 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
 ## What this map does not license
 
 - It does not retire any existing coverage. 2.4 is explicit that old workflow coverage must
-  not be retired against a partial map, and this map is partial — three open obligations remain.
+  not be retired against a partial map, and this map is partial — two open obligations remain
+  (4 and 5); obligation 3 was discharged on 2026-10-09 by an executed run.
 - It does not give a percentage. All 22 behaviour rows now have receipts, but reporting
-  "22/22" would be misleading while obligations 3, 4 and 5 are open:
-  those are contract and attestation gaps that no behaviour row can discharge, and one of
-  them — the real Google callback — is a prerequisite 2.4 says a fixture cannot satisfy.
+  "22/22" would be misleading while obligations 4 and 5 are open: those are an ownership
+  boundary (Music socket revocation, 6.1) and an attestation gap (hosted execution) that no
+  behaviour row can discharge. The third — the real Google callback, which 2.4 says a
+  fixture cannot satisfy — is now discharged by an executed, observed run rather than by
+  simulation.
 - It does not substitute for the original enumeration, which remains lost. See the first
   section.
