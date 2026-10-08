@@ -358,10 +358,20 @@ phase. The useful messages exist and are thrown - `replatform-route-parity.ts:11
 produces `canonical route absent: <path> expected <n> got <m>` - and they contain only paths
 and status codes, no authority material. They are discarded anyway.
 
-So the next step is not a fix to the fixture: it is to give ingress verification its own
-phase and let its path/status message through, then re-read a failing run. Not done here
-because it edits the redaction path in authority-sensitive code, which wants the owner's
-eyes rather than being folded into an unrelated commit.
+**Half of that is now done (`44b00775`).** Ingress reports `phase=ingress-check` with a
+closed cause set - `canonical-route-absent`, `canonical-handler-mismatch`,
+`fixture-route-mismatch`, `fixture-handler-mismatch`, `fixture-identity-boundary`,
+`ingress-unreachable`, `unclassified` - modelled on `classifyPlatformBuildFailure` and
+tested the same way, with a synthetic secret in each input asserted absent from the output.
+Redaction is unchanged: only fixed enum values are ever printed.
+
+**So read the phase on the next failing run before doing anything else.** If it says
+`ingress-check`, the cause names which probe class failed. If it still says
+`receipt-check`, the authority receipt is the problem and ingress was never reached.
+
+What is still not done, and is the part that wants the owner: letting any probe *detail*
+through - the path, the expected and received status. That is a redaction change in
+authority-sensitive code.
 
 ## `platform-fixture` ALSO flaps on an external registry rate limit — do not chase that one
 
