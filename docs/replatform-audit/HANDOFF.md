@@ -131,6 +131,31 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   owned with 1.3, and the one-to-one retirement map is still unwritten.
 - Steps 10–13 (Phase C) have not started.
 
+## Three things that need your acknowledgement, not engineering
+
+Each of these looked like unfinished work and is not. They are recorded so nobody spends a
+session rediscovering it.
+
+1. **Ticket 3.4, analytics attestation.** The lane exists, is contained, and is already in the
+   nightly workflow; `suite-manifest.json` records \"Analytics acceptance\" as pending by
+   design, and `scripts/replatform-e2e.mjs` *runs and receipts* every listed lane on each
+   invocation. Promoting it means producing that receipt, which needs the explicit
+   `TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement: `cd tunes && npx tsx
+   scripts/analytics-browser-fixture.ts`. Hand-adding the lane would falsify an attestation.
+2. **Ticket 2.4, the real Google callback.** Needs live provider credentials. The ticket is
+   explicit that a fixture cannot substitute.
+3. **Ticket 7.2, where the legal copy lives.** The FAQ and the Terms/Privacy/Cookie body text
+   exist **only inside Strapi**. A repo-wide search returns SEO keywords and UI labels; the
+   three pages are 68-80 line shells that already handle loading and error visibly. There is
+   no assumption that produces the text, and those pages **work today** - pointing them at an
+   empty canonical store would blank them now, before retirement.
+
+   My recommendation, since a survey is less useful than a view: **put the copy in the repo**,
+   locale-keyed beside the i18n bundles. Legally-required pages should not go blank because a
+   backend is down, it is the cheapest thing to migrate into a table later, and the cost -
+   editing via a deploy rather than a CMS - is small for four rarely-changed documents. The
+   plumbing is a short job once the copy is in hand.
+
 ## One security boundary change the owner may want to veto
 
 `requireRecoveryObservation` in `tunes/server/auth/accountRecovery.ts`. `requireRecoveryPrincipal`

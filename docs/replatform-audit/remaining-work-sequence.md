@@ -312,7 +312,29 @@ step 12's form cleanup rather than done here, and is recorded in the file so it 
 as live.
 
 - Remaining: `Settings`, and the ticket obligations below.
-- **3.4**: 10 analytics identities are authored and **0 attested** — add the analytics lane to the runner and the suite manifest. Its consent and privacy obligations are also open, and are not a rewiring job.
+- **3.4**: 10 analytics identities are authored and **0 attested**. **Corrected 2026-10-08: \"add
+  the lane to the runner and the suite manifest\" is the wrong remedy, and doing it by hand
+  would be falsifying an attestation record.**
+
+  The lane is not missing. `tunes/scripts/analytics-browser-fixture.ts` exists, is contained
+  and self-hosting (it sets `PLAYWRIGHT_EXTERNAL_BASE_URL` from its own origin), has its own
+  contract module, runs 5 cases over 2 projects = the 10 identities, and is **already
+  registered** at `.github/workflows/frontend-e2e-qualification.yml:126`.
+
+  What is missing is the **attestation**, and `suite-manifest.json` records that on purpose:
+  its `pending` ledger carries `{ticket: \"3.4\", obligation: \"Analytics acceptance\", status:
+  \"pending\"}`. The validator at `scripts/replatform-e2e.mjs:54-55` requires the manifest's
+  lane names to **equal** a hardcoded six, requires `pending.length >= 7` with every entry
+  still `pending`, and - the part that matters - `runLane` **executes** each listed lane and
+  validates its protected receipt on every invocation. A lane appears in `lanes` because its
+  receipt was produced, not because someone typed it in.
+
+  So promoting analytics means running the fixture to produce that receipt. That run creates
+  a disposable PostgreSQL container and is gated behind the explicit
+  `TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement, which exists so the run is a
+  deliberate act. **That acknowledgement is the owner's to give**; the engineering is done.
+
+      cd tunes && npx tsx scripts/analytics-browser-fixture.ts Its consent and privacy obligations are also open, and are not a rewiring job.
 - **3.2**: the mandated upload-hook changes were never made.
 - **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally
   dead; plus the reference-content module and the canonical email suppression table.
