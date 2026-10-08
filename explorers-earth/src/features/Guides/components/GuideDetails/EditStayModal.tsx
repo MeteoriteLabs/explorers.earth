@@ -18,9 +18,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useApolloClient } from "@apollo/client";
-import { UPDATE_GUIDE_SECTION_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { toast } from "sonner";
 import AddressInput from "../../../Profile/components/AddressInput";
 import Button from "../../../../components/ui/Button";
@@ -34,7 +32,6 @@ interface EditStayModalProps {
   stay: DayPlace;
   sectionId: string;
   sectionTitle: string;
-  guideId: string;
   onSuccess?: () => void;
 }
 
@@ -44,15 +41,13 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
   stay,
   sectionId,
   sectionTitle,
-  guideId,
   onSuccess,
 }) => {
   const [stayPlace, setStayPlace] = useState<google.maps.places.PlaceResult | null>(null);
   const [stayDisplay, setStayDisplay] = useState("");
   const [loading, setLoading] = useState(false);
-  const apolloClient = useApolloClient();
+  const {getSection, saveSection} = useGuideEditing();
 
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
 
   // Initialize form with current stay data
   useEffect(() => {
@@ -116,17 +111,9 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
     setLoading(true);
 
     try {
-      // Fetch current section data to preserve other fields
-      const { data: guideData } = await apolloClient.query({
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guideId },
-        fetchPolicy: "network-only",
-      });
-
-      const section = guideData?.guide?.guide_sections?.find(
-        (s: any) => s.documentId === sectionId
-      );
-
+      // No re-fetch: the page holds every section at one revision, and the blocks arrive
+      // parsed rather than as JSON strings.
+      const section = getSection(sectionId);
       if (!section) {
         throw new Error("Section not found");
       }
@@ -180,7 +167,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         accommodations,
       };
 
-      const stayString = JSON.stringify(updatedStayData);
+
 
       // ============================================
       // UPDATE TIMELINE FIELD (Sync with Timeline arrays)
@@ -206,7 +193,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         evening: updateStayInArray(currentTimelineData.evening || []),
       };
 
-      const timelineString = JSON.stringify(updatedTimeline);
+
 
       // ============================================
       // UPDATE BUDGET FIELD (Sync budget entries)
@@ -267,30 +254,18 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         evening: updateBudgetInPeriod(currentBudgetData.evening || [], stayInEvening),
       };
 
-      const budgetString = JSON.stringify(updatedBudget);
 
-      // Update the section - preserve all other fields
-      // Stay, Timeline, and Budget fields are all updated to maintain perfect sync
-      await updateSection({
-        variables: {
-          documentId: sectionId,
-          data: {
-            Title: section.Title,
-            Description: section.Description,
-            Sequence: section.Sequence,
-            Timeline: timelineString, // Updated Timeline field (synced with Stay)
-            Transport: section.Transport,
-            Stay: stayString, // Updated Stay field
-            Recommendation_Activity: section.Recommendation_Activity,
-            Map_Details: section.Map_Details,
-            Budget: budgetString, // Updated Budget field (synced with Stay and Timeline)
-          },
-        },
-      });
 
-      // Refetch guide data to update UI
-      await apolloClient.refetchQueries({
-        include: [GET_GUIDE_BY_ID_QUERY],
+      // Stay, Timeline and Budget all move together: a stay shown in the timeline and
+      // priced in the budget is one fact in three places, and updating one of them alone
+      // is what makes a guide disagree with itself. Blocks not named here keep their
+      // current value, so nothing else is touched.
+      await saveSection(sectionId, {
+        title: section.Title,
+        description: section.Description ?? null,
+        Timeline: updatedTimeline,
+        Stay: updatedStayData,
+        Budget: updatedBudget,
       });
 
       toast.success("Stay updated successfully!");
