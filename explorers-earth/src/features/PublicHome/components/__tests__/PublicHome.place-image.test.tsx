@@ -197,4 +197,66 @@ describe("public Place saved-media resolution", () => {
       saved(MEDIA_IDS.itemMedia),
     );
   });
+
+  /*
+   * The same canonical media route, on the other eight shelves.
+   *
+   * Places resolve their image through `publicPlaceMedia.ts`, which was hardened to admit
+   * only this route. Every other category on this tab goes through the component's own
+   * `resolveCoverUrl`, which was still Strapi-era: it prefixed any path starting with "/"
+   * with the Strapi origin, and for a movie shelf prepended TMDB's host instead.
+   *
+   * Every canonical projection emits exactly this shape for a cover -
+   * `publicBooksProjection.ts:62`, `publicMoviesProjection.ts:89`,
+   * `publicAppsProjection.ts:81`, `publicProductsProjection.ts:95,119`,
+   * `publicPeopleProjection.ts:97,121`, `publicGuidesProjection.ts:94` - so on the
+   * canonical runtime this was every cover image on a public profile, pointed at the wrong
+   * host.
+   */
+  it.each([
+    ["books", "bookLists", "public_books", "List_Name"],
+    ["movies", "movieLists", "public_movie", "List_Name"],
+  ] as const)(
+    "leaves a canonical %s cover on this origin instead of the Strapi or provider host",
+    (category, listKey, visibilityFlag, titleKey) => {
+      categoryResults.set(category, {
+        data: {
+          [listKey]: [{
+            documentId: `${category}-1`,
+            [titleKey]: "Shelf",
+            slug: "shelf",
+            visibility: true,
+            Visibility: true,
+            cover_image: { url: saved(MEDIA_IDS.itemMedia) },
+          }],
+        },
+        loading: false,
+        error: null,
+        refetch: vi.fn().mockResolvedValue(undefined),
+      });
+
+      render(
+        <MemoryRouter>
+          <ProfileRecommendationsTab
+            username="alice"
+            accountData={{
+              public_recommendations: "No",
+              public_music: "No",
+              public_movie: "No",
+              public_books: "No",
+              public_guides: "No",
+              public_games: "No",
+              public_apps: "No",
+              public_products: "No",
+              public_people: "No",
+              [visibilityFlag]: "Yes",
+            }}
+          />
+        </MemoryRouter>,
+      );
+
+      const card = screen.getByRole("link", { name: "Shelf" });
+      expect(card.querySelector("img")).toHaveAttribute("src", saved(MEDIA_IDS.itemMedia));
+    },
+  );
 });

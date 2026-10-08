@@ -1,4 +1,7 @@
 import { IMAGE_CONFIG } from "../../../config";
+// One definition of the canonical media route, shared with the owner dashboard and the
+// public profile tab. This file had the only correct copy; the other two had drifted.
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 
 export interface PublicPlaceImageSources {
   itemMedia?: unknown;
@@ -25,8 +28,7 @@ const resolveSavedMediaUrl = (candidate: unknown): string | undefined => {
   const value = readCandidateUrl(candidate);
   if (!value) return undefined;
 
-  const canonicalMediaPath = /^\/api\/explorers\/v1\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/content$/i;
-  if (canonicalMediaPath.test(value)) return value;
+  if (isCanonicalMediaPath(value)) return value;
 
   try {
     const parsed = new URL(value);
@@ -46,7 +48,7 @@ const resolveSavedMediaUrl = (candidate: unknown): string | undefined => {
     // function by those shapes: publicPlacesProjection emits `mediaUrl(id)` and nothing
     // else for all four inputs read here, and says so at its own :61 and :21-24.
     if (typeof window !== "undefined" && parsed.origin === window.location.origin
-      && canonicalMediaPath.test(parsed.pathname) && !parsed.search && !parsed.hash) return parsed.toString();
+      && isCanonicalMediaPath(parsed.pathname) && !parsed.search && !parsed.hash) return parsed.toString();
   } catch {
     return undefined;
   }

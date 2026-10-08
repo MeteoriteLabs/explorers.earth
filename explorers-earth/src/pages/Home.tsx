@@ -63,6 +63,7 @@ import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
+import { isCanonicalMediaPath } from "../lib/canonicalMedia";
 
 type HomeAnalyticsState = "loading" | "ready" | "unavailable";
 
@@ -113,8 +114,14 @@ const resolveCoverUrl = (
 
   // If it's already a full URL, return it
   if (path.startsWith("http")) return path;
-  if (type === 'movie' && path.startsWith('/api/')) return path;
-  if (type === 'game' && path.startsWith('/api/explorers/v1/media/')) return path;
+  /*
+   * Canonical owned media, for every type rather than two of them. These two lines were
+   * `type === 'movie' && path.startsWith('/api/')` and
+   * `type === 'game' && path.startsWith('/api/explorers/v1/media/')`, so the book, guide
+   * and place shelves on this page fell through to the Strapi-origin branch below and
+   * requested canonical covers from the wrong host.
+   */
+  if (isCanonicalMediaPath(path)) return path;
 
   // If it starts with /uploads/ (local Strapi upload), prepend backend URL
   if (path.startsWith("/uploads/")) {
