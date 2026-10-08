@@ -264,6 +264,24 @@ already re-observe through `/recovery/status`: it returned 403.
   It will show up in `git status` as a change you did not make; drop it rather than committing
   it.
 
+## `platform-fixture` flaps on an external registry rate limit — do not chase it
+
+`platform-fixture` (and `music-required`, the aggregate gating on it) failed three times on
+2026-10-08 with:
+
+    Replatform local command refused or failed; phase=service-build; cause=registry-rate-limit
+
+That is not a code defect and there is nothing to commit for it. Evidence rather than
+inference: the same job **passed** on `5253fcb2` at 12:38 and failed on `c23614db` at 12:53,
+and `c23614db` is documentation plus one standalone check script - nothing that pulls an
+image. `scripts/replatform-local.ts:246` classifies the cause from
+`toomanyrequests|rate.limit|429`, and the script reports and refuses by design rather than
+retrying, which is why there is no retry to add.
+
+Remedies, both the owner's: re-run the job once the limit resets, or authenticate the build
+to the registry so pulls are not anonymous. If it becomes persistent rather than
+intermittent, registry auth is the real fix and needs a secret.
+
 ## Verification commands
 
 ```bash
