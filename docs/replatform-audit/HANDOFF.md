@@ -269,6 +269,23 @@ The rationale lives in the classification doc's section D and in the entry above
 share one index and one working tree, so `git add -A` in either one commits whatever the other
 is holding, under the wrong message.
 
+## A gate that pins CI's shape is not itself gated
+
+`server/test/deployment/` is in **no** gated selector, so nothing in CI runs it.
+`music-image-ci-tests.test.ts` lives there and pins the exact list of integration files
+`.github/workflows/test.yml` runs. On 2026-10-08 that list grew from nine to fourteen
+(`111466e6`, `4c86ab6b`) and the assertion was not updated; CI stayed green through both
+commits and a full local 169-file unit run is what caught it (fixed in `6c6b5634`).
+
+Two consequences worth keeping in mind:
+
+- **Changing `.github/workflows/test.yml`'s selector list means updating that assertion in
+  the same commit.** Nothing will remind you.
+- Adding a gated selector for `server/test/deployment/` is the real fix. It is a CI-surface
+  change of its own and is not done - and note it would newly gate 46 release-authority
+  cases, some of which read the git index and would need checking against a CI checkout
+  before being made required.
+
 ## Lessons that will cost you time if you skip them
 
 - **`tsc -p tsconfig.json` in explorers-earth checks nothing** and always reports 0 errors
@@ -315,7 +332,38 @@ is holding, under the wrong message.
   It will show up in `git status` as a change you did not make; drop it rather than committing
   it.
 
-## `platform-fixture` flaps on an external registry rate limit — do not chase it
+## `platform-fixture` has a SECOND failure mode — check the phase before dismissing it
+
+**Read this before the registry-rate-limit section below, because that section says "do not
+chase it" and this one is a different failure.**
+
+Observed 2026-10-08/09 on `claude/wave3-auth-lifecycle` and on the base branch:
+
+    Replatform local command refused or failed; phase=receipt-check; authority details redacted.
+
+`phase=receipt-check`, and **no `cause=`** — not `phase=service-build;
+cause=registry-rate-limit`. Nothing is being pulled, so the rate-limit explanation does not
+apply and re-running on a reset limit is not the remedy.
+
+It is not caused by any branch. Evidence: the job **passed** on `69e0d47f` (the PR #120
+merge) and failed on `46274e06` immediately after, and `46274e06` changes
+`docs/replatform-audit/HANDOFF.md` and nothing else. A single-markdown-file commit cannot
+break a Docker ingress fixture, so this is flaky on `codex/unified-replatform` itself.
+
+**What makes it hard to diagnose is a real observability defect, not the flake.**
+`scripts/replatform-local.ts` sets `failurePhase = "receipt-check"` before `check()` and
+never updates it before `verifyPlatformIngress`, so the label cannot distinguish a bad
+authority receipt from an ingress probe mismatch. The top-level handler then prints only the
+phase. The useful messages exist and are thrown - `replatform-route-parity.ts:119-128`
+produces `canonical route absent: <path> expected <n> got <m>` - and they contain only paths
+and status codes, no authority material. They are discarded anyway.
+
+So the next step is not a fix to the fixture: it is to give ingress verification its own
+phase and let its path/status message through, then re-read a failing run. Not done here
+because it edits the redaction path in authority-sensitive code, which wants the owner's
+eyes rather than being folded into an unrelated commit.
+
+## `platform-fixture` ALSO flaps on an external registry rate limit — do not chase that one
 
 `platform-fixture` (and `music-required`, the aggregate gating on it) failed three times on
 2026-10-08 with:
