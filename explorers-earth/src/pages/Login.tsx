@@ -43,7 +43,6 @@ export default function Login() {
       switchCta="Recover with Google"
       switchTo="/reactivate"
       secureLabel={t("auth.secureSignIn", "Secure sign-in")}
-      helpers={[{ label: t("auth.claimAccount"), to: "/claimaccount" }]}
     />
   </>;
 }

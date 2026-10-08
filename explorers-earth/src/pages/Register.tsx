@@ -168,9 +168,6 @@ const Auth = () => {
                       {t("auth.login")}
                     </a>
                   </div>
-                  <a href="/claimaccount" className="text-dashboard-accent underline text-xs">
-                    Claim Existing Account?
-                  </a>
                 </div>
               }
             />
@@ -192,7 +189,6 @@ const Auth = () => {
           switchCta={t("auth.login")}
           switchTo="/login"
           secureLabel={t("auth.secureSignIn", "Secure sign-in")}
-          helpers={[{ label: t("auth.claimAccount", "Claim account"), to: "/claimaccount" }]}
         />
       )}
     </>
