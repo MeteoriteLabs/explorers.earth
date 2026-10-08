@@ -21,7 +21,7 @@ completeness: ticket 7.2 (legal copy into the repo), `requireRecoveryObservation
 | **D8** | Two of three residual fields resolved. The third is **still open**. | partial | See §D8 below. |
 | **D10** | **Google only.** Meta/Instagram later. No email+password. The four password routes stay as redirects for one release, then get deleted. | Google-only | Already shipped; deletion scheduled for Wave 7. |
 | **1.2** | Accept the red `platform:test:routes` until the cleanup step reaches the fixture. | accept red | Recorded. Do not "fix" by reverting the invariant. |
-| **7.1** | Migrate the media first, **then** close the public-media boundary. | media first | Wave 4. |
+| **7.1** | Migrate the media first, **then** close the public-media boundary. | media first | **Done 2026-10-09** — and the migration proved unnecessary: the branches were already unreachable, so the close cost nothing. See the 7.1 state doc §4. |
 
 ## D1 — no AI, and the measurement changed the job
 

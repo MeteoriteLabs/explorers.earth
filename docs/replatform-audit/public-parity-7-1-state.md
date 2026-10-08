@@ -13,7 +13,7 @@ category producer plus Music, and 6.3 has not landed.
 | The overlay converts a shared fixture out from under two unmigrated importers | **Resolved** |
 | P0 seam: a canonical account UUID passed as a legacy Strapi *user* subject | **Resolved** |
 | The public gateway covers 3 of 9 categories and returns empty success for the rest | **Moved, then closed and locked** |
-| The media boundary still admits arbitrary Strapi and S3 hosts | **Live. Needs an owner decision** |
+| The media boundary still admits arbitrary Strapi and S3 hosts | **Closed 2026-10-09.** Option 1, at no product cost — see §4 |
 
 ## 1. The uncommitted overlay — resolved
 
@@ -91,7 +91,50 @@ finds nothing, and against an empty stub database every category legitimately fi
 so the return value cannot distinguish a dispatched projection from the fall-through. The
 statement record can, and that is what the case asserts now.
 
-## 4. The media boundary — live, and not mine to close
+## 4. The media boundary — CLOSED 2026-10-09
+
+**Resolved as option 1, and the cost the three options were weighing turned out not to
+exist.** TK chose "migrate the media, then close". Measuring what had to be migrated showed
+there was nothing: the two legacy branches were already unreachable, so the close is
+behaviour-preserving and the migration was unnecessary.
+
+What was measured, before changing anything:
+
+- `publicPlacesProjection` emits `mediaUrl(id)` — `/api/explorers/v1/media/{id}/content` —
+  and nothing else for **all four** inputs `resolvePublicPlaceImage` reads: `Photos` (:62),
+  `media_details.imageDetails` (:67), `Media` (:68) and `List_Name_Details.thumbnailUrl`
+  (:132). Its own comment at :61 states "Owned media, never a provider URL", and :21-24
+  record the 2026-10-07 owner decision that media is stored in S3 but served through the
+  media route.
+- The one `external_url` on the public path, `postgresPublicProfileGateway:51`, is inside
+  `Feed_Data`, which never reaches this function.
+- The public-profile routes are mounted in **both** runtimes, so this is not a
+  canonical-only argument.
+- And `remaining-work-sequence.md:708` records TK's 2026-10-05 confirmation that the legacy
+  Strapi instance holds nothing worth carrying over — so there is no legacy media to move.
+
+So "tightening blanks images that work today" was false: nothing renders by those shapes.
+The allowance was a bypass with no beneficiary.
+
+`publicStrapiOrigin` went with it, which also clears one of the eleven display-time
+`VITE_REST_API_URL` legacy-media reads step 12 has to remove (19 non-test lines, was 20).
+
+**The assertions were translated, not deleted**, per this ticket's own rule. Source
+precedence, the fallback chain, the default image and the rejection of untrusted
+third-party hosts are all still asserted — with the canonical media route standing in for
+"saved media" where an S3 URL used to. Three new negatives cover what is now refused: the
+S3 shapes, a bare `/uploads/...` path, a Strapi-origin upload URL, a bypass in *every*
+source slot rather than only the first, and that a refused source still falls through to a
+canonical one later in the chain rather than abandoning it.
+
+`PlaceOverview.public-theme.test.tsx` needed the same translation for two cases — the hero
+fallback to `Place_Details.Photos`, and skipping an untrusted `imageDetails` entry for SEO.
+
+Verified: frontend 321 files / 4506 tests passing, against a 4503 baseline — the delta is
+exactly the three new negatives. Mutation-checked: restoring the S3 host allowance fails
+precisely those three.
+
+## 4a. The original three options, for the record
 
 `explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts` still resolves a saved
 media URL by admitting, beyond the canonical same-origin media route:
