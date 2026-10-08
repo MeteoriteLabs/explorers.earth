@@ -24,6 +24,8 @@ explorers-earth/src/assets/*
 explorers-earth/src/components/*
 !explorers-earth/src/config/
 explorers-earth/src/config/*
+!explorers-earth/src/content/
+explorers-earth/src/content/*
 !explorers-earth/src/contexts/
 explorers-earth/src/contexts/*
 !explorers-earth/src/features/
@@ -58,6 +60,8 @@ explorers-earth/src/components/EarthLoader/*
 explorers-earth/src/components/onboarding/*
 !explorers-earth/src/components/ui/
 explorers-earth/src/components/ui/*
+!explorers-earth/src/content/reference/
+explorers-earth/src/content/reference/*
 !explorers-earth/src/features/Analytics/
 explorers-earth/src/features/Analytics/*
 !explorers-earth/src/features/AppsAndTools/
@@ -160,8 +164,6 @@ explorers-earth/src/features/Guides/services/*
 explorers-earth/src/features/Guides/types/*
 !explorers-earth/src/features/Guides/utils/
 explorers-earth/src/features/Guides/utils/*
-!explorers-earth/src/features/LandingPage/api/
-explorers-earth/src/features/LandingPage/api/*
 !explorers-earth/src/features/LandingPage/components/
 explorers-earth/src/features/LandingPage/components/*
 !explorers-earth/src/features/LandingPage/hooks/
@@ -503,6 +505,17 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/config/featureFlags.ts
 !explorers-earth/src/config/locationValidationConfig.ts
 !explorers-earth/src/config/qrConfig.ts
+!explorers-earth/src/content/reference/ar.json
+!explorers-earth/src/content/reference/bn.json
+!explorers-earth/src/content/reference/de.json
+!explorers-earth/src/content/reference/en.json
+!explorers-earth/src/content/reference/es.json
+!explorers-earth/src/content/reference/fr.json
+!explorers-earth/src/content/reference/hi.json
+!explorers-earth/src/content/reference/id.json
+!explorers-earth/src/content/reference/index.ts
+!explorers-earth/src/content/reference/pt.json
+!explorers-earth/src/content/reference/ru.json
 !explorers-earth/src/contexts/DashboardThemeContext.tsx
 !explorers-earth/src/features/Analytics/api/queries.ts
 !explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx
@@ -693,7 +706,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/utils/placeIconMapper.tsx
 !explorers-earth/src/features/Guides/utils/priceLevelUtils.ts
 !explorers-earth/src/features/Guides/utils/travelModeConfig.tsx
-!explorers-earth/src/features/LandingPage/api/queries.ts
 !explorers-earth/src/features/LandingPage/components/Analytics.tsx
 !explorers-earth/src/features/LandingPage/components/BackgroundPatterns.tsx
 !explorers-earth/src/features/LandingPage/components/BentoGrid/BentoCard.tsx
@@ -736,6 +748,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/LandingPage/hooks/useFaqs.ts
 !explorers-earth/src/features/LandingPage/hooks/useMarketingHashNavigation.ts
 !explorers-earth/src/features/LandingPage/hooks/usePlatformTerms.ts
+!explorers-earth/src/features/LandingPage/hooks/useReferenceContent.ts
 !explorers-earth/src/features/LandingPage/hooks/useScrollAnimation.tsx
 !explorers-earth/src/features/LandingPage/types/index.ts
 !explorers-earth/src/features/LandingPage/utils/utils.ts
