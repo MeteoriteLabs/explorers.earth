@@ -238,12 +238,22 @@ describePg("owner write path for typed categories", () => {
   it("pins a list and moves it in the order, each on its own", async () => {
     // collections.pin_order has existed since the list schema and nothing wrote it, so a
     // list could be pinned in storage and never through a command.
+    //
+    // Updated for ticket 5.3: a list must be published and public before it can be
+    // pinned, so this publishes first. The point of the case is unchanged - that a command
+    // writes pin_order, that moving a list leaves its pin alone, and that unpinning is an
+    // explicit null - but a draft list can no longer be pinned at all, because a pin on
+    // something nobody can see promises a position on a public profile it never reaches.
     const accountId = await account();
     const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`}, key());
     const read = async () => (await pool.query("SELECT display_order,pin_order FROM collections WHERE id=$1", [list.id])).rows[0];
     expect(await read()).toMatchObject({pin_order: null});
 
-    await repository.updateCollection(accountId, list.id, list.revision, {pinOrder: 2}, key());
+    await expect(repository.updateCollection(accountId, list.id, list.revision, {pinOrder: 2}, key()))
+      .rejects.toMatchObject({status: 422});
+    const published = await repository.updateCollection(accountId, list.id, list.revision,
+      {visibility: "public", publicationState: "published"}, key());
+    await repository.updateCollection(accountId, list.id, published.revision, {pinOrder: 2}, key());
     expect((await read()).pin_order).toBe(2);
 
     // Moving the list leaves the pin where it was: they are separate decisions.

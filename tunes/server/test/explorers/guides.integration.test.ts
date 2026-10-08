@@ -345,6 +345,74 @@ describePg("C6 guide aggregate", () => {
     expect((await pool.query("SELECT 1 FROM entities WHERE id=$1", [entityId])).rowCount).toBe(1);
   });
 
+  // Publish before pin, and unpublishing unpins. Tickets 5.1 and 5.3. This is shared
+  // collection behaviour, so it is asserted on a guide here and the Places suites cover
+  // the same code from their side.
+  it("refuses a pin on a guide that is not published and public", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    // A freshly created list is draft and private.
+    await expect(repository.updateCollection(accountId, collection.id, collection.revision, {pinOrder: 0}, key()))
+      .rejects.toMatchObject({status: 422});
+    expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order).toBeNull();
+  });
+
+  it("allows a pin once the guide is published and public", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const published = await repository.updateCollection(accountId, collection.id, collection.revision,
+      {visibility: "public", publicationState: "published"}, key());
+    await repository.updateCollection(accountId, collection.id, published.revision, {pinOrder: 0}, key());
+    expect(Number((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order)).toBe(0);
+  });
+
+  it("unpins in the same transaction that unpublishes, so no pin outlives its visibility", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const published = await repository.updateCollection(accountId, collection.id, collection.revision,
+      {visibility: "public", publicationState: "published"}, key());
+    const pinned = await repository.updateCollection(accountId, collection.id, published.revision, {pinOrder: 0}, key());
+
+    // Unpublishing alone must clear the pin; the caller is not asked to do it in a second
+    // request that could fail on its own and leave a pin pointing at nothing.
+    await repository.updateCollection(accountId, collection.id, pinned.revision, {publicationState: "draft"}, key());
+
+    const row = (await pool.query("SELECT pin_order,publication_state FROM collections WHERE id=$1", [collection.id])).rows[0];
+    expect(row.pin_order).toBeNull();
+    expect(row.publication_state).toBe("draft");
+  });
+
+  it("unpins when the guide is made private, not only when it is unpublished", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const published = await repository.updateCollection(accountId, collection.id, collection.revision,
+      {visibility: "public", publicationState: "published"}, key());
+    const pinned = await repository.updateCollection(accountId, collection.id, published.revision, {pinOrder: 1}, key());
+
+    await repository.updateCollection(accountId, collection.id, pinned.revision, {visibility: "private"}, key());
+
+    expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order).toBeNull();
+  });
+
+  it("leaves an unpinned unpublished guide alone rather than writing a redundant null", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    // An ordinary title edit on a draft list must not be turned into a pin write.
+    const updated = await repository.updateCollection(accountId, collection.id, collection.revision, {title: "Renamed"}, key());
+    expect(updated.title).toBe("Renamed");
+    expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order).toBeNull();
+  });
+
+  it("accepts an explicit unpin on a published guide", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const published = await repository.updateCollection(accountId, collection.id, collection.revision,
+      {visibility: "public", publicationState: "published"}, key());
+    const pinned = await repository.updateCollection(accountId, collection.id, published.revision, {pinOrder: 0}, key());
+    await repository.updateCollection(accountId, collection.id, pinned.revision, {pinOrder: null}, key());
+    expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order).toBeNull();
+  });
+
   it("deletes sections, details and the photo registry when the guide itself is deleted", async () => {
     const accountId = await account();
     const collection = await guide(accountId);

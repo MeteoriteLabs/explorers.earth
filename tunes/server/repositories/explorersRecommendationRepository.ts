@@ -389,7 +389,27 @@ export class ExplorersRecommendationRepository {
       // Where the list sits, and whether it is pinned above the rest. Both are the
       // list's own and neither touches the pinned recommendations inside it.
       if(input.displayOrder!==undefined) await db.query('UPDATE collections SET display_order=$2 WHERE id=$1 AND account_id=$3',[id,input.displayOrder,accountId]);
-      if(input.pinOrder!==undefined) await db.query('UPDATE collections SET pin_order=$2 WHERE id=$1 AND account_id=$3',[id,input.pinOrder,accountId]);
+      // Publish before pin, and unpublishing unpins. Tickets 5.1 and 5.3.
+      //
+      // A pin is a promise that the list appears first on a public profile, so pinning
+      // something nobody can see is a pin that does nothing - and leaving a pin on a list
+      // that has just been unpublished is worse, because the pin outlives the visibility
+      // and the slot stays occupied by something absent.
+      //
+      // The two cases are deliberately not treated the same. Explicitly pinning an
+      // unpublished or private list is a mistake and is refused. Unpublishing a list that
+      // happens to be pinned is a legitimate action, so the pin is cleared in this same
+      // transaction rather than the caller being made to do it in a second request that
+      // could fail on its own.
+      const finalState=input.publicationState??locked.publication_state;
+      const finalVisibility=input.visibility??locked.visibility;
+      const publiclyVisible=finalState==='published'&&finalVisibility==='public';
+      const requestedPin=input.pinOrder!==undefined?input.pinOrder:(locked.pin_order===null?null:Number(locked.pin_order));
+      if(input.pinOrder!==undefined&&input.pinOrder!==null&&!publiclyVisible)
+        throw new RecommendationFailure(422,'A list must be published and public before it can be pinned');
+      const pinOrder=publiclyVisible?requestedPin:null;
+      if(input.pinOrder!==undefined||pinOrder!==requestedPin||locked.pin_order!==null&&pinOrder===null)
+        await db.query('UPDATE collections SET pin_order=$2 WHERE id=$1 AND account_id=$3',[id,pinOrder,accountId]);
       if(input.placeLocation!==undefined) await writePlaceCollectionDetails(db,id,accountId,input.placeLocation);
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
