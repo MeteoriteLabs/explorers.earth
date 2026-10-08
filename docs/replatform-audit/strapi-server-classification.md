@@ -225,7 +225,28 @@ carry a standing warning and must **not** be swept up as dead code:
 | 2 | Compose: the `${VAR:?… is required}` declarations for `STRAPI_URL`, `MUSIC_STRAPI_ALLOWED_ORIGINS`, `STRAPI_ACCESS_TOKEN`, `STRAPI_ANALYTICS_ACCESS_TOKEN`, `STRAPI_JWT_SECRET` across `docker-compose.yml`, `docker-compose.replatform.yml` and `deploy/platform.compose.yml`, plus `tunes.yml:103` | **owner.** The application does not need these; the deployment currently refuses to start without them. Loosening them changes what a half-configured production deploy does, and one of them (`STRAPI_ACCESS_TOKEN`) is what makes the deletion absence-proof fail closed |
 | 3 | `.github/workflows/music-reconcile.yml` — **disable the hourly `cron: "17 * * * *"` and record the disablement before deleting the file**, so it cannot fire against a half-retired backend during the removal window | owner (it reaches production) |
 | 4 | A runtime receipt: canonical boot with no `STRAPI_*` set and outbound Strapi denied. Source-level evidence is in section C; the ticket wants it executed | fixture/runner allocation |
-| 5 | Move `fingerprintStrapiProof` and the two body helpers out of `strapiIdentityGateway.ts` | nothing; small, do it with 8.1b |
+| 5 | ~~Move `fingerprintStrapiProof` and the two body helpers out of `strapiIdentityGateway.ts`~~ — **DONE 2026-10-09** (`550a5924`) | — |
+
+**Items 1 and 5 are discharged; 2, 3 and 4 are not engineering items.** 2 and 3 are the
+owner's (they change what a half-configured or in-flight production deploy does) and 4 needs a
+fixture/runner allocation. So 8.1a's engineering work is complete and the ticket is held open
+by ops authorisation and one executed receipt, not by code.
+
+Item 5 closed in three neutral modules — `upstreamResponseBody.ts`, `proofFingerprint.ts` and
+`resolvedIdentity.ts`. The third was not in the original item and is what actually finished it:
+after the helpers moved, two `import type` edges still reached the gateway, from
+`musicProjectionService` (via `Pick<StrapiIdentityGateway, "resolve">`) and
+`musicLifecycleService` (via a local port). Both already depended on a *shape*, so the DTO and
+a named `IdentityResolverPort` moved out and the consumers now state what they need.
+
+Those edges are erased by TypeScript, so exempting type-only imports from the scan would have
+been the cheaper route. It was rejected: a type edge is still a reason the file cannot be
+**deleted**, and deletability — not runtime reachability — is what the Strapi retirement is
+tracking. Removing the edge beat loosening the gate.
+
+The proof is the allowlist being **empty**, not the scan being green: that scan fails on a
+stale allowlist entry as well as on a new violation, so it cannot pass while an entry names a
+coupling that is gone. The closure went 121 -> 120 modules.
 
 8.1a cannot be accepted on 8.1b's evidence or vice versa, and both are required to close 8.1.
 

@@ -549,14 +549,25 @@ Not fixed here: repointing the dashboard changes what numbers a creator sees, so
 own package and acceptance. It is what makes this Strapi call *deletable* rather than merely
 unreachable.
 
-**Remaining for 8.1a, and three of the four are owner items** — the compose
+**Remaining for 8.1a is three owner items; the fourth is DONE 2026-10-09 (`550a5924`).**
+The engineering work on this step is complete — the compose, cron and boot-receipt items below
+are ops authorisation and runner allocation, not code. Original wording follows.
+
+— the compose
 `${VAR:?… is required}` declarations across all three compose files plus `tunes.yml:103`
 (the application does not need them; the *deployment* still refuses to start without them, and
 one of them is what makes the deletion absence-proof fail closed), disabling
 `music-reconcile.yml`'s hourly cron **and recording that** before the file is deleted, and an
-executed boot receipt with outbound Strapi denied. The fourth is small: move
+executed boot receipt with outbound Strapi denied. ~~The fourth is small: move
 `fingerprintStrapiProof` and the two `Response`-body helpers out of
-`services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.
+`services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.~~
+
+**The fourth was not quite that small.** Moving the three helpers left two `import type` edges
+into the gateway, so the `ResolvedStrapiIdentity` DTO and a named `IdentityResolverPort` moved
+out too; both consumers already depended on a shape rather than the class. The module allowlist
+in `scripts/check-retired-dependencies.mjs` is now **empty**, which is the proof — that scan
+fails on a stale entry as well as on a new violation. Closure: 121 -> 120 modules. Details:
+[the server classification](strapi-server-classification.md).
 
 ### 11. Parity and milestone evidence — [7.1](tickets/ticket-7-1.md), [7.3](tickets/ticket-7-3.md), [1.2](tickets/ticket-1-2.md)
 
