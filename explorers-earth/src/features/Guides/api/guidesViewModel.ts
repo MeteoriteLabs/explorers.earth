@@ -1,3 +1,4 @@
+import {GUIDE_SECTION_BLOCK_VERSION} from '../../../../../tunes/shared/explorersGuideContract';
 import type {
  GuideAggregateDto, GuideBudgetPlace, GuideDayPlace, GuideSectionBlocks, GuideSectionDto, GuideTransportSegment,
 } from '../../../../../tunes/shared/explorersGuideContract';
@@ -94,6 +95,7 @@ export function toDayPlace(place: GuideDayPlace): DayPlace {
 
 export function toBudgetPlace(place: GuideBudgetPlace): BudgetPlace {
  return {
+  localId: place.localId,
   place_id: place.placeId,
   name: place.name,
   ...(place.priceLevel === null ? {} : {priceLevel: place.priceLevel}),
@@ -116,8 +118,10 @@ export function toTransportSegment(segment: GuideTransportSegment): TransportSeg
   fromPlaceId: segment.fromLocalId,
   toPlaceId: segment.toLocalId,
   mode: segment.mode as TravelMode,
-  distanceKm: segment.distanceKm ?? 0,
-  estimatedMinutes: segment.estimatedMinutes ?? 0,
+  // Unknown stays unknown. Defaulting to 0 here is what made "distance not measured"
+  // indistinguishable from "zero kilometres".
+  distanceKm: segment.distanceKm,
+  estimatedMinutes: segment.estimatedMinutes,
  };
 }
 
@@ -216,5 +220,104 @@ export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregat
   is_pinned: pinOrder !== null,
   ...(pinOrder === null ? {} : {pin_order: pinOrder}),
   display_order: collection.displayOrder,
+ };
+}
+
+// --- the inverse ------------------------------------------------------------------------
+//
+// Feature shapes back to canonical blocks. This exists because the editors save a complete
+// section, so a field this mapping drops is a field the next save erases. The round-trip
+// test asserts canonical -> feature -> canonical is the identity, which is the only way to
+// know nothing is being quietly lost here.
+//
+// Money goes back to an exact decimal string. A number that arrived as "450.50" and leaves
+// as "450.5" is the same amount, so the round trip normalises rather than preserving the
+// trailing zero - that is a deliberate, stated loss of formatting, not of value.
+
+const money = (value: number | undefined): string | null =>
+ value === undefined || value === null || !Number.isFinite(value) ? null : value.toFixed(2);
+const text = (value: string | undefined | null): string | null =>
+ value === undefined || value === null || value === '' ? null : value;
+
+export function toCanonicalDayPlace(place: DayPlace): GuideDayPlace {
+ return {
+  localId: place.id,
+  placeId: place.place_id,
+  name: place.name,
+  formattedAddress: text(place.formatted_address),
+  // Nested on both sides. Flattening either direction renders an empty map.
+  geometry: place.geometry ? {location: {lat: place.geometry.location.lat, lng: place.geometry.location.lng}} : null,
+  types: place.types ?? [],
+  tips: text(place.tips),
+  // The url is derived from the media id on the way out, so it is dropped on the way back
+  // rather than stored - there is only ever one source of truth for where bytes live.
+  photos: (place.photos ?? []).map((photo) => ({
+   mediaId: photo.documentId,
+   fileName: text(photo.fileName),
+   width: photo.width || null,
+   height: photo.height || null,
+   aspectRatio: text(photo.aspectRatio),
+  })),
+  priceLevel: place.priceLevel ?? null,
+  priceRange: text(place.priceRange),
+  customBudget: text(place.customBudget),
+  budgetAmount: money(place.budgetAmount),
+  budgetCurrency: place.budgetAmount === undefined ? null : text(place.budgetCurrency),
+  source: place.source ?? 'manual',
+  // An AI suggestion that was never confirmed cannot claim verification, which the
+  // contract also refuses - so this keeps them consistent rather than relying on it.
+  verified: place.source === 'ai-unverified' ? false : place.isVerified ?? false,
+ };
+}
+
+export const toCanonicalBudgetPlace = (place: BudgetPlace): GuideBudgetPlace => ({
+ localId: place.localId,
+ placeId: place.place_id,
+ name: place.name,
+ priceLevel: place.priceLevel ?? null,
+ priceRange: text(place.priceRange),
+ customBudget: text(place.customBudget),
+ budgetAmount: money(place.budgetAmount),
+ budgetCurrency: place.budgetAmount === undefined ? null : text(place.budgetCurrency),
+});
+
+export const toCanonicalTransportSegment = (segment: TransportSegment): GuideTransportSegment => ({
+ fromLocalId: segment.fromPlaceId,
+ toLocalId: segment.toPlaceId,
+ mode: segment.mode,
+ distanceKm: segment.distanceKm,
+ estimatedMinutes: segment.estimatedMinutes,
+});
+
+/** Every block of a section, at the current version. */
+export function toCanonicalSectionBlocks(input: {
+ Timeline?: TimelineData | null; Transport?: TransportData | null; Stay?: StayData | null;
+ Recommendation_Activity?: ActivityData | null; Budget?: BudgetData | null;
+ Map_Details?: {center: {lat: number; lng: number} | null; zoom: number | null} | null;
+ Packing_List?: {localId: string; label: string; done: boolean}[] | null;
+ Pre_Tasks?: {localId: string; label: string; done: boolean}[] | null;
+ Section_tags?: string[] | null;
+}): GuideSectionBlocks {
+ const places = (value: DayPlace[] | undefined | null) => (value ?? []).map(toCanonicalDayPlace);
+ const budget = (value: BudgetPlace[] | undefined | null) => (value ?? []).map(toCanonicalBudgetPlace);
+ return {
+  version: GUIDE_SECTION_BLOCK_VERSION,
+  timeline: {
+   morning: places(input.Timeline?.morning),
+   afternoon: places(input.Timeline?.afternoon),
+   evening: places(input.Timeline?.evening),
+  },
+  transport: {segments: (input.Transport?.segments ?? []).map(toCanonicalTransportSegment)},
+  stay: {accommodations: places(input.Stay?.accommodations)},
+  activities: {activities: places(input.Recommendation_Activity?.activities)},
+  budget: {
+   morning: budget(input.Budget?.morning),
+   afternoon: budget(input.Budget?.afternoon),
+   evening: budget(input.Budget?.evening),
+  },
+  mapDetails: input.Map_Details ?? null,
+  packingList: {items: input.Packing_List ?? []},
+  preTasks: {items: input.Pre_Tasks ?? []},
+  tags: input.Section_tags ?? [],
  };
 }

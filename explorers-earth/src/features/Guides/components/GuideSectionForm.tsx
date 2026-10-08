@@ -2460,8 +2460,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>
@@ -2521,8 +2523,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>
@@ -2582,8 +2586,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>

@@ -240,6 +240,8 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         if (newPlaceId && (updatedStay.priceLevel !== undefined || updatedStay.priceRange || updatedStay.customBudget)) {
           const existingIndex = updated.findIndex((bp) => bp.place_id === newPlaceId);
           const newBudgetPlace: BudgetPlace = {
+            // The budget row belongs to this stay entry, not merely to its place id.
+            localId: updatedStay.id,
             place_id: newPlaceId,
             name: updatedStay.name,
             priceLevel: updatedStay.priceLevel,

@@ -4,7 +4,8 @@ import {
  type GuideSectionBlocks,
 } from '../../../../../../tunes/shared/explorersGuideContract';
 import {
- mediaContentUrl, parseLegacyJsonField, toBudgetPlace, toDayPlace, toGuide, toGuideSection, toTransportSegment,
+ mediaContentUrl, parseLegacyJsonField, toBudgetPlace, toCanonicalSectionBlocks, toDayPlace, toGuide,
+ toGuideSection, toTransportSegment,
 } from '../guidesViewModel';
 
 /**
@@ -80,10 +81,12 @@ describe('transport segment mapping', () => {
   expect(mapped).toEqual({fromPlaceId: 'm1', toPlaceId: 'a1', mode: 'auto', distanceKm: 3.4, estimatedMinutes: 12});
  });
 
- it('defaults an unknown distance or duration to zero rather than undefined', () => {
+ it('keeps an unmeasured distance or duration null rather than defaulting it to zero', () => {
   const mapped = toTransportSegment({fromLocalId: 'm1', toLocalId: 'a1', mode: 'walk', distanceKm: null, estimatedMinutes: null} as never);
-  expect(mapped.distanceKm).toBe(0);
-  expect(mapped.estimatedMinutes).toBe(0);
+  // Zero is a real measurement - two stops at the same spot. Null is "not measured", and
+  // collapsing the two is what printed "0 km" for a ferry hop nobody had measured.
+  expect(mapped.distanceKm).toBeNull();
+  expect(mapped.estimatedMinutes).toBeNull();
  });
 });
 
@@ -218,3 +221,104 @@ describe('legacy JSON fields', () => {
 });
 
 type PlaceDetailsLike = {Place_Name?: string};
+
+describe('canonical round trip', () => {
+ // The editors save a COMPLETE section, so anything the inverse mapping drops is something
+ // the next save erases. This is the test that makes that impossible to do silently.
+ const full = (): GuideSectionBlocks => guideSectionBlocksSchema.parse({
+  ...guideEmptySectionBlocks,
+  timeline: {
+   morning: [canonicalPlace({photos: [{mediaId: uuid(1), fileName: 'a.jpg', width: 1600, height: 900, aspectRatio: '16:9'}]})],
+   afternoon: [canonicalPlace({localId: 'a1', placeId: 'ChIJa1', name: 'ചായക്കട — tea stall', tips: null,
+    geometry: null, priceLevel: null, budgetAmount: null, budgetCurrency: null, source: 'ai-unverified', verified: false})],
+   evening: [canonicalPlace({localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', customBudget: 'about 500',
+    budgetAmount: null, budgetCurrency: null})],
+  },
+  transport: {segments: [
+   {fromLocalId: 'm1', toLocalId: 'a1', mode: 'auto', distanceKm: 3.4, estimatedMinutes: 12},
+   {fromLocalId: 'a1', toLocalId: 'e1', mode: 'ferry', distanceKm: null, estimatedMinutes: null},
+  ]},
+  stay: {accommodations: [canonicalPlace({localId: 's1', placeId: 'ChIJs1', name: 'Brunton Boatyard'})]},
+  activities: {activities: [canonicalPlace({localId: 'v1', placeId: 'ChIJv1', name: 'Kathakali — കഥകളി'})]},
+  budget: {
+   morning: [{localId: 'm1', placeId: 'ChIJN1t_tDeuEmsRUsoyG83frY4', name: 'Kashi Art Cafe', priceLevel: 2,
+    priceRange: null, customBudget: null, budgetAmount: '450.50', budgetCurrency: 'INR'}],
+   afternoon: [],
+   evening: [{localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', priceLevel: null, priceRange: null,
+    customBudget: 'about 500', budgetAmount: null, budgetCurrency: null}],
+  },
+  mapDetails: {center: {lat: 9.9658, lng: 76.2421}, zoom: 14},
+  packingList: {items: [{localId: 'p1', label: 'Mosquito repellent', done: false}]},
+  preTasks: {items: [{localId: 't1', label: 'Book the backwater ferry', done: true}]},
+  tags: ['slow', 'ആയുർവേദം'],
+ });
+
+ const reverse = (blocks: GuideSectionBlocks) => {
+  const mapped = toGuideSection(guideSectionDtoSchema.parse({
+   id: uuid(5), collectionId: uuid(9), title: 'Day one', description: null, displayOrder: 0,
+   blocks, archived: false, createdAt: '2026-10-08T00:00:00.000Z', updatedAt: '2026-10-08T00:00:00.000Z',
+  }));
+  return toCanonicalSectionBlocks(mapped as never);
+ };
+
+ it('is the identity: canonical to feature to canonical loses nothing', () => {
+  const original = full();
+  expect(reverse(original)).toEqual(original);
+ });
+
+ it('still validates after the round trip, so a save of it cannot be refused', () => {
+  expect(guideSectionBlocksSchema.safeParse(reverse(full())).success).toBe(true);
+ });
+
+ it('is stable: a second round trip changes nothing more', () => {
+  const once = reverse(full());
+  expect(reverse(once)).toEqual(once);
+ });
+
+ it('round-trips an empty section', () => {
+  const empty = guideSectionBlocksSchema.parse(guideEmptySectionBlocks);
+  expect(reverse(empty)).toEqual(empty);
+ });
+
+ it('keeps geometry nested through both directions', () => {
+  const result = reverse(full());
+  expect(result.timeline.morning[0].geometry).toEqual({location: {lat: 9.9658, lng: 76.2421}});
+  expect(result.timeline.afternoon[0].geometry).toBeNull();
+ });
+
+ it('keeps a photo as a media id and never reintroduces a url', () => {
+  const photo = reverse(full()).timeline.morning[0].photos[0];
+  expect(photo).toEqual({mediaId: uuid(1), fileName: 'a.jpg', width: 1600, height: 900, aspectRatio: '16:9'});
+  expect(photo).not.toHaveProperty('url');
+ });
+
+ it('normalises money formatting but never the amount', () => {
+  // "450.50" and 450.5 are the same amount; the decimal string is what storage keeps.
+  expect(reverse(full()).budget.morning[0].budgetAmount).toBe('450.50');
+  const odd = guideSectionBlocksSchema.parse({...guideEmptySectionBlocks,
+   timeline: {morning: [canonicalPlace({budgetAmount: '7.5', budgetCurrency: 'EUR'})], afternoon: [], evening: []}});
+  expect(reverse(odd).timeline.morning[0].budgetAmount).toBe('7.50');
+ });
+
+ it('will not let an unverified AI place come back claiming verification', () => {
+  expect(reverse(full()).timeline.afternoon[0]).toMatchObject({source: 'ai-unverified', verified: false});
+ });
+
+ it('keeps transport segments pointing at entries the section contains', () => {
+  const result = reverse(full());
+  const present = new Set([...result.timeline.morning, ...result.timeline.afternoon, ...result.timeline.evening,
+   ...result.activities.activities, ...result.stay.accommodations].map((place) => place.localId));
+  for (const segment of result.transport.segments) {
+   expect(present.has(segment.fromLocalId)).toBe(true);
+   expect(present.has(segment.toLocalId)).toBe(true);
+  }
+ });
+
+ it('keeps every budget row tied to an entry the section contains', () => {
+  const result = reverse(full());
+  const present = new Set([...result.timeline.morning, ...result.timeline.afternoon, ...result.timeline.evening,
+   ...result.activities.activities, ...result.stay.accommodations].map((place) => place.localId));
+  for (const row of [...result.budget.morning, ...result.budget.afternoon, ...result.budget.evening])
+   expect(present.has(row.localId)).toBe(true);
+ });
+});
