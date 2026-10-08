@@ -621,6 +621,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Games/types/index.ts
 !explorers-earth/src/features/Games/utils/gameHelpers.ts
 !explorers-earth/src/features/Guides/GuidesPage.tsx
+!explorers-earth/src/features/Guides/api/guidesClient.ts
+!explorers-earth/src/features/Guides/api/guidesViewModel.ts
 !explorers-earth/src/features/Guides/api/mutations.ts
 !explorers-earth/src/features/Guides/api/queries.ts
 !explorers-earth/src/features/Guides/components/ActivityCard.tsx
