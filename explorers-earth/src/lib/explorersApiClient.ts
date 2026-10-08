@@ -22,6 +22,8 @@ import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/e
 import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/shared/explorersProductContract';
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../../tunes/shared/explorersPlaceContract';
+import {guideAggregateDtoSchema,attachGuideCoverSchema,createGuideSectionSchema,reorderGuideSectionsSchema,
+ writeGuideDetailsSchema,writeGuideSectionSchema} from '../../../tunes/shared/explorersGuideContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -347,6 +349,16 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
+// Ticket 5.3. The aggregate, re-presented with `id` so contentCommand's identity check
+// applies. The transform adds a field rather than renaming one, so nothing downstream has
+// to know the adapter happened.
+const guideCommandResult=guideAggregateDtoSchema.transform((guide)=>({...guide,id:guide.collectionId}));
+async function guideCommand(collectionId:string,suffix:string,method:string,body:unknown,key:string,signal?:AbortSignal) {
+ const id=commandInput(contentIdSchema,collectionId);
+ const result=await contentCommand(`/collections/${encodeURIComponent(id)}/guide${suffix}`,method,body,key,'guide',
+  guideCommandResult,signal,undefined,id);
+ return result;
+}
 export const explorersApiClient = {
   attachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,true,signal),
   attachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,true,signal),
@@ -374,6 +386,40 @@ export const explorersApiClient = {
   },
   async searchBookCandidates(input:{query:string;limit?:number;cursor?:string},signal?:AbortSignal){
    const parsed=commandInput(bookCandidateRequestSchema,input);return ownerRead('/catalog/books',parsed,bookCandidatesSchema,signal,true);
+  },
+  // --- Ticket 5.3, guides -------------------------------------------------------------
+  // Every guide command answers {guide:aggregate}. Re-presenting the aggregate with its
+  // collectionId as `id` lets contentCommand do the identity check it already does for
+  // every other resource, so a response describing a different guide is refused by
+  // existing machinery rather than by a check each call site has to remember.
+  //
+  // expectedRevision is deliberately not passed: the aggregate reports the revision AFTER
+  // the write, so comparing it with the one the caller composed against would always fail.
+  async readMyGuide(collectionId:string,query:{after?:number;limit?:number}={},signal?:AbortSignal){
+   const guide=await ownerRead(`/collections/${encodeURIComponent(commandInput(contentIdSchema,collectionId))}/guide`,
+    query as Record<string,unknown>,z.object({guide:guideAggregateDtoSchema}).strict(),signal,true);
+   if(guide.guide.collectionId!==collectionId)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid guide identity');
+   return guide.guide;
+  },
+  async writeMyGuideDetails(collectionId:string,input:z.input<typeof writeGuideDetailsSchema>,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,'','PUT',commandInput(writeGuideDetailsSchema,input),key,signal);
+  },
+  async addMyGuideSection(collectionId:string,input:z.input<typeof createGuideSectionSchema>,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,'/sections','POST',commandInput(createGuideSectionSchema,input),key,signal);
+  },
+  async writeMyGuideSection(collectionId:string,sectionId:string,input:z.input<typeof writeGuideSectionSchema>,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,`/sections/${encodeURIComponent(commandInput(contentIdSchema,sectionId))}`,'PATCH',
+    commandInput(writeGuideSectionSchema,input),key,signal);
+  },
+  async removeMyGuideSection(collectionId:string,sectionId:string,revision:number,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,`/sections/${encodeURIComponent(commandInput(contentIdSchema,sectionId))}`,'DELETE',
+    commandInput(writeGuideDetailsSchema.pick({revision:true}),{revision}),key,signal);
+  },
+  async reorderMyGuideSections(collectionId:string,input:z.input<typeof reorderGuideSectionsSchema>,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,'/sections/order','PATCH',commandInput(reorderGuideSectionsSchema,input),key,signal);
+  },
+  async attachMyGuideCover(collectionId:string,input:z.input<typeof attachGuideCoverSchema>,key:string,signal?:AbortSignal){
+   return guideCommand(collectionId,'/cover','PUT',commandInput(attachGuideCoverSchema,input),key,signal);
   },
   async resolvePlaceEntity(input:z.input<typeof resolveManualPlaceSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(resolveManualPlaceSchema,input);

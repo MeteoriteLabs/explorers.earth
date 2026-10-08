@@ -129,9 +129,12 @@ export class GuideService {
   return this.authorized(actor,'collections:write',async()=>{
    parseContent(contentIdSchema,collectionId);
    const command=parseContent(createGuideSectionSchema,input);
-   const id=await this.transaction((client)=>createGuideSection(client,collectionId,actor.accountId,command.revision,
+   await this.transaction((client)=>createGuideSection(client,collectionId,actor.accountId,command.revision,
     {title:command.title,description:command.description,blocks:command.blocks,position:command.position}));
-   return {sectionId:id,guide:await this.getAggregate(actor,collectionId)};
+   // The new section is the one the caller did not already have. Returning the aggregate
+   // alone keeps every guide command's envelope identical, and the caller identifies the
+   // addition by difference rather than trusting a second field to agree with it.
+   return this.getAggregate(actor,collectionId);
   });
  }
 
@@ -182,9 +185,11 @@ export class GuideService {
   return this.authorized(actor,'collections:write',async()=>{
    parseContent(contentIdSchema,collectionId);
    const command=parseContent(attachGuideCoverSchema,input);
-   const previousMediaId=await this.transaction((client)=>
-    attachGuideCover(client,collectionId,actor.accountId,command.revision,command.mediaId));
-   return {previousMediaId,guide:await this.getAggregate(actor,collectionId)};
+   // The previous asset id is deliberately not returned to the browser: retiring those
+   // bytes is a server-side decision taken later, and handing a client an id it has no
+   // authority to delete only invites it to try.
+   await this.transaction((client)=>attachGuideCover(client,collectionId,actor.accountId,command.revision,command.mediaId));
+   return this.getAggregate(actor,collectionId);
   });
  }
 }
