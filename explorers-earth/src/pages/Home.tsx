@@ -1,4 +1,5 @@
 import { memo, useState, useEffect, useMemo, useRef } from "react";
+import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { useBooksOwnerContent } from "../features/Books/api/useBooksOwnerContent";
 import { useAppsOwner } from "../features/AppsAndTools/hooks/useAppsOwner";
 import { useProductsOwner } from "../features/Products/hooks/useProductsOwner";
@@ -18,7 +19,6 @@ import InstagramIcon from "../assets/icons/InstagramIcon";
 import ShareModal from "../components/ShareModal";
 import { GlobeDemo } from "../components/ui/GlobeDemo";
 import ThemedIcon from "../components/ui/ThemedIcon";
-import { recommendationListQuery } from "../features/Favorites/api/query";
 import { accountsDetailQuery } from "../features/PublicHome/api/query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toUrlSlug } from "../utils/formatAddress";
@@ -310,19 +310,7 @@ const Home = memo(() => {
     }
   }, [loading, dashboardStatusLoading]);
 
-  const { data: userLists, refetch: refetchUserLists } = useQuery(recommendationListQuery, {
-    variables: {
-      filters: {
-        account: {
-          username: {
-            eq: user?.username,
-          },
-        },
-      },
-    },
-    fetchPolicy: "network-only",
-    skip: !user?.username, // Skip query if user is not authenticated
-  });
+  const { data: userLists, refetch: refetchUserLists } = usePlacesOwner(undefined, Boolean(user?.username));
 
   // Get account documentId for guides query (reuse existing query pattern)
   const {
@@ -783,23 +771,21 @@ const Home = memo(() => {
     );
   }
 
-  const locations = listNames?.map(
-    (list: {
-      List_Name: string;
-      List_Name_Details: { location: { latitude: string; longitude: string } };
-    }) => ({
+  const locations = listNames
+    ?.filter((list) => list.List_Name_Details?.location != null)
+    .map((list) => ({
       name: list.List_Name,
-      lat: list.List_Name_Details?.location?.latitude,
-      lng: list.List_Name_Details?.location?.longitude,
-    })
-  );
+      lat: Number(list.List_Name_Details!.location!.latitude),
+      lng: Number(list.List_Name_Details!.location!.longitude),
+    }))
+    .filter((location) => Number.isFinite(location.lat) && Number.isFinite(location.lng));
 
   const arcsData = locations
     ?.map(
       (
-        location: { lat: string; lng: string },
+        location: { lat: number; lng: number },
         index: number,
-        array: { lat: string; lng: string }[]
+        array: { lat: number; lng: number }[]
       ) => {
         if (index === array.length - 1) return null;
         return {
@@ -811,7 +797,7 @@ const Home = memo(() => {
         };
       }
     )
-    .filter(Boolean);
+    .filter((arc): arc is {startLat: number; startLng: number; endLat: number; endLng: number; color: string} => arc !== null);
 
 
 
@@ -924,12 +910,20 @@ const Home = memo(() => {
         // Best-effort refresh — a refetch failure AFTER a successful create must
         // NOT report failure (that would re-open/retry and create a duplicate).
         try {
-          const { data: refetched } = await refetchUserLists();
-          const updatedCity = refetched?.recommendationLists?.find(
-            (list: any) => list.List_Name === values.listName
+          refetchUserLists();
+          const updatedCity = userLists?.recommendationLists?.find(
+            (list) => list.List_Name === values.listName
           );
           if (updatedCity) {
-            setSelectedCity(updatedCity);
+            setSelectedCity({
+              documentId: updatedCity.documentId,
+              List_Name: updatedCity.List_Name,
+              slug: updatedCity.slug ?? undefined,
+              Visibility: updatedCity.Visibility,
+              is_pinned: updatedCity.is_pinned,
+              pin_order: updatedCity.pin_order,
+              display_order: updatedCity.display_order,
+            });
           }
         } catch (refetchError) {
           console.warn("Failed to refetch lists after creating a place:", refetchError);
@@ -1194,9 +1188,9 @@ const Home = memo(() => {
                           category="places"
                           onAddClick={handleAddNewItem}
                         />
-                      ) : filteredListNames?.length > 0 ? (
+                      ) : (filteredListNames?.length ?? 0) > 0 ? (
                         <div className="space-y-3 pb-20">
-                          {filteredListNames.map((item: any, index: number) => {
+                          {(filteredListNames ?? []).map((item: any, index: number) => {
                             const isPub = item.Visibility;
                             const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
                             const poster = resolveCoverUrl(item.List_Name_Details?.thumbnail, "place");
@@ -1777,7 +1771,7 @@ const Home = memo(() => {
                   )}
                 </div>
 
-                {listNames?.length > 3 && activeTab === "places" && <GlobeDemo arcsData={arcsData} />}
+                {(listNames?.length ?? 0) > 3 && activeTab === "places" && <GlobeDemo arcsData={arcsData ?? []} />}
               </div>
 
               {/* Share Modals */}

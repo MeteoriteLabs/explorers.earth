@@ -61,6 +61,7 @@ import english from '../../../i18n/resources/en.json';
 import Settings from '../../Settings/Settings';
 import GuideDetailsPage from '../../Guides/pages/GuideDetailsPage';
 import GuideHeader from '../../Guides/components/GuideDetails/GuideHeader';
+import { GuideEditingProvider } from '../../Guides/context/GuideEditingProvider';
 import BookListView from '../../Books/components/dashboard/BookListView';
 import MovieListView from '../../Movies/components/dashboard/MovieListView';
 import { Route, Routes } from 'react-router-dom';
@@ -96,6 +97,26 @@ const headers = [
 ] as const;
 const listFixture = { recommendationLists: [{ documentId: PLACE_LIST_ID, List_Name: 'My places', slug: 'places', Visibility: true, createdAt: '2026-01-01', recommended_places: [], List_Name_Details: {} }] };
 const guideFixture = { documentId: 'g1', Title: 'Test guide', Visibility: true, guide_sections: [], Guide_Media: [], Guide_Tags: [], Number_Of_Days: 1 };
+// Ticket 5.3. Guides reads its owner content through its own bracketed adapter, so the
+// harness's Apollo transport no longer answers for it. The adapter is mocked at its
+// boundary - the same thing the adapter's own suite does - because a fixture cannot join
+// the API client's private observation brand, and refusing an unbranded observation is
+// the point of that brand.
+const guideListObservation = { detail: { ...guideFixture, category: 'guides', revision: 1, categoryRevision: '1', pinOrder: null } } as never;
+const guideAggregateObservation = {
+  accountId: 'account-1', generation: 0, observedAt: 0, collectionId: 'g1', revision: 1,
+  aggregate: { collectionId: 'g1', revision: 1, coverMediaId: null, sections: [], sectionCount: 0, nextCursor: null,
+    details: { guideType: null, multiCity: false, numberOfDays: 1, estimatedBudget: null, budgetCurrency: null,
+      budgetType: null, bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null, place: {}, locationEntityId: null } },
+} as never;
+vi.mock('../../Guides/api/explorersAdapter', () => ({
+  readGuidesOwnerContent: vi.fn(async () => ({
+    observation: { complete: true, category: 'guides', revision: '1', pinRevision: null, collections: [], recommendations: [], memberships: [], topPicks: [] },
+    guides: [guideFixture],
+    lists: new Map([['g1', guideListObservation]]),
+    aggregates: new Map([['g1', guideAggregateObservation]]),
+  })),
+}));
 describe('ordinary category headers use verified navigation', () => {
   beforeEach(async () => { loginSurface();
     // Each surface reads its own category, so the complete read answers per category
@@ -124,7 +145,13 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
-  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products' && category !== 'public_people' && category !== 'public_recommendations'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
+  // This case drives an Apollo observable query and refetches it, so a category is removed
+  // from it as that category stops having one. Movies, Games, Apps, Products, People and
+  // Places went first; public_guides joins them with ticket 5.3. Only public_books is left,
+  // so once Books migrates this case has no subject and should go rather than be kept
+  // passing vacuously - the rule it protects (a list refresh never changes category
+  // visibility or saved pins) is asserted per category in their own suites.
+  it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products' && category !== 'public_people' && category !== 'public_recommendations' && category !== 'public_guides'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
     const listFields = { public_books: 'bookLists', public_movie: 'movieLists', public_games: 'gameLists', public_apps: 'appLists', public_products: 'productLists', public_people: 'personLists', public_guides: 'guides', public_recommendations: 'recommendationLists' };
     const field = listFields[category];
     const lists: Record<string, unknown> = { [field]: [{ ...listFixture.recommendationLists[0], ...guideFixture,
@@ -362,10 +389,18 @@ describe('ordinary category headers use verified navigation', () => {
     const confirm = screen.getByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeDisabled(); fireEvent.click(confirm); expect(h.writes).toEqual([]);
   });
   it('GuideHeader Draft changes only the guide, never category visibility or saved pins', async () => {
-    const h = surfaceHarness(<GuideHeader guide={guideFixture as any} guideId="g1" />, { respond: (name, variables) => name === 'UpdateGuide' ? { updateGuide: { ...guideFixture, ...variables.data } } : undefined }); await h.ready();
+    vi.mocked(explorersApiClient.updateMyCollection).mockResolvedValue({ ...guideFixture, visibility: 'private' } as never);
+    const h = surfaceHarness(
+      <GuideEditingProvider observation={guideAggregateObservation} list={guideListObservation} reload={() => {}}>
+        <GuideHeader guide={guideFixture as any} guideId="g1" />
+      </GuideEditingProvider>,
+    ); await h.ready();
     fireEvent.click(screen.getByRole('checkbox')); await screen.findByText('Draft');
-    await waitFor(() => expect(h.requests.some(r => r.name === 'UpdateGuide')).toBe(true));
-    expect(h.requests.find(r => r.name === 'UpdateGuide')?.variables).toEqual({ documentId: 'g1', data: { Visibility: false } }); expect(h.writes).toEqual([]);
+    // Unpublishing is one collection command. It does NOT clear the pin here: the server
+    // does that in the same transaction, which is why no second write appears.
+    await waitFor(() => expect(vi.mocked(explorersApiClient.updateMyCollection)).toHaveBeenCalled());
+    expect(vi.mocked(explorersApiClient.updateMyCollection).mock.calls[0][1]).toEqual({ visibility: 'private', publicationState: 'draft' });
+    expect(h.writes).toEqual([]);
   });
   it('movies native list archive never unpublishes the category or changes saved pins', async () => {
     const observation = movieObservation('Test list');
