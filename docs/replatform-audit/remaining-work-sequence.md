@@ -33,11 +33,25 @@ Two numbers set the shape of what is left, both measured at `d97a5733`:
   Strapi dependency. Files importing `@apollo/client` only for `gql` are retired
   definitions, not consumers — counting imports instead of calls overstates the surface by
   about half.
-- **Server: 55 non-test files mention Strapi**, and `server/app.ts:179` still builds a
-  gateway from a *required* `strapiOrigin`, so the API cannot boot without Strapi
-  configured. That 55 overstates real coupling: some of those files exist precisely to
-  *prove* Strapi's absence (`musicRetirementPolicy`, `strapiIdentityAbsenceProof`).
-  Classifying them is step 10 below, not a guess to make here.
+- **Server: 55 non-test files mention Strapi.** That 55 overstates real coupling: some of
+  those files exist precisely to *prove* Strapi's absence (`musicRetirementPolicy`,
+  `strapiIdentityAbsenceProof`). Classifying them is step 10 below, not a guess to make here.
+- **Corrected 2026-10-08: the canonical API already boots with no Strapi configuration.**
+  This doc said `server/app.ts:179` builds a gateway from a required `strapiOrigin` so
+  "the API cannot boot without Strapi configured", and named it the epic-6 exit blocker.
+  Wrong API. `server/api.ts` selects a mode: `canonical` starts `canonicalStartup`,
+  which has **no** Strapi reference and resolves Music tokens through ADR-008's
+  `resolveCanonicalMusicTokenConfiguration` - explicitly "the token configuration and
+  nothing else, notably not STRAPI_URL". `app.ts` is on the `legacy-music` path only,
+  and that path is what step 12 (8.2/8.3) removes. So epic 6's "zero required Strapi
+  config" already holds for the canonical runtime; what remains is deleting the legacy
+  server, not loosening a required origin.
+- **Not to be loosened casually:** `strapiIdentityAbsenceProof` gates *finalizing account
+  deletions*. With no access token it returns `"outage"`, so deletions defer rather than
+  finalize - it fails closed, which is correct. Turning that into `"absent"` by declaring
+  Strapi retired would finalize deletions without confirming Strapi deleted its copy. That
+  is a deliberate grant of lifecycle-delete authority and needs explicit owner
+  authorization; it is not a config tidy-up.
 
 The frontend steps partition all 70 calls exactly, so when the last one is done the count
 is zero: **28** Guides + **10** Home + **9** auth pages + **6** public detail + **8**
@@ -123,9 +137,24 @@ signing up is Google-only and there is no password to reset. Needs decision **D1
 - **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally dead; plus the reference-content module (`faq`, `platform-term`, legal copy — 7 MISSING fields) and the canonical email suppression table.
 - Decisions **D2**, **D6**, **D7**, **D8** all land in this step.
 
-### 8. Music glue — epic 6 tail · 4 calls, 4 files
-- `AuthSyncManager`, `MusicPublishProvider`, `pages/Music`, `hooks/useTunesDashboard`.
-- Epic 6's exit requires **zero required Strapi config**, and `server/app.ts:179` requires `strapiOrigin` today. This is the server-side half, and it blocks the epic-6 exit claim.
+### 8. Music glue — epic 6 tail · **1 call**, not 4 — mostly already done
+**Corrected 2026-10-08.** Three of the four files are not Strapi consumers:
+
+- `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
+  matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
+  are inflated for the same reason — the honest figure is **19 files that genuinely import
+  Apollo**, not the raw call count.
+- `MusicPublishProvider` held an Apollo client only to pass it to
+  `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
+  the parameter and the provider's `useApolloClient` are now gone.
+- `AuthSyncManager` calls `apollo.clearStore()` on logout. That is Apollo cache plumbing,
+  not a Strapi read, and it disappears with Apollo in step 12.
+
+So what is actually left here is **one** read: `musicPageEligibilityQuery` in `pages/Music`.
+
+The server half is also already done — see the corrected note above: the canonical API
+boots with no Strapi configuration, and `app.ts` is on the `legacy-music` path that step
+12 removes.
 
 ### 9. Billing and subscription · 5 calls, 3 files — **blocked on a decision, not on work**
 - `Checkout`, `SubscriptionPlans`, `features/Settings/components/BillingTab.tsx`.
