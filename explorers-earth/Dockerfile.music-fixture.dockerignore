@@ -673,7 +673,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/TopPicksMobileHero.tsx
 !explorers-earth/src/features/Guides/components/TravelModeSelector.tsx
 !explorers-earth/src/features/Guides/context/GuideEditingProvider.tsx
-!explorers-earth/src/features/Guides/guideService.ts
 !explorers-earth/src/features/Guides/hooks/useGuidesOwner.ts
 !explorers-earth/src/features/Guides/index.ts
 !explorers-earth/src/features/Guides/pages/GuideDetailsPage.tsx
