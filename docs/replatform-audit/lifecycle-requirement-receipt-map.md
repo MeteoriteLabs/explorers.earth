@@ -252,7 +252,13 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
      of those remain covered by the simulated suite, which 2.4 treats as separate evidence —
      this receipt does not replace it.
    - Hosted execution. This ran on a developer machine; obligation 5 is still open.
-4. **Music socket revocation — OPEN, owned by 6.1, not by this map.** The review-focus item
+4. **Music socket revocation — OPEN, owned by 6.1, not by this map. Re-verified 2026-10-09 and this obligation is correct as written; a plausible argument that it was already satisfied does not survive checking.**
+
+   The argument, recorded because it is persuasive for three of its four steps: the socket's per-event recheck calls `resolveSubject`/`resolveCanonical`, which refuse a tombstoned, suspended or pending-deletion venue **and** a `sessionVersion` mismatch, and `musicSocketServer.ts:188-205` disconnects on refusal, with tests covering it. All true.
+
+   Where it fails: **nothing bumps the venue's `session_version` on logout.** That column is moved only by Music revocation operations - suspend, block, delete, recovery. There is no canonical logout handler and nothing revoking the Music credential on sign-out; `useLogout` calls `closeLocalMusicSession()` and `authClient.signOut()`, both **client side**. A cooperative client close is not revocation: a crashed tab, a modified client or a socket open elsewhere keeps receiving owner events after sign-out, while HTTP is correctly denied because owner routes require a live web-session Actor.
+
+   So **suspension and deletion revoke both transports; logout revokes only HTTP.** That is the residual, and it is exactly what this obligation's wording asks for. The review-focus item
    "a logged-out or suspended owner must lose socket authority as well as HTTP access" has
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
    credentials belong to 6.1. L3 above covers HTTP and tab revocation only, and must not be
