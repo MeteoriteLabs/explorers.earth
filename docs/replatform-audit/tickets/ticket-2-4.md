@@ -93,7 +93,13 @@ It therefore remains a **blocking prerequisite and is not satisfied**. The pract
 The L0 correction above states the observation contract is unresolved. Part of it already exists in production source, and the claim must be narrowed so a writer does not invent a second observation endpoint alongside it. Verified at the review SHA:
 
 - `tunes/server/routes/explorersLifecycleRoutes.ts:46-53` **already exposes `GET /api/explorers/v1/recovery/status`** under `requireRecoveryPrincipal` — the purpose-bound recovery authority (HttpOnly purpose cookie), explicitly **not** `requireActor` — returning `{status, revision}` read from `creator_accounts`.
-- `:54-64` (`POST /api/explorers/v1/recovery/complete`) clears the recovery proof cookie **only on delivered success**, after `recoverAccount` returns. That is precisely the lost-response observation case L3/L11 requires: a client that loses the response can re-observe state through `/recovery/status` without replaying the proof.
+- `:54-64` (`POST /api/explorers/v1/recovery/complete`) clears the recovery proof cookie **only on delivered success**, after `recoverAccount` returns.
+
+  **Corrected 2026-10-08, and this was the load-bearing error in C3.** The sentence that followed claimed this is "precisely the lost-response observation case L3/L11 requires: a client that loses the response can re-observe state through `/recovery/status` without replaying the proof." It could not. `requireRecoveryPrincipal` gates on `consumed_at IS NULL` **and** `status IN ('suspended','pending_deletion')`, so the two observations that matter most were unreachable: a recovery that had *succeeded* re-read as 403 (and `ReactivateConfirm` told the owner "This account cannot be recovered"), and a terminal deletion was indistinguishable from a transient failure, offering retry forever.
+
+  Closing it needed a security boundary change, not an extension of this route's authority: `requireRecoveryObservation` in `tunes/server/auth/accountRecovery.ts`, a branded **read-only** authority that drops exactly those two conditions while keeping the proof's five-minute expiry and its revocation checks, and is not assignable to `RecoveryPrincipal` or `Actor`. `/recovery/complete` is untouched. The security inventory label moved from `single-use-google-bound-recovery-proof` to `google-bound-recovery-proof-within-expiry-read-only`.
+
+  **TK reviewed and kept this on 2026-10-08.** It was offered for veto because it widens a recovery gate; reverting it re-breaks the lost-response and terminal-deletion cases, and that was the trade accepted.
 
 **That route is the existing observation authority. Extend it; do not add a second observation endpoint.** L0's genuinely-absent scope is narrowed to exactly two items:
 

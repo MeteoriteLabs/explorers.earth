@@ -27,8 +27,41 @@ Two numbers set the shape of what is left, both measured at `d97a5733`:
   (step 7), `pages/ClaimAccount.tsx` (step 3), `pages/Home.tsx` (step 2),
   `pages/Profile.tsx` (step 7). The two that were in Guides are done. Zero Apollo calls
   would not have ended the dependency on its own.
-- **Frontend: 37 files, 70 live Apollo calls** when written; **26 files, 43 calls** as of
-  2026-10-08. There is one Apollo link
+
+  **Recounted 2026-10-08, and "four" understates it — do not plan step 12 off that number.**
+  With Apollo at zero Strapi calls this is now the *whole* remaining frontend surface, so it
+  was measured again. `VITE_REST_API_URL` appears in **21 non-test lines across 17 files**,
+  and they fall into three kinds that must not be counted together:
+
+  - **Display-time legacy media resolution** — `?.replace("/api", "")` then a stored
+    `/uploads/...` path. Eleven lines: `ProfileSetupAccordion.tsx:67,71`,
+    `appHelpers.ts:175`, `gameHelpers.ts:152`, `personHelpers.ts:198`,
+    `productHelpers.ts:148`, `ProfileRecommendationsTab.tsx:100`, `publicPlaceMedia.ts:24`,
+    `Home.tsx:121,132`. These are **not API calls**; they are the same `resolveCoverUrl`
+    situation step 2 recorded, and they stop mattering when the media is migrated. Step 12.
+  - **Genuine Strapi REST API calls** — `pages/Profile.tsx:1685` (`GET /accounts` filter
+    query), `:1751` and `:1849` (two `POST /upload`), `AddRecommendation.tsx:732`
+    (`DELETE /upload/files/:id`), `pages/Checkout.tsx:171,362` (two `GET /accounts` filter
+    queries), `pages/EmailVerification.tsx:46` (`POST /send-email-confirmation`). All seven
+    methods verified at the call site, not inferred from the URL. Of these, **four are live**
+    — Profile's three and AddRecommendation's one, all authenticated owner media writes —
+    and the other three are already contained: Checkout's two sit behind
+    `MUSIC_SUBSCRIPTION_FLOWS_ENABLED = false` (step 9's containment), and
+    `pages/EmailVerification.tsx` is **rendered by no route at all** (`AuthRoutes.tsx:30`
+    redirects `/email-verification` to `/login`), so that file is dead and is *not* a D10
+    surface. Measure-first earned its keep again here: the obvious reading was a live Strapi
+    auth dependency needing an owner decision, and it is an unreferenced file.
+  - **Canonical tunes traffic** — the three `*Service.ts` files, which fall back to
+    `VITE_REST_API_URL` only when `VITE_PAYMENT_API_URL` is unset. A config concern, not a
+    Strapi one.
+
+  `pages/ClaimAccount.tsx` is **off the list** — the claim-flow containment removed its
+  upload. Nothing here was changed; it is recorded so step 10/12 starts from a measured
+  surface instead of this doc's stale four.
+- **Frontend: 37 files, 70 live Apollo calls** when written; **26 files, 43 calls** earlier
+  on 2026-10-08; **2 files and 0 Strapi calls** at the end of that day. Both survivors
+  (`AuthSyncManager`, `useLogout`) hold only `apollo.clearStore()`, so the frontend now
+  reads and writes nothing through Apollo and the link itself goes with step 12. There is one Apollo link
   (`src/main.tsx:32`) and it points at Strapi, so one live `useQuery`/`useMutation` is one
   Strapi dependency. Files importing `@apollo/client` only for `gql` are retired
   definitions, not consumers — counting imports instead of calls overstates the surface by
@@ -360,12 +393,46 @@ as live.
     table design has to say which of those it serves, and any static-content design has to
     say what a visitor on one of the other 44 sees.
 
-  So the decision is: reuse and extend `page_contents` (cross-app coupling, needs a locale
+  So the decision was: reuse and extend `page_contents` (cross-app coupling, needs a locale
   column), create a canonical explorers reference-content table with locale (a new
   owner-editable surface and an admin to edit it), or move the copy into the repo as
   deploy-time content (removes a runtime dependency from legally-required pages, and takes
-  away editing without a deploy). The third is the most robust and the biggest change to how
-  the owner works, which is exactly why it is not mine to pick.
+  away editing without a deploy).
+
+  **Decided 2026-10-08: the copy goes in the repo. DONE.** TK took the third option. The
+  copy is at `explorers-earth/src/content/reference/<locale>.json`, exported **verbatim**
+  from the live Strapi `platformTerm` and `faq` collections over the public `/graphql`
+  endpoint, and `useFaqs`/`usePlatformTerms` now read it through a shared
+  `useReferenceContent`. The retired `features/LandingPage/api/queries.ts` is deleted —
+  it held nothing but the two documents. The four surfaces and their loading/error branches
+  are untouched, and `RichTextContent` is unchanged: the export contains only `paragraph`
+  and `heading` blocks with `bold`/`italic` marks, all of which it already renders, so the
+  pages render identically.
+
+  Three things measurement settled, each of which shaped the design:
+
+  - **The locale dimension is ten, not 46.** Strapi had ten locales configured against the
+    i18n bundles' 47, so there was never content for the other 37. Resolution normalises
+    `en-GB` to `en` and sends anything uncovered to `en`.
+  - **Privacy and Cookie policy exist in English only** — nine of ten locales returned empty
+    arrays, and `bn`/`id` have no `platformTerm` row at all, so their Terms were blank too.
+    Fallback is therefore **per section**, not per locale: a Hindi visitor gets Hindi terms
+    and Hindi FAQ with the English privacy and cookie policy. That is strictly better than
+    the Strapi behaviour it replaces, which served a blank page.
+  - **English is statically imported and the other nine are lazy chunks.** A chunk is still a
+    network fetch, and a chunk error must not blank a Terms page, so a failed load resolves
+    to the bundled English copy rather than rejecting. That one property is what the whole
+    decision was bought for, so it has its own isolated test.
+
+  23 tests across three files; three mutations (per-section fallback, unknown-locale
+  fallback, chunk-failure fallback) each verified to fail the suite before being reverted.
+
+  **One thing for TK, not for engineering:** the copy that was migrated is placeholder-ridden
+  and says so on the live site today — "Terms and Conditions for **LocalQR**", with
+  `[your app URL]`, `[Your Company Name]` and `[Your Country/State]` unfilled, a
+  `hello@localqr.earth` contact and an effective date of 10th Sept 2025. It was carried over
+  verbatim and deliberately not rewritten; the operative text of a legal document is not an
+  engineering call. It is now a one-file edit.
 - Decisions **D2**, **D6**, **D7**, **D8** all land in this step.
 
 ### 8. Music glue — epic 6 tail · **1 call**, not 4 — mostly already done

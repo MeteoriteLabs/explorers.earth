@@ -84,13 +84,20 @@ receipts; three obligations remain.
 | 4. Auth pages | Done. Was never D10's — see below. |
 | 5. Auth UX and lifecycle (2.4) | Prerequisite discharged; 2 of 6 obligations done; 3 remain |
 | 6. Public place/person detail | Done |
-| 7. Profile, Settings, Analytics | Done except ticket 7.2's reference content |
+| 7. Profile, Settings, Analytics | Done. Ticket 7.2's reference content landed 2026-10-08 |
 | 8. Music glue | Done |
 | 9. Billing | Done, without pre-empting D1 |
 
-Apollo hook consumers outside tests: **19 → 6**. The six: `AuthSyncManager` and `useLogout`
-(`clearStore()` cache plumbing, goes with Apollo in step 12), `CreateGuideStep2` (D9, item 2
-above), `useFaqs` and `usePlatformTerms` (ticket 7.2), `ClaimAccount` (D4).
+Apollo hook consumers outside tests: **19 → 2**, and the milestone is sharper than the
+number. The two left are `AuthSyncManager` and `useLogout`, and both hold nothing but
+`apollo.clearStore()` — cache plumbing that goes with Apollo in step 12. So as of 2026-10-08
+**the frontend makes no Strapi read or write through Apollo at all.** `CreateGuideStep2` went
+with D9, `ClaimAccount` with the claim-flow containment, and `useFaqs`/`usePlatformTerms`
+with ticket 7.2.
+
+What that does **not** mean is that the frontend is off Strapi — see the REST note in the
+sequence doc, which the 2026-10-08 recount found to be wider than the four files recorded
+there.
 
 Count it honestly:
 
@@ -131,6 +138,19 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   owned with 1.3, and the one-to-one retirement map is still unwritten.
 - Steps 10–13 (Phase C) have not started.
 
+## Owner decisions taken on 2026-10-08
+
+**Ticket 7.2 — the legal copy lives in the repo.** TK chose the repo option. Done: the FAQ
+and the Terms/Privacy/Cookie bodies are at `explorers-earth/src/content/reference/`,
+locale-keyed, and `useFaqs`/`usePlatformTerms` read them instead of Strapi. See the section
+below for what the export showed, including one thing that needs TK's eyes.
+
+**`requireRecoveryObservation` stays.** TK chose keep, so the read-only observation
+authority in `tunes/server/auth/accountRecovery.ts` is settled and no code changed. The
+lost-response and terminal-deletion cases keep working. Ticket 2.4's C3 is corrected in
+place: it claimed a client that lost its response could already re-observe through
+`/recovery/status`, and before this authority existed that returned 403.
+
 ## Three things that need your acknowledgement, not engineering
 
 Each of these looked like unfinished work and is not. They are recorded so nobody spends a
@@ -144,17 +164,24 @@ session rediscovering it.
    scripts/analytics-browser-fixture.ts`. Hand-adding the lane would falsify an attestation.
 2. **Ticket 2.4, the real Google callback.** Needs live provider credentials. The ticket is
    explicit that a fixture cannot substitute.
-3. **Ticket 7.2, where the legal copy lives.** The FAQ and the Terms/Privacy/Cookie body text
-   exist **only inside Strapi**. A repo-wide search returns SEO keywords and UI labels; the
-   three pages are 68-80 line shells that already handle loading and error visibly. There is
-   no assumption that produces the text, and those pages **work today** - pointing them at an
-   empty canonical store would blank them now, before retirement.
+3. **Ticket 7.2 is decided and built — but read what the copy actually says.** Decided for
+   the repo, migrated verbatim from the live Strapi collections, 23 tests, three mutations
+   killed. Two things the export surfaced that are **yours, not engineering's**:
 
-   My recommendation, since a survey is less useful than a view: **put the copy in the repo**,
-   locale-keyed beside the i18n bundles. Legally-required pages should not go blank because a
-   backend is down, it is the cheapest thing to migrate into a table later, and the cost -
-   editing via a deploy rather than a CMS - is small for four rarely-changed documents. The
-   plumbing is a short job once the copy is in hand.
+   - **The live legal copy is placeholder-ridden.** It is titled "Terms and Conditions for
+     **LocalQR**" and contains unfilled template slots: `[your app URL]`,
+     `[Your Company Name]`, `[Your Country/State]`, a contact address of
+     `hello@localqr.earth`, a website of `www.localqr.earth`, and an effective date of
+     10th Sept 2025. This is what explorers.earth serves **today** — the migration did not
+     introduce it and deliberately did not fix it, because rewriting the operative text of a
+     legal document is not an engineering call. Replacing the copy is now a one-file edit.
+   - **Privacy and Cookie policies exist in English only.** Measured across all ten locales
+     Strapi had configured: `Terms_and_Condition` is translated in eight (`bn` and `id` have
+     no row at all), `Privacy_and_Policy` and `Cookie_Policy` came back as empty arrays in
+     nine of ten, and the FAQ is genuinely translated in all ten. So a non-English visitor
+     already saw a blank privacy page before this change. The new module falls back to
+     English **per section**, which is strictly better than the Strapi behaviour it replaces,
+     but it does not translate anything.
 
 ## One security boundary change the owner may want to veto
 
@@ -209,6 +236,15 @@ already re-observe through `/recovery/status`: it returned 403.
   before chasing them.
 - Write Python patch scripts with the Write tool and run them by path — heredocs mangle CRLF
   on Windows. Always `assert '\r\r' not in text` before writing.
+- **`git checkout -- <path>` cannot undo a mutation to an untracked file.** It fails with
+  "did not match any file(s) known to git", and if you are looping over mutations the failure
+  is one line of stderr between two passing-looking runs — so the mutations **stack** and the
+  file is left corrupt. It cost me two confusing re-runs this session. When mutation-testing a
+  file that is new in your working tree, either `git add -N` it first or restore from a copy,
+  and always re-run the suite afterwards to confirm you are back to green.
+- **`npm run build` in explorers-earth rewrites `public/sitemap.xml`** with the current date.
+  It will show up in `git status` as a change you did not make; drop it rather than committing
+  it.
 
 ## Verification commands
 
@@ -223,5 +259,7 @@ $env:DATABASE_URL_TEST='postgresql://music_migrator:music@127.0.0.1:55432/music_
 npx vitest run --config vitest.integration.config.ts server/test/explorers-lifecycle.integration.test.ts
 ```
 
-Last known good: frontend **4502 tests / 320 files**, tunes contracts **1190**, lifecycle +
-recovery integration **42/42** on a reset fixture database.
+Last known good: frontend **4532 tests / 325 files** (measured 2026-10-08, all passing;
+the previous 4502/320 figure was stale by then, so do not read the increase as only the 23
+new ticket-7.2 cases), tunes contracts **1190**, lifecycle + recovery integration **42/42**
+on a reset fixture database.
