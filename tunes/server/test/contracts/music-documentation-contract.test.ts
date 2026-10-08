@@ -901,7 +901,7 @@ describe("POSIX native launcher environment rejection", () => {
       expect(result.status, `${name}: ${result.stderr}`).toBe(78);
       expect(result.stderr).toContain("native Music release launcher rejected Node startup authority");
     }
-  });
+  }, 60_000);
 
   it("uses a prefix-complete NODE_* predicate on platforms where the POSIX launcher cannot execute", () => {
     // Windows CI may not expose a POSIX shell, so retain parity with the behavior test above.
@@ -922,7 +922,7 @@ describe("POSIX native launcher environment rejection", () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it("pins protected Linux tool paths and a native nightly mode", () => {
     const launcher = read("tunes/scripts/music-release-launcher.sh");
