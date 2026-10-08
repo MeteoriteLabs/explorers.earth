@@ -16,7 +16,6 @@ const operationSources = [
   ["explorers-earth/src/pages/Music.tsx", ["MusicPageEligibility"]],
   // Retired UI readers remain fixtures for the pre-migration Music identity snapshot.
   ["tunes/scripts/legacy-profile-fixture-documents.txt", ["CheckOnboardingStatus", "SidebarAccount", "user", "UsersPermissionsUser"]],
-  ["explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", ["UpdateAccount"]],
   ["explorers-earth/src/features/Settings/api/mutation.ts", ["UsersPermissionsUser", "UpdateAccount"]],
   ["explorers-earth/src/features/PublicHome/api/query.ts", ["PublicCategoryListCounts", "PublicAccountBasic", "PublicProfileData"]],
 ] as const;

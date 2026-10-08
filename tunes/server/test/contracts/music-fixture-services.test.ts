@@ -22,6 +22,8 @@ function checkedInGraphqlOperation(relativePath: string, operation: string): str
     .map((match) => match[1])
     .filter((document) => new RegExp(`\\b(?:query|mutation)\\s+${operation}\\b`).test(document));
   if (matches.length !== 1) throw new Error(`expected one checked-in ${operation} document`);
+  // The profile save stopped shipping a GraphQL document in ticket 3.4, so UpdateAccount is
+  // read from Settings - the one surface that still issues it - rather than from the hook.
   return matches[0]!;
 }
 
@@ -374,7 +376,7 @@ describe("deterministic Music fixture services", () => {
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
     const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const settingsQuery = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UsersPermissionsUser");
-    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
     const visibilityMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
     const publicProfileQuery = checkedInGraphqlOperation("explorers-earth/src/features/PublicHome/api/query.ts", "PublicProfileData");
 
@@ -483,7 +485,7 @@ describe("deterministic Music fixture services", () => {
       username: "fixture-explorer", accountDocumentId: "fixture-account-document-id",
       userDocumentId: "fixture-user-document-id", token,
     })).toThrow("complete namespaced authority tuple");
-    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
     const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
 

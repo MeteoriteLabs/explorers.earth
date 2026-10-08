@@ -131,7 +131,48 @@ signing up is Google-only and there is no password to reset. Needs decision **D1
 - Two sources for one page is how "right on the grid, wrong in the modal" happens, and 7.1 cannot prove parity across the split.
 
 ### 7. Profile, Settings, Analytics — [3.1](tickets/ticket-3-1.md), [3.2](tickets/ticket-3-2.md), [3.4](tickets/ticket-3-4.md), [7.2](tickets/ticket-7-2.md) · 8 calls, 6 files
-- Rewire `useUpdateProfile`, `useCanonicalAccount`, `Settings`, the three Analytics components.
+**Partly done 2026-10-08.** The three Analytics components and `useUpdateProfile` are off
+Strapi. What that took was not a rewiring job either, and it is worth saying why:
+
+- The two Analytics charts read `recommendationListQuery`, which is the Places category
+  that `usePlacesOwner` already served under exactly that key. `AnalyticsDashboard` looked
+  an account up with an inline `gql` document; `useCanonicalAccount` already existed to do
+  it, and the selection logic around it (`selectCompletedAccount` over a list of accounts)
+  has no canonical meaning — one owner has one account, and the read is owner-scoped.
+- `useUpdateProfile` held four paths. Both of its callers already feed it from
+  `useCanonicalAccount`, so the id reaching it is always a canonical UUID and **the three
+  Strapi paths were already unreachable**: a `createAccount` for an owner with no account,
+  an `updateAccount` for a non-UUID id, and a write mirroring the username onto
+  `usersPermissionsUser`. No canonical `createAccount` is needed to replace the first -
+  `ensureInitialAccount` provisions the account during authentication, so the client cannot
+  and need not create one. A missing id now refuses the save instead of creating anything.
+
+Two defects fell out of that, both live on this branch today:
+
+1. **A rename did not reach the dashboard's own links.** Every public link and QR code is
+   built from the auth store's `user.username`, and the only code that wrote that field was
+   in the unreachable Strapi branch. So on the canonical path a rename updated the account
+   and left every generated link pointing at the old handle until a full reload. Fixed, and
+   mutation-checked: removing the write-back fails a test.
+2. **The Music venue name never follows a rename.** `users.venue_name` is written once, at
+   provision, from `display_name || handle`, and nothing in the server updates it after
+   that. `musicApi.refreshIdentity()` looked like the mechanism and is not: the credential
+   it re-mints is `{token, expiresAt}` with no display data, and the ensure endpoint returns
+   early for an account that is already mapped. That call is therefore **not** carried into
+   the canonical path - keeping it would have looked like a fix. **Still open**, and it
+   belongs with the Music work in step 8, not here: deciding that the venue name mirrors the
+   Explorers display name means writing `users` from the account update path.
+
+Also found, not fixed: `localTunesvisiblity` is hydrated into the profile form from
+`social_media.localTunes.visibility` in two places and **no component renders it and no
+code writes it back**. It is Strapi-era; Music visibility on a public profile is
+`account_category_settings` for `music`, which travels as `categories`. The dead hydration
+goes with the form cleanup in step 12.
+
+Still to do here: `Settings.tsx`'s `updatePasswordMutation`, which is **blocked on D10** -
+there is no canonical password to change, for the same reason sign-up is Google-only.
+
+- Remaining: `Settings`, and the ticket obligations below.
 - **3.4**: 10 analytics identities are authored and **0 attested** — add the analytics lane to the runner and the suite manifest. Its consent and privacy obligations are also open, and are not a rewiring job.
 - **3.2**: the mandated upload-hook changes were never made.
 - **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally dead; plus the reference-content module (`faq`, `platform-term`, legal copy — 7 MISSING fields) and the canonical email suppression table.
@@ -142,8 +183,8 @@ signing up is Google-only and there is no password to reset. Needs decision **D1
 
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
-  are inflated for the same reason — the honest figure is **19 files that genuinely import
-  Apollo**, not the raw call count.
+  are inflated for the same reason — the honest figure is files that genuinely
+  call an Apollo hook outside tests, which was 19 when this was written and is **17** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.
