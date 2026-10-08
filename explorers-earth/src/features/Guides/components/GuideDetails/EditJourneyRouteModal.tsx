@@ -4,11 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import { Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
-import { UPDATE_GUIDE_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
 import { toast } from "sonner";
 import AddressInput from "../../../Profile/components/AddressInput";
 import Button from "../../../../components/ui/Button";
@@ -49,15 +47,8 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
   const [openKebabMenuId, setOpenKebabMenuId] = useState<string | null>(null);
   const kebabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [updateGuide, { loading }] = useMutation(UPDATE_GUIDE_MUTATION, {
-    refetchQueries: [
-      {
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guide.documentId },
-      },
-    ],
-    awaitRefetchQueries: true,
-  });
+  const {saveDetails} = useGuideEditing();
+  const [loading, setLoading] = useState(false);
 
   // Initialize form data from guide
   useEffect(() => {
@@ -264,13 +255,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
         isMultiCity: true,
       };
 
-      await updateGuide({
-        variables: {
-          documentId: guide.documentId,
-          data: {
-            Place_Details: placeDetails,
-          },
-        },
+      // The route is the guide's place for a multi-city guide, stored in the shape the
+      // journey display reads. Reducing it to a single point would drop the route.
+      setLoading(true);
+      await saveDetails({
+        place: {...placeDetails, isMultiCity: true as const},
+        multiCity: true,
       });
 
       toast.success("Journey route updated successfully!");
@@ -279,6 +269,8 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
     } catch (error) {
       console.error("Error updating journey route:", error);
       toast.error("Failed to update journey route");
+    } finally {
+      setLoading(false);
     }
   };
 

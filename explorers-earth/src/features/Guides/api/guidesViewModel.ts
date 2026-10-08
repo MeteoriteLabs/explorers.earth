@@ -164,7 +164,16 @@ export function toGuideSection(section: GuideSectionDto): GuideSection & {
  };
 }
 
-export function toPlaceDetails(place: GuideAggregateDto['details']['place']): PlaceDetails {
+/**
+ * The guide's place, which is either a single place or a multi-city journey.
+ *
+ * The journey form passes straight through: its keys are already the names the journey
+ * display reads (`starting`/`ending`/`intermediateCities`, with FLAT `Geometry`), so
+ * renaming them here would only create a second vocabulary for one thing.
+ */
+export function toPlaceDetails(place: GuideAggregateDto['details']['place']): PlaceDetails | Record<string, unknown> {
+ if ('isMultiCity' in place) return place as unknown as Record<string, unknown>;
+ if (!('name' in place)) return {};
  return {
   ...(place.name === null ? {} : {Place_Name: place.name}),
   ...(place.address === null ? {} : {Place_Address: place.address}),

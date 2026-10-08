@@ -1,4 +1,5 @@
 import { useCategoryNavigation } from "../../navigation/CategoryNavigationProvider";
+import { GuideEditingProvider } from "../context/GuideEditingProvider";
 import type { IntentAuthority } from "../../navigation/categoryNavigationPolicy";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
@@ -537,7 +538,7 @@ const GuideDetailsPage = () => {
   }
 
   return (
-    <>
+    <GuideEditingProvider observation={observation} list={guideId ? content?.lists.get(guideId) : undefined} reload={refetch}>
       <SEO
         title={pageTitle}
         description={metaDescription}
@@ -745,7 +746,7 @@ const GuideDetailsPage = () => {
           }}
         />
       )}
-    </>
+    </GuideEditingProvider>
   );
 
 };

@@ -177,11 +177,40 @@ export const guideEmptySectionBlocks:GuideSectionBlocks=Object.freeze({
 // The guide's own place. Kept as a snapshot plus an optional canonical identity, for the
 // same reason Places lists keep theirs: the snapshot is what the header renders, the link
 // is who the place is, and conflating them lets a renamed city rewrite published guides.
-export const guidePlaceSnapshotSchema=z.object({
+export const guideSinglePlaceSnapshotSchema=z.object({
  name:text(500).nullable(),address:text(1000).nullable(),placeId:providerPlaceId.nullable(),
  rating:z.number().min(0).max(5).nullable(),ratingsCount:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
  lat:coordinate(90).nullable(),lng:coordinate(180).nullable(),
 }).strict().refine(v=>(v.lat===null)===(v.lng===null),{message:'Coordinates must both be present or both absent',path:['lat']});
+
+// A multi-city guide's place is a ROUTE, not a point.
+//
+// Found while migrating EditJourneyRouteModal, which writes Place_Details as
+// {starting, ending, intermediateCities, isMultiCity} - so modelling the guide's place as
+// a single snapshot would have silently dropped every multi-city itinerary's route on the
+// first save. The two forms share the column; `multiCity` on the details says which to
+// expect, and a reader that wants one checks for it rather than guessing from shape.
+//
+// Note the geometry here is FLAT {lat,lng}: that is what formatPlaceDetails writes and
+// what the journey display reads. A day place inside a section nests it, because that is
+// the Google Places response shape. Three shapes in one feature, each matching its own
+// consumers, and none of them safe to "harmonise".
+const journeyStopSchema=z.object({
+ Place_Id:z.string().trim().max(512),Place_Name:text(500),Place_Address:text(1000),
+ Geometry:z.object({lat:coordinate(90),lng:coordinate(180)}).strict(),
+}).strict();
+export const guideJourneySnapshotSchema=z.object({
+ starting:journeyStopSchema,ending:journeyStopSchema,
+ intermediateCities:z.array(journeyStopSchema.extend({
+  id:filled(100),hasDate:z.boolean(),date:z.string().max(40).optional(),
+ }).strict()).max(50),
+ isMultiCity:z.literal(true),
+}).strict();
+
+// An empty object is a guide whose place has never been set, which is how a guide starts.
+export const guidePlaceSnapshotSchema=z.union([
+ z.object({}).strict(),guideSinglePlaceSnapshotSchema,guideJourneySnapshotSchema,
+]);
 
 export const guideTypeSchema=z.enum(['itinerary','city','experience','collection']);
 export const guideBudgetTypeSchema=z.enum(['per-person','total']);

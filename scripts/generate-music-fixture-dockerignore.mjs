@@ -58,6 +58,7 @@ const fixedFiles = [
   // Ticket 5.3. Named explicitly because discovery only picks up the *Client/*ViewModel/
   // explorersAdapter/hooks shapes, and GuidesPage - which is in this context - imports it.
   "explorers-earth/src/features/Guides/api/guideListWrites.ts",
+  "explorers-earth/src/features/Guides/context/GuideEditingProvider.tsx",
   "explorers-earth/src/features/Games/api/gamesClient.ts",
   "explorers-earth/src/features/Games/api/gamesViewModel.ts",
   "explorers-earth/src/features/Games/api/explorersAdapter.ts",
