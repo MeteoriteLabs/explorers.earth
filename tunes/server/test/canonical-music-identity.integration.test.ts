@@ -228,6 +228,25 @@ describe("canonical Music identity against real PostgreSQL", () => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      /*
+       * Pin the two things this assertion depends on, rather than trusting whatever the
+       * pooled connection was last used for. Found by this case failing in a fourteen-file
+       * run while passing alone: a constraint test that silently depends on ambient session
+       * state reports "the guard is gone" when the truth is "triggers were off", which is a
+       * worse failure than the one it exists to catch.
+       *
+       * `session_replication_role='origin'` is what makes triggers fire at all - other
+       * suites legitimately set 'replica' to seed rows past these guards - and the trigger
+       * is asserted enabled ('O' or 'A') so a dropped or disabled guard is distinguishable
+       * from a disabled session.
+       */
+      await client.query("SET LOCAL session_replication_role='origin'");
+      const guard = await client.query<{ tgenabled: string }>(
+        `SELECT tgenabled FROM pg_trigger
+          WHERE tgrelid='public.users'::regclass AND tgname='users_music_venue_owned'`);
+      expect(guard.rowCount, "0039's ownership guard is missing from users").toBe(1);
+      expect(["O", "A"]).toContain(guard.rows[0].tgenabled);
+
       await client.query(
         `INSERT INTO users(username,password,email,guest_url,venue_name,
            strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
