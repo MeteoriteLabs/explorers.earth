@@ -148,6 +148,8 @@ explorers-earth/src/features/Games/utils/*
 explorers-earth/src/features/Guides/api/*
 !explorers-earth/src/features/Guides/components/
 explorers-earth/src/features/Guides/components/*
+!explorers-earth/src/features/Guides/hooks/
+explorers-earth/src/features/Guides/hooks/*
 !explorers-earth/src/features/Guides/pages/
 explorers-earth/src/features/Guides/pages/*
 !explorers-earth/src/features/Guides/services/
@@ -621,6 +623,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Games/types/index.ts
 !explorers-earth/src/features/Games/utils/gameHelpers.ts
 !explorers-earth/src/features/Guides/GuidesPage.tsx
+!explorers-earth/src/features/Guides/api/explorersAdapter.ts
+!explorers-earth/src/features/Guides/api/guideListWrites.ts
 !explorers-earth/src/features/Guides/api/guidesClient.ts
 !explorers-earth/src/features/Guides/api/guidesViewModel.ts
 !explorers-earth/src/features/Guides/api/mutations.ts
@@ -666,6 +670,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/TopPicksMobileHero.tsx
 !explorers-earth/src/features/Guides/components/TravelModeSelector.tsx
 !explorers-earth/src/features/Guides/guideService.ts
+!explorers-earth/src/features/Guides/hooks/useGuidesOwner.ts
 !explorers-earth/src/features/Guides/index.ts
 !explorers-earth/src/features/Guides/pages/GuideDetailsPage.tsx
 !explorers-earth/src/features/Guides/pages/GuideSectionFormPage.tsx
