@@ -805,8 +805,6 @@ const CreateGuidePage = ({
               const { fetchGooglePlacePhotos } = await import("../utils/googlePhotosService");
               const { uploadActivityPhotos } = await import("../services/activityPhotoService");
 
-              // Get username for photo uploads
-              const username = user?.username || "user";
               const activities: any[] = [];
 
               // Process each enriched place
@@ -820,12 +818,7 @@ const CreateGuidePage = ({
 
                     if (photos.length > 0) {
                       // Upload photos to S3
-                      const uploadedPhotos = await uploadActivityPhotos(
-                        photos,
-                        username,
-                        createdSectionId,
-                        placeData.place_id
-                      );
+                      const uploadedPhotos = await uploadActivityPhotos(photos);
 
                       // Add to activities with uploaded photos
                       activities.push({

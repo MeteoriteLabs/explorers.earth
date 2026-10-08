@@ -45,7 +45,6 @@ import { uploadActivityPhotos } from "../services/activityPhotoService";
 import MediaViewer from "../../../components/ui/MediaViewer";
 import { useMediaViewer } from "../../../hooks/useMediaViewer";
 import type { MediaItem } from "../../../components/ui/MediaViewer";
-import useAuthStore from "../../../store/store";
 import TopPlacesByCategory from "../../Favorites/components/TopPlacesByCategory";
 
 interface GuideSectionFormProps {
@@ -70,7 +69,6 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   onLoadingChange,
 }) => {
   const {addSection, saveSection} = useGuideEditing();
-  const user = useAuthStore((state) => state.user);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -720,16 +718,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         return { place_id: activity.place_id, photos: [] };
       }
 
-      // Upload photos to Strapi S3
-      const username = user?.username || "user";
-      const sectionDocId = sectionId || "temp-section";
 
-      const uploadedPhotos = await uploadActivityPhotos(
-        photos,
-        username,
-        sectionDocId,
-        activity.place_id
-      );
+      const uploadedPhotos = await uploadActivityPhotos(photos);
 
       // Update activity with uploaded photos
       setActivityPlaces((prev) =>

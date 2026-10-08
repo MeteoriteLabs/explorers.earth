@@ -523,14 +523,9 @@ export async function enrichAndFormatSection(
     // ENRICHMENT: Resolve AI place names to Google Places data
     const enrichedPlaces = await enrichAIPlaces(section.places, locationContext);
 
-            // Get username from auth store for photo uploads
-            const authStoreModule = await import("../../../store/store");
-            const authStore = authStoreModule.default.getState();
-            const username = authStore.user?.username || "user";
 
     // Fetch and upload photos for all places, then create Recommendation_Activity
     const activities: any[] = [];
-    const sectionIdForPhotos = "temp-section"; // Will be updated after section creation
 
     // Process each enriched place
     for (const place of enrichedPlaces) {
@@ -558,12 +553,7 @@ export async function enrichAndFormatSection(
           
           if (photos.length > 0) {
             // Upload photos to S3
-            const uploadedPhotos = await uploadActivityPhotos(
-              photos,
-              username,
-              sectionIdForPhotos,
-              placeData.place_id
-            );
+            const uploadedPhotos = await uploadActivityPhotos(photos);
 
             // Add to activities with uploaded photos
             activities.push({
