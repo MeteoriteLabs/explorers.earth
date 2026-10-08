@@ -484,7 +484,7 @@ for (const category of categories) {
       await guest.page.goto(`/${fixtureUser.username}/${category.route}`); await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}`);
       await owner.page.goto('/recommendations');
       const card = owner.page.locator('.rec-card').filter({ has: owner.page.getByRole('heading', { name: category.label.replace(/ Tab$/, ''), exact: true }) });
-      await card.evaluate(element => element.scrollIntoView({ block: 'center' }));
+      await card.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
       await card.getByTitle('Category options').click();
       const beforeEnable = canonicalCategoryAccount(state);
       const enable = owner.page.getByRole('button', { name: 'Enable Public URL', exact: true });
@@ -498,7 +498,7 @@ for (const category of categories) {
       expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeEnable, { category: category.route, isPublic: true }));
       await settings(owner.page, true); await toggle(owner.page.getByRole('checkbox', { name: 'Auto-pin navigation tabs' }), false);
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
-      await owner.page.goto('/recommendations'); await card.evaluate(element => element.scrollIntoView({ block: 'center' })); await card.getByTitle('Category options').click();
+      await owner.page.goto('/recommendations'); await card.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' })); await card.getByTitle('Category options').click();
       const pinAction = owner.page.getByRole('button', { name: 'Pin to Public Nav (Max 5)', exact: true }); await pinAction.focus(); await pinAction.press('Enter');
       await expect.poll(() => state.account.pinned_nav_tabs).toEqual(['public_profile', other, category.field]);
       await guest.page.goto(`/${fixtureUser.username}`);
