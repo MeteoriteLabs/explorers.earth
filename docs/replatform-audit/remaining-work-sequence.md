@@ -12,7 +12,7 @@ Read with: [ticket index](ticket-index.md) for per-ticket verdicts, the
 ## Where we are
 
 Delivered on `codex/unified-replatform`: epic 1 (bar one obligation), epic 2.1–2.3,
-epic 6 complete, Books/Movies/Games manual slices, and the category migrations
+Books/Movies/Games manual slices, and the category migrations
 **4.3 Apps · 4.4 Products · 4.5 People · 5.1 Places · 5.2 place-links**. PR #119 is green
 and still a draft.
 
@@ -679,6 +679,14 @@ against third-party APIs, so they can ship before or after retirement, in any or
 ---
 
 ## Decisions only the owner can make
+
+**Nine of these were taken on 2026-10-08. The record is
+[owner decisions](owner-decisions-2026-10-08.md), which is authoritative over the
+table below** — D1, D2, D4, D6, D7, D10 and the 1.2 and 7.1 trade-offs are decided,
+D8 is two-thirds decided with `recommendation_list.List_Name_Details` still open, and
+D9 closed earlier. **D3 and D5 remain open**, and both block only Phase D.
+
+A decision is authority to act, not delivered work: see that record's state column.
 
 Each blocks a step above, and none is an engineering question. Source: coverage register §7.
 

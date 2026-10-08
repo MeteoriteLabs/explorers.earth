@@ -43,7 +43,6 @@ export interface PublicRecommendationAccountData {
   public_apps?: string;
   public_products?: string;
   public_people?: string;
-  localtunes_public?: string;
   [key: string]: unknown;
 }
 
