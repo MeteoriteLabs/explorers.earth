@@ -47,10 +47,18 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    // 9 since the handle-availability route added its own ALL 405 fallback, the same way
-    // /public/recommendations/search has one.
+    // 10: the handle-availability route added its own ALL 405 fallback the same way
+    // /public/recommendations/search has one, and decision D2's unsubscribe route added
+    // the tenth. The count is pinned rather than filtered so a new public surface cannot
+    // arrive without someone noticing it needs a method fallback.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(9);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(10);
+    // Decision D2. GET reports the address and must not write; POST performs it, which is
+    // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
+    // the purpose-bound HMAC in the token, not the caller.
+    expect(inventory.routes).toContainEqual(expect.objectContaining({ method: "GET", path: "/api/explorers/v1/public/email/unsubscribe", classification: "public" }));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({ method: "POST", path: "/api/explorers/v1/public/email/unsubscribe", classification: "public" }));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/public/email/unsubscribe", classification: "tombstone" }));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/games',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/games',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'canonical-explorers-owner'}));

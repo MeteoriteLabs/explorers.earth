@@ -119,10 +119,10 @@ describe("Music E2E transactional state restore", () => {
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "app_entity_details", "application_command_receipts", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
+      "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_suppressions", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "guide_collection_details", "guide_section_photos", "guide_sections", "initial_account_bindings", "media_assets", "media_objects",
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
-      "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
+      "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens", "music_request_quota",
       "music_schema_migrations", "page_contents", "person_entity_details", "place_collection_details", "place_entity_details", "place_recommendation_context", "playback_states", "played_songs", "playlist_songs",
       "playlists", "product_entity_details", "product_recommendation_context", "profile_feed_items", "profile_media", "recommendation_app_screenshots", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_place_photos", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
@@ -163,6 +163,7 @@ describe("Music E2E transactional state restore", () => {
       "0048_explorers_place_location_aggregate",
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
+      "0051_explorers_launch_controls",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

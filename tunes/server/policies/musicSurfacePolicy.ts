@@ -152,7 +152,18 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     // construction since it is the profile URL. Declared here because the allowlist is
     // fail-closed - an undeclared route classifies as a tombstone.
     '/api/explorers/v1/public/handles/:handle/available',
+    // Email unsubscribe, GET half (decision D2). GET only reports which address the token
+    // is for and must not write, because mail clients and scanners prefetch links.
+    '/api/explorers/v1/public/email/unsubscribe',
   ].includes(route.path)) return 'public';
+  // Email unsubscribe, POST half (decision D2). Its own arm rather than widening the list
+  // above to admit POST: those paths are GET-only reads, and admitting POST for all of
+  // them would turn their fail-closed tombstoned POST into a public surface. This is the
+  // one public-content route that performs a write, and RFC 8058 one-click unsubscribe is
+  // a POST. Authority is the purpose-bound HMAC in the token, never the caller.
+  if(route.source==='tunes/server/routes/explorersPublicContentRoutes.ts'
+     && route.method==='POST'
+     && route.path==='/api/explorers/v1/public/email/unsubscribe') return 'public';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movie-genres')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';

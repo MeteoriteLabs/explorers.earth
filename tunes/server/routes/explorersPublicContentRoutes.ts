@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import type { Pool } from 'pg';
 import { PublicContentFailure, PublicContentService } from '../application/publicContent';
 import {SearchFailure} from '../application/searchQuery';
+import {readUnsubscribeToken,suppressEmail} from '../application/emailSuppression';
 export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string):void {
   const router=Router({caseSensitive:true,strict:true}),service=new PublicContentService(pool,secret);
   router.use('/api/explorers/v1/public/recommendations',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
@@ -55,5 +56,43 @@ export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:s
       return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});
     }
   });
+  /*
+   * Email unsubscribe. Decision D2, 2026-10-08.
+   *
+   * Public by necessity, not by expansion: the click arrives from a mail client, often on
+   * another device, from somebody who may have no account at all. Requiring a session would
+   * mean the people most likely to want out are the least able to get out.
+   *
+   * The token carries its own authority - the address plus an HMAC over it under a
+   * purpose-bound key - so it cannot be forged and cannot be replayed into any other
+   * surface. See application/emailSuppression.ts for why there is deliberately no expiry.
+   *
+   * GET does NOT write. Mail clients and security scanners prefetch links, so a GET that
+   * suppressed would unsubscribe people who never clicked anything. GET only reports which
+   * address the token is for, and POST performs it - which is also what RFC 8058 one-click
+   * unsubscribe sends.
+   *
+   * Rate-limited at 30/min like the handle check rather than the content reads' 120: a real
+   * person clicks once, and the limit bounds how fast invalid tokens can be probed.
+   */
+  router.use('/api/explorers/v1/public/email/unsubscribe',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:30,standardHeaders:'draft-7',legacyHeaders:false}));
+  router.get('/api/explorers/v1/public/email/unsubscribe',(req,res)=>{
+    const email=readUnsubscribeToken(secret,req.query.token);
+    if(!email)return res.status(400).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}});
+    return res.json({version:'explorers-email-unsubscribe/v1',email,confirmed:false});
+  });
+  router.post('/api/explorers/v1/public/email/unsubscribe',async(req,res)=>{
+    try {
+      const email=readUnsubscribeToken(secret,req.query.token??(req.body as {token?:unknown}|undefined)?.token);
+      if(!email)return res.status(400).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}});
+      const result=await suppressEmail(pool,{email,reason:'unsubscribe',source:'public-unsubscribe-link'});
+      // 200 either way. A second click is not an error to show somebody who is already
+      // unsubscribed, and the distinction is reported rather than signalled by status.
+      return res.json({version:'explorers-email-unsubscribe/v1',email,confirmed:true,alreadyUnsubscribed:result.alreadySuppressed});
+    }catch{
+      return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});
+    }
+  });
+  router.all('/api/explorers/v1/public/email/unsubscribe',(_req,res)=>res.status(405).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}}));
   app.use(router);
 }
