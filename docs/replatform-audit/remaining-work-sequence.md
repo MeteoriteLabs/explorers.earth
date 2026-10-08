@@ -149,17 +149,34 @@ nothing has closed yet is the product decision itself, and that is D4's to make,
 
 ## Phase B — close the gaps behind "complete"
 
-### 4. Auth pages — epic 2 · 4 calls, 4 files — **blocked on a decision, not on work**
+### 4. Auth pages — epic 2 · 4 calls, 4 files — **DONE 2026-10-08**
 
-**Corrected 2026-10-08, and I had this wrong.** I listed these as small, mechanical screens
-that were simply never converted. They cannot be converted: `server/auth/betterAuth.ts` sets
-`emailAndPassword: {enabled: false}` with Google as the only provider, and epic 2 states
-"password auth off" and "Google only" as a scope boundary. There is nothing to point
-`Register`, `ForgotPassword`, `ResetPassword` and `ResetLinkSent` at — they work today
-against Strapi, and the behaviour they provide does not exist canonically.
+**Corrected twice, and the second correction is the one that matters.** First I called these
+small mechanical screens. Then I corrected that to "cannot be converted - retiring them is a
+product change needing **D10**". That was also wrong, and I should have checked before
+writing it: **the product change is already shipped, and the decision is already recorded.**
 
-Retiring them is therefore a **product change**, not an engineering step: afterwards,
-signing up is Google-only and there is no password to reset. Needs decision **D10**.
+- `config/featureFlags.ts` has `ENABLE_MANUAL_AUTH: false`.
+- All four pages already act on it: `ForgotPassword`, `ResetPassword` and `ResetLinkSent`
+  redirect to `/login` with a "sign in with Google" message, and `Register` renders
+  Google-only at `:227`.
+- `Login` has **no password field at all** — only `authClient.startGoogleSignIn()`.
+- And [ticket 2.4 line 45](tickets/ticket-2-4.md) states the obligation as already settled:
+  "Existing password-only routes redirect to Google sign-in without exposing broken forms;
+  **record this agreed visible change**."
+
+So there was no decision outstanding. What remained was the same shape step 9 found: each
+page still carried an Apollo mutation in a path the redirect makes unreachable. Those are
+gone, and each submit path now refuses by construction rather than being merely unreached —
+the redirect runs in an effect, so it fires a frame after the first render.
+
+Also removed: the Strapi error-message classification below each call (`ApolloError`
+branches matching on "email not found", "rate limit" and so on), which mapped responses a
+retired backend will never send.
+
+What is genuinely still D10's is narrower than this step: whether the four routes keep
+existing as redirects or stop being routed at all, and whether `Register`'s Google-only
+screen is the long-term sign-up page. Neither blocks Strapi retirement.
 
 - `ClaimAccount` (3 calls plus a Strapi REST `/upload`) is the claim flow and belongs to
   **step 3** under **D4**, not here.
@@ -237,7 +254,7 @@ there is no canonical password to change, for the same reason sign-up is Google-
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **13** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **9** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.
