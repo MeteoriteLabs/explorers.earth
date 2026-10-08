@@ -26,6 +26,43 @@ async function fixture(count=5) {
   const path=`/api/explorers/v1/public/profiles/${handle}/collections/books`;
   return {account,collection,entity,ids,handle,path,children:`${path}/reading/recommendations`};
 }
+// Ticket 2.4 / step 4. The canonical replacement for the Strapi username-availability
+// query the three username inputs ran while typing. Public by parity with what it
+// replaces, which was reachable unauthenticated from the landing page.
+const availability=(handle:string)=>`/api/explorers/v1/public/handles/${handle}/available`;
+
+it('answers availability for any account holding the handle, not only a public one',async()=>{
+  const taken=await fixture(1);
+  expect((await request(app).get(availability(taken.handle))).body).toEqual({available:false});
+  // A private, incomplete account still holds its handle: absence from the public profile
+  // read next door does NOT mean free, which is why this cannot be answered from there.
+  const hidden=`h${randomUUID().replaceAll('-','').slice(0,20)}`;
+  await pool.query("INSERT INTO creator_accounts(handle,display_name,account_type,public_profile,onboarding_status) VALUES($1,'Hidden','Personal',false,'incomplete')",[hidden]);
+  expect((await request(app).get(availability(hidden))).body).toEqual({available:false});
+  expect((await request(app).get(`/api/explorers/v1/public/profiles/${hidden}/collections/books`)).status).toBe(404);
+  const free=`f${randomUUID().replaceAll('-','').slice(0,20)}`;
+  expect((await request(app).get(availability(free))).body).toEqual({available:true});
+});
+
+it('resolves the handle case-insensitively, so one handle cannot look free in two spellings',async()=>{
+  const taken=await fixture(1);
+  expect((await request(app).get(availability(taken.handle.toUpperCase()))).body).toEqual({available:false});
+});
+
+it('refuses a handle the write would refuse as malformed, rather than calling it free',async()=>{
+  // Same bound as updateAccountInputSchema.handle: 3-30 characters. Reporting a
+  // two-character handle as available would send a creator into a form the write rejects.
+  for(const handle of ['ab','a'.repeat(31)])
+    expect((await request(app).get(availability(handle))).status).toBe(400);
+  expect((await request(app).get(`${availability('freehandle')}?extra=1`)).status).toBe(400);
+  expect((await request(app).post(availability('freehandle'))).status).toBe(405);
+});
+
+it('never lets an availability answer be cached',async()=>{
+  const response=await request(app).get(availability(`c${randomUUID().replaceAll('-','').slice(0,20)}`));
+  expect(response.headers['cache-control']).toBe('no-store');
+});
+
 it('pages public children beyond page one using safe explicit projection',async()=>{
   const f=await fixture(53);const first=await request(app).get(f.children).query({limit:2});expect(first.status).toBe(200);
   expect(first.body.items).toEqual(f.ids.slice(0,2).map(id=>({id,title:'Public title',kind:'book',userRating:8})));

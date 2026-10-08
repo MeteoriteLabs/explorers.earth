@@ -17,6 +17,20 @@ export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:s
    }
   });
   router.all('/api/explorers/v1/public/recommendations/search',(_req,res)=>res.status(405).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}}));
+  // Handle availability. Rate-limited harder than the content reads above - 30/min against
+  // their 120 - because a per-keystroke availability check is also an enumeration oracle,
+  // and the client debounces, so a real creator needs far fewer than thirty tries a minute.
+  router.use('/api/explorers/v1/public/handles',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:30,standardHeaders:'draft-7',legacyHeaders:false}));
+  router.get('/api/explorers/v1/public/handles/:handle/available',async(req,res)=>{
+    try {
+      if(Object.keys(req.query).length)throw new PublicContentFailure(400);
+      return res.json(await service.handleAvailable({handle:req.params.handle}));
+    }catch(error){
+      if(error instanceof PublicContentFailure)return res.status(error.status).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}});
+      return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});
+    }
+  });
+  router.all('/api/explorers/v1/public/handles/:handle/available',(_req,res)=>res.status(405).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}}));
   router.use('/api/explorers/v1/public/profiles',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
   const read=async(req:Request,res:Response)=>{
     try {

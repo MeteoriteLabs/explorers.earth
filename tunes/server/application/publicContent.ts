@@ -46,6 +46,34 @@ function effectiveTitle(row:any) {
 export class PublicContentService {
   private readonly key:Buffer;
   constructor(private readonly pool:Pool,secret:string) {this.key=createHash('sha256').update('explorers-public-content-cursor/v1\0').update(secret).digest();}
+  /**
+   * Whether a handle is free, for the username inputs' as-you-type check.
+   *
+   * Deliberately NOT authoritative. The authority is the unique index
+   * `creator_accounts_handle_key_uq`, which rejects a duplicate at write time with a 409;
+   * between this read and that write the answer can change, and the write is what decides.
+   * Callers must keep handling the conflict - this exists so a creator is not told about a
+   * collision only after submitting a whole onboarding form.
+   *
+   * Matched on `handle_key`, the lower-cased unique column the rest of the server resolves
+   * handles through, so "Taken" and "taken" cannot both appear free.
+   *
+   * It answers for ANY account holding the handle, not only publicly visible ones - a
+   * handle held by a private or incomplete account is still taken. That is also why this
+   * cannot be answered by the public profile read next to it, where absence means "not
+   * public" rather than "free".
+   */
+  async handleAvailable(raw:unknown):Promise<{available:boolean}>{
+   // The same shape rule as updateAccountInputSchema.handle, so a handle this says is free
+   // cannot then be refused as malformed by the write.
+   const parsed=z.object({handle:z.string().trim().min(3).max(30)}).strict().safeParse(raw);
+   if(!parsed.success)throw new PublicContentFailure(400);
+   const found=await this.pool.query<{taken:boolean}>(
+    'SELECT EXISTS(SELECT 1 FROM creator_accounts WHERE handle_key=lower($1)) AS taken',
+    [parsed.data.handle]);
+   return {available:!found.rows[0]?.taken};
+  }
+
   async getCollectionById(raw:unknown){
    const parsed=contentIdSchema.safeParse(raw);if(!parsed.success)throw new SearchFailure(400);
    const db=await this.pool.connect();try{

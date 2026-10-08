@@ -41,11 +41,16 @@ describe("runtime route/event/job inventory", () => {
       // being different labels is the point.
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/recovery/status", classification: "canonical-explorers-recovery", ownerSource: "google-bound-recovery-proof-within-expiry-read-only" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/complete", classification: "canonical-explorers-recovery", policy: "google-bound-five-minute-proof+origin-on-mutation" }),
+      // Public by parity with the Strapi availability query it replaces, which was
+      // reachable unauthenticated from the landing page.
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/public/handles/:handle/available", classification: "public" }),
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
+    // 9 since the handle-availability route added its own ALL 405 fallback, the same way
+    // /public/recommendations/search has one.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(8);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(9);
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/games',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/games',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'canonical-explorers-owner'}));

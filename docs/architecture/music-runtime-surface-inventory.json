@@ -798,13 +798,43 @@
     },
     {
       "method": "USE",
+      "path": "/api/explorers/v1/public/handles",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 23
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 24
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 33
+    },
+    {
+      "method": "USE",
       "path": "/api/explorers/v1/public/profiles",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
-      "line": 20
+      "line": 34
     },
     {
       "method": "GET",
@@ -814,7 +844,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
-      "line": 32
+      "line": 46
     },
     {
       "method": "GET",
@@ -824,7 +854,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
-      "line": 33
+      "line": 47
     },
     {
       "method": "GET",
@@ -834,7 +864,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
-      "line": 34
+      "line": 48
     },
     {
       "method": "USE",

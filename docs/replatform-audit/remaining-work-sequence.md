@@ -180,8 +180,29 @@ screen is the long-term sign-up page. Neither blocks Strapi retirement.
 
 - `ClaimAccount` (3 calls plus a Strapi REST `/upload`) is the claim flow and belongs to
   **step 3** under **D4**, not here.
-- `hooks/useLogout` and `hooks/useUsernameValidation` hold no live Apollo call — retired
-  `gql` definitions awaiting step 12's deletion.
+- **I had this wrong too.** `hooks/useUsernameValidation` held a **live** Strapi query, not
+  a retired definition: all three username inputs - onboarding, profile edit, and the
+  signed-out landing claim - checked availability while typing through
+  `CHECK_USERNAME_AVAILABILITY` against Strapi's accounts collection. There was no canonical
+  equivalent, because the server enforces handle uniqueness at write time with a 409 on
+  `creator_accounts_handle_key_uq` and offers no pre-submit read.
+
+  So one was built: `GET /api/explorers/v1/public/handles/:handle/available`, in the
+  existing public-content router beside the other public reads. **Public by parity**, not by
+  expansion - the query it replaces was already reachable unauthenticated from the landing
+  page, and a handle is public by construction since it is the profile URL. Rate-limited to
+  30/min against the content reads' 120, because a per-keystroke check is also an
+  enumeration oracle and a debounced client needs far fewer. Declared in
+  `musicSurfacePolicy` as `public` (the allowlist is fail-closed), and the regenerated
+  inventory classifies it exactly like `/public/recommendations/search`: `GET` public, its
+  `USE` middleware and `ALL` 405 fallback tombstoned.
+
+  The read is explicitly **not** authoritative - it is a hint, and the write-time conflict
+  still decides - and a failed check reports *unavailable*, because offering a handle as
+  free during an outage sends a creator into a form they cannot submit.
+
+- `hooks/useLogout` holds `apollo.clearStore()` only: cache plumbing, which goes with Apollo
+  in step 12.
 
 ### 5. Auth UX and lifecycle — [2.4](tickets/ticket-2-4.md) — **prerequisite discharged 2026-10-08**
 - The blocking prerequisite is done: [the frozen requirement-to-receipt map](lifecycle-requirement-receipt-map.md). Writer dispatch is no longer gated on it.
@@ -263,7 +284,7 @@ as live.
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **8** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **7** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.

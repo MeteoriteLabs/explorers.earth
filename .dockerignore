@@ -1123,7 +1123,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/uploadPathGenerator.ts
 !explorers-earth/src/utils/url.ts
 !explorers-earth/src/utils/urlHelpers.ts
-!explorers-earth/src/utils/usernameAPI.ts
 !explorers-earth/src/utils/usernameValidation.ts
 !explorers-earth/src/utils/youtubeUtils.ts
 !explorers-earth/src/vite-env.d.ts

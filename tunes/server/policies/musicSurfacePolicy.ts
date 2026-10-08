@@ -147,6 +147,11 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     '/api/explorers/v1/public/recommendations/search',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
+    // Public by parity with what it replaces: the Strapi availability query it supersedes
+    // was reachable unauthenticated from the landing page, and a handle is public by
+    // construction since it is the profile URL. Declared here because the allowlist is
+    // fail-closed - an undeclared route classifies as a tombstone.
+    '/api/explorers/v1/public/handles/:handle/available',
   ].includes(route.path)) return 'public';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movie-genres')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
