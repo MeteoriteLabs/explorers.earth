@@ -239,8 +239,17 @@ code writes it back**. It is Strapi-era; Music visibility on a public profile is
 `account_category_settings` for `music`, which travels as `categories`. The dead hydration
 goes with the form cleanup in step 12.
 
-Still to do here: `Settings.tsx`'s `updatePasswordMutation`, which is **blocked on D10** -
-there is no canonical password to change, for the same reason sign-up is Google-only.
+**Settings is done too, and it was not D10's either.** `Settings.tsx:127` is
+`const data = { usersPermissionsUser: { provider: "google" } }` - a **hardcoded constant,
+not a read**. So every `provider !== "google"` branch in the file, including the Change
+Password row and its modal, is statically unreachable, and the `updatePasswordMutation`
+behind them was dead code pointed at Strapi. Removed; the handler now refuses by
+construction, so restoring a real provider read without porting the flow fails loudly
+instead of appearing to change a password canonical auth does not have.
+
+Deleting the unreachable password UI itself - four guarded branches and a modal - is left to
+step 12's form cleanup rather than done here, and is recorded in the file so it is not read
+as live.
 
 - Remaining: `Settings`, and the ticket obligations below.
 - **3.4**: 10 analytics identities are authored and **0 attested** — add the analytics lane to the runner and the suite manifest. Its consent and privacy obligations are also open, and are not a rewiring job.
@@ -254,7 +263,7 @@ there is no canonical password to change, for the same reason sign-up is Google-
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **9** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **8** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.

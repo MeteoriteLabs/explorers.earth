@@ -9,17 +9,12 @@ import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
-import { useMutation } from "@apollo/client";
-import {
-  updatePasswordMutation,
-} from "./api/mutation";
 import useAuthStore from "../../store/store";
 import { toast } from "sonner";
 import Modal from "../../components/ui/Modal";
 import { useNavigate } from "react-router-dom";
 import { EarthLoader } from "../../components/EarthLoader";
 import PasswordInput from "../../components/ui/PasswordInput";
-import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ProfileAccountSettings from "./components/ProfileAccountSettings";
@@ -30,7 +25,6 @@ import { computePinnedNavTabIds } from "../../utils/navPinning";
 import { useOwnerMusicAvailability } from "../music/PublicMusicAvailabilityProvider";
 import { useCanonicalAccount } from "../Profile/api/useCanonicalAccount";
 import { useLogout } from "../../hooks/useLogout";
-import { closeLocalMusicSession } from "../music/musicSessionBoundary";
 
 const Settings = memo(() => {
   const identity = useAccountLifecycleIdentity();
@@ -67,7 +61,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   // state for handling password modal
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   // accessing the data form the global state
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const endSession = useLogout();
   const canonicalAccount = useCanonicalAccount();
   // local state for handling the password
@@ -79,7 +73,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   // Password validation states
   const [isNewPasswordValid, setIsNewPasswordValid] = useState<boolean>(false);
   // update password mutation
-  const [updatePassword] = useMutation(updatePasswordMutation);
   // accessing user status
   const userBlocked = user?.blocked;
   // status update mutation
@@ -108,11 +101,10 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   // Password visibility states for delete account modal
   const [deletePasswordVisible, setDeletePasswordVisible] = useState<boolean>(false);
   const [deletePasswordConfirmVisible, setDeletePasswordConfirmVisible] = useState<boolean>(false);
-  // State for tracking password change redirect loading
-  const [
-    isRedirectingAfterPasswordChange,
-    setIsRedirectingAfterPasswordChange,
-  ] = useState<boolean>(false);
+  // Retained read-only: the redirect it gated was part of the password-change flow, and
+  // nothing sets it any more. It renders nothing, which is correct for a flow that cannot
+  // run; the declaration goes with step 12's cleanup of the unreachable password UI.
+  const isRedirectingAfterPasswordChange = false;
   const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
@@ -124,6 +116,12 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   );
   const navigationHeading = useRef<HTMLHeadingElement>(null);
 
+  // Ticket 3.1 / 2.4. A hardcoded constant, not a read. Canonical auth is Google-only
+  // (betterAuth.ts sets emailAndPassword: {enabled: false}), so every
+  // provider !== "google" branch below - the Change Password row, its modal, and two
+  // others - is statically unreachable. The password change behind them was still wired to
+  // a Strapi mutation; that is gone. Deleting the unreachable UI belongs with step 12's
+  // form cleanup, not here, but it is dead and must not be read as live.
   const data = { usersPermissionsUser: { provider: "google" } };
 
   const settingsLoading = !categoryNavigation.error && (!categoryNavigation.authority || !categoryNavigation.content);
@@ -312,74 +310,12 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   };
 
   // function to update password
+  // Unreachable: its only entry point is behind provider !== "google" above, which is
+  // false by construction. It refuses rather than silently resolving, so that restoring a
+  // real provider read without porting the flow fails loudly instead of appearing to change
+  // a password canonical auth does not have.
   const handleUpdatePassword = async () => {
-    // Validate current password is provided
-    if (!currentPassword.trim()) {
-      toast.error(t("settings.account.changePassword.currentPasswordRequired"));
-      return;
-    }
-
-    // Validate new password using centralized validator
-    const newPasswordValidation = validatePassword(newPassword, {
-      currentPassword: currentPassword,
-    });
-
-    if (!newPasswordValidation.isValid) {
-      toast.error(t("auth.validations.general.fillRequiredFields"));
-      return;
-    }
-
-    // Validate password confirmation
-    if (newPassword !== confirmPassword) {
-      toast.error(t("auth.validations.confirmPassword.mustMatch"));
-      return;
-    }
-
-    try {
-      // mutation
-      await updatePassword({
-        variables: {
-          currentPassword: currentPassword,
-          password: newPassword,
-          passwordConfirmation: confirmPassword,
-        },
-      });
-
-      // success handling
-      toast.success(t("settings.account.changePassword.successMessage"));
-
-
-
-      // reseting the local state
-      setNewPassword("");
-      setCurrentPassword("");
-      setConfirmPassword("");
-      setShowPasswordModal(false);
-
-      // Show loading state during redirect delay
-      setIsRedirectingAfterPasswordChange(true);
-
-      // Security: Log out user and redirect to login after password change
-      // This ensures the old session is invalidated and user must re-authenticate
-      setTimeout(() => {
-        // Clear any stored tokens
-        localStorage.removeItem("qrtoken");
-        // Log out from global state
-        logout();
-        closeLocalMusicSession();
-        // Redirect to login page
-        navigate("/login");
-        // Reset loading state (though component will unmount)
-        setIsRedirectingAfterPasswordChange(false);
-      }, 2000); // Give user time to see the success message
-    } catch (err) {
-      // error handling
-      const errorMessage =
-        (err as any)?.graphQLErrors?.[0]?.message ||
-        t("toast.error.failedToUpdatePassword");
-      toast.error(errorMessage);
-      setShowPasswordModal(false);
-    }
+    throw new Error("Password changes are unavailable. This account signs in with Google.");
   };
 
   // The current Better Auth session is the only authority for these commands.
