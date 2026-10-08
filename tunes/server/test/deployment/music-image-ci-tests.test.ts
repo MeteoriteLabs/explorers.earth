@@ -45,7 +45,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all nine ordinary database selectors on their existing service", () => {
+  it("preserves all fourteen ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
@@ -60,6 +60,28 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/music-socket-handshake.integration.test.ts",
       // Ticket 4.3. 0043's typed storage and its ordered screenshot relation.
       "server/test/explorers/apps.integration.test.ts",
+      /*
+       * Added 2026-10-08 by `111466e6` and `4c86ab6b`, when a count of the suites this
+       * job actually runs found 41 of 51 tunes integration files ungated. These five were
+       * the highest-value of them: each is the only real-PostgreSQL proof of something
+       * the replatform asserts, so leaving them ungated meant the proof existed but
+       * nothing ran it.
+       *
+       * This list went stale for one CI run, which is the more useful lesson. The
+       * workflow gained the files and this assertion did not, and no job caught it:
+       * `server/test/deployment/` is not in any gated selector, so the test that pins
+       * CI's own shape is itself unpinned. That is recorded in the handoff as a gap, not
+       * fixed here - adding a selector for this directory is a CI-surface change of its
+       * own.
+       */
+      // Ticket 6.1. The named canonical identity acceptance.
+      "server/test/canonical-music-identity.integration.test.ts",
+      // Ticket 6.4. Deletion, recovery-callback and authorization against the real schema.
+      "server/test/explorers-lifecycle.integration.test.ts",
+      "server/test/explorers-recovery-callback.integration.test.ts",
+      "server/test/explorers-authorization.integration.test.ts",
+      // The `music_runtime` least-privilege privilege matrix, which only a real role proves.
+      "server/test/music-runtime-role.integration.test.ts",
     ]);
   });
 });
