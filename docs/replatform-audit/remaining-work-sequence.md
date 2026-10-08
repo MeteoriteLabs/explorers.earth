@@ -162,9 +162,25 @@ advance it without the decision. What D4 is actually deciding, precisely:
   equivalent: an unauthenticated document upload needs a server-issued, single-use,
   purpose-bound grant, the way recovery proofs work.
 
-I did **not** contain this flow the way step 9's was contained. Step 9 applied a decision
-already in force on two of three entrances; closing a live, linked, user-facing flow that
-nothing has closed yet is the product decision itself, and that is D4's to make, not mine.
+**Corrected 2026-10-08, and the correction changed what could be done.** I wrote above that
+this "breaks mid-flow after a document upload" and that touching it would be making D4's
+decision. The first half was wrong, and it was load-bearing for the second.
+
+The verification step - the one that uploads a document - is reachable only after a
+**successful search**, and the search is a Strapi read. So the flow never reaches an upload
+once Strapi is gone. What it does instead is fail at the door with a **misleading message**:
+"No account found with the provided details." A business owner whose place genuinely is
+claimable is told it is not, and has no reason to ask anyone.
+
+That makes the honest change small and decision-free, so it is **done**: the search says the
+feature is temporarily unavailable and explicitly that this does not mean the place is
+unclaimable, it reaches no network to say so, and the three Strapi operations are gone with
+the `Bearer VITE_PUBLIC_ACCESS_TOKEN` upload. The route, both entry points and the page all
+stay.
+
+**D4 is still open and still owns the real question** - whether a canonical claim flow is
+rebuilt and in what shape (18 MISSING fields, no table, no route, no contract). Nothing here
+forecloses it; if it is rebuilt, the note above about the upload grant applies.
 - Claim service, repository, routes and migration — none of it exists.
 - Eligibility is the direct canonical query 5.1 already specifies; no second stale directory.
 - Retires `features/Favorites/services/claimablePlaceProfileService.ts`, still in the tree and no longer called.
@@ -336,7 +352,7 @@ as live.
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **5** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **4** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.

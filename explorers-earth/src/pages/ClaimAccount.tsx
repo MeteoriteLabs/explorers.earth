@@ -1,4 +1,3 @@
-import { useLazyQuery, useMutation } from "@apollo/client";
 import { useState } from "react";
 import {
   claimAccountInitialValues,
@@ -9,82 +8,45 @@ import {
   VerificationFormValues,
 } from "../features/Authentication/data";
 import VerificationForm from "../features/Authentication/components/VerificationForm";
-import { checkClaimablePlaceProfileByPhoneQuery, checkClaimablePlaceProfileByAddressQuery, createVerifyClaimMutation } from "../features/Authentication/api/queries";
 import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
-import { useNavigate } from "react-router-dom";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../utils/geoHelpers";
 import PlaceProfileCard from "../features/Authentication/components/PlaceProfileCard";
-import { toast } from "sonner";
-import axios from "axios";
-import { generateRandomFileName } from "../utils/uploadPathGenerator";
-import useAuthStore from "../store/store";
 import AddressInput from "../features/Profile/components/AddressInput";
 import Button from "../components/ui/Button";
 
 const ClaimAccount = () => {
-  const navigate = useNavigate();
-  const { token } = useAuthStore();
-  const [checkClaimableProfileByPhone, { loading: phoneLoading }] = useLazyQuery(checkClaimablePlaceProfileByPhoneQuery);
-  const [checkClaimableProfileByAddress, { loading: addressLoading }] = useLazyQuery(checkClaimablePlaceProfileByAddressQuery);
-  const [createVerifyClaim, { loading: verifyLoading }] = useMutation(createVerifyClaimMutation);
+  const verifyLoading = false;
   const [currentStep, setCurrentStep] = useState(0);
+  const [unavailable, setUnavailable] = useState(false);
   const [foundProfile, setFoundProfile] = useState<any>(null);
   const [formData, setFormData] = useState<FormValues>(claimAccountInitialValues);
-  const [verificationData, setVerificationData] = useState<VerificationFormValues>(verificationInitialValues);
+  const [verificationData] = useState<VerificationFormValues>(verificationInitialValues);
 
   const steps = ["Search", "Profile Details", "Verify Yourself"];
-  const loading = phoneLoading || addressLoading;
+  const loading = false;
 
+  /**
+   * Ticket 5.4, decision D4. The claimable-place search.
+   *
+   * This ran two Strapi lookups, by phone and by address, and when neither matched it said
+   * "No account found with the provided details." Once Strapi is gone that message is a lie
+   * with consequences: a business owner whose place IS claimable is told it is not, and has
+   * no reason to ask anyone. There is no canonical replacement - a search of tunes/server,
+   * tunes/shared and tunes/migrations for claim support returns one comment and no code.
+   *
+   * So it says the true thing instead. The route, both entry points, and this page stay;
+   * whether a canonical claim flow is rebuilt, and in what shape, is still D4's call and
+   * nothing here forecloses it.
+   */
   const handleSubmit = async (
     values: FormValues,
     formikHelpers: FormikHelpers<FormValues>
   ) => {
-    try {
-      // Save form data
-      setFormData(values);
-
-      const hasPhone = values.phone && (values.phone as string).trim().length > 0;
-      const hasAddress = values.address && (values.address as string).trim().length > 0;
-
-      let matchingProfiles: any[] = [];
-
-      // Search by phone number (exact match only)
-      if (hasPhone) {
-        const response = await checkClaimableProfileByPhone({
-          variables: { phone: (values.phone as string).trim() }
-        });
-
-        const profiles = response.data?.claimablePlaceProfiles || [];
-        matchingProfiles = profiles;
-      }
-
-      // If no phone match and we have address, search by address
-      if (matchingProfiles.length === 0 && hasAddress) {
-        const response = await checkClaimableProfileByAddress({
-          variables: { address: (values.address as string).trim() }
-        });
-
-        const profiles = response.data?.claimablePlaceProfiles || [];
-        matchingProfiles = profiles;
-      }
-
-      if (matchingProfiles && matchingProfiles.length > 0) {
-        // Claimable place profile found - move to step 2
-        const profile = matchingProfiles[0];
-        setFoundProfile(profile);
-        setCurrentStep(1);
-        toast.success("Account found! Here are the details.");
-      } else {
-        // No claimable place profile found - show toast
-        toast.error("No account found with the provided details.");
-      }
-    } catch (err) {
-      toast.error("An error occurred while searching. Please try again later.");
-    } finally {
-      formikHelpers.setSubmitting(false);
-    }
+    setFormData(values);
+    setUnavailable(true);
+    formikHelpers.setSubmitting(false);
   };
 
   const handleBackToSearch = () => {
@@ -101,82 +63,23 @@ const ClaimAccount = () => {
     setCurrentStep(1);
   };
 
+  /**
+   * Unreachable: it is only rendered after a successful search, which cannot succeed. It
+   * refuses rather than resolving, and - the reason this is not just dead code removal - it
+   * no longer posts a verification document to Strapi's /upload with
+   * `Bearer VITE_PUBLIC_ACCESS_TOKEN`, a credential bundled into the client that authorised
+   * writes by any unauthenticated visitor. If a canonical claim flow is built, an
+   * unauthenticated document upload needs a server-issued, single-use, purpose-bound grant,
+   * the way recovery proofs work - not a shared token shipped to the browser.
+   */
   const handleVerificationSubmit = async (
-    values: VerificationFormValues,
+    _values: VerificationFormValues,
     formikHelpers: FormikHelpers<VerificationFormValues>
   ) => {
-    try {
-      setVerificationData(values);
-
-      // First upload the file (now mandatory)
-      let attachmentUrl = null;
-      if (!values.attachment) {
-        toast.error("Verification document is required");
-        formikHelpers.setSubmitting(false);
-        return;
-      }
-
-      try {
-        const formData = new FormData();
-
-        // Generate structured path for verification documents
-        const randomFileName = generateRandomFileName(values.attachment.name);
-        const structuredPath = `verification/${randomFileName}`;
-
-        formData.append("files", values.attachment);
-        formData.append("path", structuredPath);
-
-        // Upload file to Strapi
-        const uploadResponse = await axios.post(
-          `${import.meta.env.VITE_REST_API_URL}/upload`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: token
-                ? `Bearer ${token}`
-                : `Bearer ${import.meta.env.VITE_PUBLIC_ACCESS_TOKEN}`,
-            },
-          }
-        );
-
-        if (uploadResponse.data && uploadResponse.data[0]?.id) {
-          attachmentUrl = uploadResponse.data[0].id;
-        } else {
-          throw new Error("No file ID returned from upload");
-        }
-      } catch (uploadError) {
-        toast.error("File upload failed. Please try again.");
-        formikHelpers.setSubmitting(false);
-        return;
-      }
-
-      // Create verify claim record
-      const result = await createVerifyClaim({
-        variables: {
-          data: {
-            Name: values.name,
-            Email: values.email,
-            Phone: values.phone,
-            Message: values.description,
-            Attachment: attachmentUrl,
-          },
-        },
-      });
-
-      if (result.data) {
-        toast.success("Verification request submitted successfully! We'll review your claim and contact you soon.");
-        // Redirect to home page after successful submission
-        navigate("/");
-      }
-    } catch (err) {
-      toast.error("An error occurred while submitting your verification. Please try again.");
-    } finally {
-      formikHelpers.setSubmitting(false);
-    }
+    formikHelpers.setSubmitting(false);
+    throw new Error("Claiming an account is unavailable.");
   };
 
-  // Generate GEO data for claim account page
   const geoData = createWebPageGEOData({
     pageType: 'claim-explorers-account',
     title: 'Claim Your explorers Account',
@@ -264,6 +167,14 @@ const ClaimAccount = () => {
                     <h1 className="font-semibold text-2xl text-dashboard">Find Your explorers Account</h1>
                     <p className="text-sm mt-1 text-dashboard-light">Enter your phone number and address to search for your explorers account</p>
                   </div>
+
+                  {unavailable && (
+                    <p role="alert" className="text-sm text-orange-500 font-poppins">
+                      Claiming an existing account is temporarily unavailable while account
+                      access is being upgraded. This does not mean your place is unclaimable —
+                      please contact support and we will help.
+                    </p>
+                  )}
 
                   <Formik
                     initialValues={formData}
