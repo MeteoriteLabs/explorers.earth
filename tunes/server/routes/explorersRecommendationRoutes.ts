@@ -13,6 +13,7 @@ import type { Actor } from '../application/actor';
 import { RecommendationService } from '../application/recommendations';
 import { CatalogService } from '../application/catalog';
 import { OwnerContentService } from '../application/ownerContent';
+import { GuideService } from '../application/guides';
 import { RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { requireActor, sendActorError } from '../middleware/explorersPrincipal';
 import type { RequestContext } from '../../shared/explorersContract';
@@ -22,6 +23,7 @@ import {BookProviderFailure,BookCatalog} from '../services/bookCatalog';
 export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool)),movies?:MovieCatalog,movieImporter=new MovieMediaImportService(pool,new MediaService(pool))) {
   const service=new RecommendationService(pool),catalog=new CatalogService(pool,books,movies);
   const ownerContent=new OwnerContentService(pool,config.secret);
+  const guides=new GuideService(pool);
   const routes=Router({caseSensitive:true,strict:true});
   const unsupported=(_request:Request,response:Response)=>response.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}});
   const mutation=(work:(actor:Actor,id:string,body:unknown,context:RequestContext)=>Promise<unknown>,name:string,status=200)=>async(request:Request,response:Response)=>{
@@ -63,6 +65,22 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.post('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,true),'collection'));
   routes.delete('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,false),'collection'));
   routes.all('/api/explorers/v1/collections/:id/location',unsupported);
+  // Ticket 5.3. The guide aggregate: the parent's guide fields, its cover and a page of
+  // ordered sections. Registration order matters here - 'sections/order' comes before
+  // 'sections/:sectionId', or Express matches the literal 'order' as a section id and a
+  // reorder silently becomes an update of a section that does not exist.
+  routes.get('/api/explorers/v1/collections/:id/guide',read((a,id,q)=>guides.getAggregate(a,id,q),'guide'));
+  routes.put('/api/explorers/v1/collections/:id/guide',mutation((a,id,b,c)=>guides.setDetails(a,id,b,c),'guide'));
+  routes.patch('/api/explorers/v1/collections/:id/guide/sections/order',mutation((a,id,b,c)=>guides.reorderSections(a,id,b,c),'guide'));
+  routes.post('/api/explorers/v1/collections/:id/guide/sections',mutation((a,id,b,c)=>guides.addSection(a,id,b,c),'guide',201));
+  routes.patch('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.setSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.removeSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
+  routes.put('/api/explorers/v1/collections/:id/guide/cover',mutation((a,id,b,c)=>guides.setCover(a,id,b,c),'guide'));
+  routes.all('/api/explorers/v1/collections/:id/guide',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/sections/order',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/sections',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/sections/:sectionId',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/cover',unsupported);
   routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
   routes.get('/api/explorers/v1/collections/:id/editable',read((a,id,q)=>ownerContent.getCollection(a,id,q,true),'collection'));
   routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));

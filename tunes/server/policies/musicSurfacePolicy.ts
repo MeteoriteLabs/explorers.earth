@@ -180,6 +180,17 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["POST", "/api/explorers/v1/recommendations/:id/movie-media/import"], ["POST", "/api/explorers/v1/recommendations/:id/entity"], ["POST", "/api/explorers/v1/recommendations/:id/book-covers"],
         ["PATCH", "/api/explorers/v1/recommendations/:id"],
         ["DELETE", "/api/explorers/v1/recommendations/:id"],
+        // Ticket 5.3. The guide aggregate. Listed one method and path at a time because
+        // this allowlist is fail-closed: an unlisted route classifies as a tombstone, so a
+        // new category surface must be declared rather than inheriting owner authority
+        // from the /collections/:id prefix it happens to sit under.
+        ["GET", "/api/explorers/v1/collections/:id/guide"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/sections"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/sections/order"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
+        ["DELETE", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide/cover"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";

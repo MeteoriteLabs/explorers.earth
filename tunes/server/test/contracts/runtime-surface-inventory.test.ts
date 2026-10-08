@@ -88,6 +88,14 @@ describe("runtime route/event/job inventory", () => {
       ['GET','/api/explorers/v1/categories/:category/top-picks'],
       ['PUT','/api/explorers/v1/categories/:category/top-picks'],
       ['PATCH','/api/explorers/v1/categories/:category/top-picks/order'],
+      // Ticket 5.3. The guide aggregate.
+      ['GET','/api/explorers/v1/collections/:id/guide'],
+      ['PUT','/api/explorers/v1/collections/:id/guide'],
+      ['POST','/api/explorers/v1/collections/:id/guide/sections'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/sections/order'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
+      ['DELETE','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
+      ['PUT','/api/explorers/v1/collections/:id/guide/cover'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
@@ -96,7 +104,10 @@ describe("runtime route/event/job inventory", () => {
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
-      '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/recommendations/:id/entity','/api/explorers/v1/recommendations/:id/book-covers','/api/explorers/v1/recommendations/:id/movie-media/import'];
+      '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/recommendations/:id/entity','/api/explorers/v1/recommendations/:id/book-covers','/api/explorers/v1/recommendations/:id/movie-media/import',
+      '/api/explorers/v1/collections/:id/guide','/api/explorers/v1/collections/:id/guide/sections',
+      '/api/explorers/v1/collections/:id/guide/sections/order','/api/explorers/v1/collections/:id/guide/sections/:sectionId',
+      '/api/explorers/v1/collections/:id/guide/cover'];
     expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
     for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
       method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',
