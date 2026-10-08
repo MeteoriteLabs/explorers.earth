@@ -1814,7 +1814,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 357
+      "line": 361
     },
     {
       "method": "POST",
@@ -1824,7 +1824,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 361
+      "line": 365
     },
     {
       "method": "PATCH",
@@ -1834,7 +1834,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 386
+      "line": 390
     },
     {
       "method": "GET",
@@ -1844,7 +1844,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 394
+      "line": 398
     },
     {
       "method": "POST",
@@ -1854,7 +1854,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 402
+      "line": 406
     },
     {
       "method": "POST",
@@ -1864,7 +1864,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 410
+      "line": 414
     },
     {
       "method": "DELETE",
@@ -1874,7 +1874,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "delete",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 445
+      "line": 449
     },
     {
       "method": "DELETE",
@@ -1884,7 +1884,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "delete",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 454
+      "line": 458
     },
     {
       "method": "PATCH",
@@ -1894,7 +1894,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 461
+      "line": 465
     },
     {
       "method": "DELETE",
@@ -1904,7 +1904,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "delete",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 475
+      "line": 479
     },
     {
       "method": "DELETE",
@@ -1914,7 +1914,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "delete",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 479
+      "line": 483
     },
     {
       "method": "POST",
@@ -1924,7 +1924,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 495
+      "line": 499
     },
     {
       "method": "POST",
@@ -1934,7 +1934,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 507
+      "line": 511
     },
     {
       "method": "POST",
@@ -1944,7 +1944,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 519
+      "line": 523
     },
     {
       "method": "POST",
@@ -1954,7 +1954,7 @@
       "policy": "c5-principal+local-lifecycle+fresh-entitlement+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 553
+      "line": 557
     },
     {
       "method": "GET",
@@ -1964,7 +1964,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 563
+      "line": 567
     },
     {
       "method": "GET",
@@ -1974,7 +1974,7 @@
       "policy": "hashed-capability+guest-allowlist",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 579
+      "line": 583
     },
     {
       "method": "POST",
@@ -1984,7 +1984,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 601
+      "line": 605
     },
     {
       "method": "POST",
@@ -1994,7 +1994,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 615
+      "line": 619
     },
     {
       "method": "POST",
@@ -2004,7 +2004,7 @@
       "policy": "hashed-capability+guest-allowlist",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 628
+      "line": 632
     },
     {
       "method": "ALL",
@@ -2014,7 +2014,7 @@
       "policy": "normalized-executable-retirement-matcher",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "line": 731
+      "line": 735
     },
     {
       "method": "POST",

@@ -5,6 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { createAccountMusicRepository } from "../music/accountMusicRepository";
+import { MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
+import { MusicPrincipalService } from "../middleware/musicPrincipal";
+import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
+import { authorizeOperation } from "../application/authorization";
 import type { Actor } from "../application/actor";
 
 /**
@@ -60,7 +64,7 @@ async function owner() {
     userId, accountId, role: "owner",
     credential: { kind: "web-session", sessionId: session.id, sessionVersion: 1 },
   };
-  return { userId, accountId, actor, cookie };
+  return { userId, accountId, actor, cookie, sessionId: session.id };
 }
 
 const venueOf = async (musicUserId: number) => (await pool.query<{
@@ -218,6 +222,116 @@ describe("canonical Music identity against real PostgreSQL", () => {
 
     expect(reused.musicUserId).toBe(ensured.musicUserId);
     expect((await venueOf(ensured.musicUserId)).venue_name).toBe("Renamed Venue");
+  });
+
+  it("revokes both transports on logout, not just HTTP", async () => {
+    /*
+     * Ticket 6.1, step 5 obligation 4: "a logged-out or suspended owner must lose socket
+     * authority as well as HTTP access."
+     *
+     * The regression this pins, measured before it was fixed: after logout the
+     * `auth_session` row is gone, so HTTP correctly answered 401 - `authorizeOperation`
+     * looks for exactly that row - while the venue's `users.session_version` was unchanged,
+     * because logout does not touch the venue. The socket's per-event recheck compares the
+     * ticket's version against that column, so it still matched and an open owner socket
+     * kept receiving owner events.
+     *
+     * `resolvePrincipal` below is the recheck: it is the same call `ownerCredentials.recheck`
+     * makes on every owner event, so a refusal here is a disconnect in production.
+     */
+    const subject = await owner();
+    const repository = createAccountMusicRepository(pool);
+    const venue = await repository.ensureMusicAccount(subject.actor);
+
+    const tokens = new MusicTokenService({
+      current: { kid: "logout-test", secret: Buffer.alloc(32, 0x5a).toString("base64url") },
+      tokenLifetimeSeconds: 600,
+      clockSkewSeconds: 10,
+    } satisfies MusicTokenConfiguration);
+    const identities = new MusicIdentityRepository(pool);
+    const principals = new MusicPrincipalService(tokens, identities);
+
+    const venueVersion = (await pool.query<{ session_version: number }>(
+      "SELECT session_version FROM users WHERE id=$1", [venue.musicUserId])).rows[0].session_version;
+
+    const credential = tokens.mintCanonical({
+      accountId: subject.accountId,
+      musicUserId: venue.musicUserId,
+      sessionVersion: venueVersion,
+      sessionId: subject.sessionId,
+      userId: subject.userId,
+    });
+    const ticket = tokens.mintSocketTicket({
+      subject: subject.accountId,
+      sessionVersion: venueVersion,
+      subjectKind: "canonical-account",
+      sessionId: subject.sessionId,
+      userId: subject.userId,
+    });
+
+    // Both live while the session is.
+    await expect(principals.resolve(credential.token)).resolves.toMatchObject({
+      musicUserId: venue.musicUserId, subject: subject.accountId,
+    });
+    const openSocket = await principals.resolveSocketTicket(ticket.token);
+    // `resolveSubject(context.subject)` is exactly what the socket server's
+    // `ownerCredentials.recheck` delegates to, so this is the production recheck.
+    await expect(principals.resolveSubject(openSocket.subject)).resolves.toMatchObject({
+      musicUserId: venue.musicUserId,
+    });
+    await expect(authorizeOperation(pool, subject.actor, "music:owner", subject.accountId))
+      .resolves.toBeUndefined();
+
+    // Logout, exactly as Better Auth does it: the session row goes.
+    await pool.query("DELETE FROM auth_session WHERE id=$1", [subject.sessionId]);
+
+    // HTTP was always denied; this asserts it still is, so the fix did not move the goalposts.
+    await expect(authorizeOperation(pool, subject.actor, "music:owner", subject.accountId))
+      .rejects.toMatchObject({ status: 401 });
+    // The venue is deliberately untouched - that is why the old recheck passed.
+    expect((await pool.query<{ session_version: number }>(
+      "SELECT session_version FROM users WHERE id=$1", [venue.musicUserId])).rows[0].session_version)
+      .toBe(venueVersion);
+    // And now both Music transports refuse.
+    await expect(principals.resolve(credential.token)).rejects.toMatchObject({ code: "TOKEN_REVOKED" });
+    await expect(principals.resolveSubject(openSocket.subject))
+      .rejects.toMatchObject({ code: "TOKEN_REVOKED" });
+  });
+
+  it("still accepts a credential minted without a session binding", async () => {
+    // Backwards compatibility during rollout: a canonical credential minted before the
+    // claim existed carries no binding and must keep working until it expires, rather than
+    // logging every current owner out at deploy.
+    const subject = await owner();
+    const repository = createAccountMusicRepository(pool);
+    const venue = await repository.ensureMusicAccount(subject.actor);
+    const tokens = new MusicTokenService({
+      current: { kid: "unbound-test", secret: Buffer.alloc(32, 0x5b).toString("base64url") },
+      tokenLifetimeSeconds: 600, clockSkewSeconds: 10,
+    } satisfies MusicTokenConfiguration);
+    const principals = new MusicPrincipalService(tokens, new MusicIdentityRepository(pool));
+    const venueVersion = (await pool.query<{ session_version: number }>(
+      "SELECT session_version FROM users WHERE id=$1", [venue.musicUserId])).rows[0].session_version;
+
+    const unbound = tokens.mintCanonical({
+      accountId: subject.accountId, musicUserId: venue.musicUserId, sessionVersion: venueVersion,
+    });
+    await pool.query("DELETE FROM auth_session WHERE id=$1", [subject.sessionId]);
+    await expect(principals.resolve(unbound.token)).resolves.toMatchObject({
+      musicUserId: venue.musicUserId,
+    });
+  });
+
+  it("refuses a half-bound credential rather than minting one that cannot be checked", () => {
+    const tokens = new MusicTokenService({
+      current: { kid: "partial-test", secret: Buffer.alloc(32, 0x5c).toString("base64url") },
+      tokenLifetimeSeconds: 600, clockSkewSeconds: 10,
+    } satisfies MusicTokenConfiguration);
+    const base = { accountId: "11111111-1111-4111-8111-111111111111", musicUserId: 1, sessionVersion: 1 };
+    // A session id with no user cannot be looked up in auth_session, so a token carrying
+    // one would silently skip the check it exists to enforce.
+    expect(() => tokens.mintCanonical({ ...base, sessionId: "session-abcdefgh" })).toThrow();
+    expect(() => tokens.mintCanonical({ ...base, userId: "user-abcdefgh" })).toThrow();
   });
 
   it("refuses an unmapped canonical venue at COMMIT, so the NULLs are not a hole", async () => {

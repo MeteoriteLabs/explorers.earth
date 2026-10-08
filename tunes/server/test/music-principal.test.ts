@@ -10,6 +10,7 @@ import {
 import { CANONICAL_SUBJECT_KIND, MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
 
 const NOW = 1_800_000_000_000;
+const CANONICAL_ACCOUNT = "11111111-1111-4111-8111-111111111111";
 const currentSecret = Buffer.alloc(32, 0x31).toString("base64url");
 const previousSecret = Buffer.alloc(32, 0x32).toString("base64url");
 const tokenConfiguration: MusicTokenConfiguration = {
@@ -37,11 +38,19 @@ function repository(
 ) {
   let state = initial;
   let canonicalState = canonicalInitial;
+  let sessionLive = true;
+  const sessionLookups: Array<{ sessionId: string; userId: string }> = [];
   return {
     resolveCredentialSubject: async () => state,
     resolveCanonicalCredentialSubject: async () => canonicalState,
+    isCanonicalSessionLive: async (sessionId: string, userId: string) => {
+      sessionLookups.push({ sessionId, userId });
+      return sessionLive;
+    },
     set: (next: MusicCredentialSubjectState) => { state = next; },
     setCanonical: (next: CanonicalMusicCredentialSubjectState) => { canonicalState = next; },
+    setSessionLive: (next: boolean) => { sessionLive = next; },
+    sessionLookups,
   };
 }
 
@@ -233,5 +242,90 @@ describe("local Music principal resolution", () => {
       () => new MusicPrincipalService(tokens, repo).resolve(minted.token),
       code as MusicPrincipalError["code"],
     );
+  });
+});
+
+describe("canonical session binding", () => {
+  /*
+   * Ticket 6.1, step 5 obligation 4. Logout deletes the `auth_session` row and touches
+   * nothing on the venue, so before this binding an open socket outlived its session: HTTP
+   * answered 401 while the per-event recheck still matched the venue's session_version.
+   */
+  const bound = { sessionId: "sessionAbcdefgh", userId: "userAbcdefgh" };
+
+  function canonicalTokens() {
+    const tokens = tokenService();
+    const repo = repository({ identity: undefined, tombstoned: false },
+      { venue: { ...canonicalVenue }, tombstoned: false });
+    return { tokens, repo, principals: new MusicPrincipalService(tokens, repo) };
+  }
+
+  it("refuses a bound credential once its session is gone, and says which session it asked about", async () => {
+    const { tokens, repo, principals } = canonicalTokens();
+    const credential = tokens.mintCanonical({
+      accountId: CANONICAL_ACCOUNT, musicUserId: canonicalVenue.musicUserId,
+      sessionVersion: canonicalVenue.sessionVersion, ...bound,
+    });
+    await expect(principals.resolve(credential.token)).resolves.toMatchObject({
+      musicUserId: canonicalVenue.musicUserId, sessionId: bound.sessionId, userId: bound.userId,
+    });
+    expect(repo.sessionLookups).toEqual([bound]);
+
+    repo.setSessionLive(false);
+    await expectPrincipalError(() => principals.resolve(credential.token), "TOKEN_REVOKED");
+  });
+
+  it("refuses an open socket's recheck once its session is gone", async () => {
+    // The recheck is the only thing between a logged-out tab and the next owner event.
+    const { tokens, repo, principals } = canonicalTokens();
+    const ticket = tokens.mintSocketTicket({
+      subject: CANONICAL_ACCOUNT, sessionVersion: canonicalVenue.sessionVersion,
+      subjectKind: CANONICAL_SUBJECT_KIND, ...bound,
+    });
+    const open = await principals.resolveSocketTicket(ticket.token);
+    expect(open.subject).toMatchObject({ sid: bound.sessionId, uid: bound.userId });
+    await expect(principals.resolveSubject(open.subject)).resolves.toMatchObject({
+      musicUserId: canonicalVenue.musicUserId,
+    });
+
+    repo.setSessionLive(false);
+    await expectPrincipalError(() => principals.resolveSubject(open.subject), "TOKEN_REVOKED");
+  });
+
+  it("does not consult a session for an unbound credential", async () => {
+    // Backwards compatibility: a canonical credential minted before the claim existed has
+    // no binding and must keep working until it expires, rather than logging out every
+    // current owner at deploy.
+    const { tokens, repo, principals } = canonicalTokens();
+    const unbound = tokens.mintCanonical({
+      accountId: CANONICAL_ACCOUNT, musicUserId: canonicalVenue.musicUserId,
+      sessionVersion: canonicalVenue.sessionVersion,
+    });
+    repo.setSessionLive(false);
+    await expect(principals.resolve(unbound.token)).resolves.toMatchObject({
+      musicUserId: canonicalVenue.musicUserId,
+    });
+    expect(repo.sessionLookups).toEqual([]);
+  });
+
+  it("refuses to mint a half-bound credential or ticket", () => {
+    const { tokens } = canonicalTokens();
+    const base = {
+      accountId: CANONICAL_ACCOUNT, musicUserId: canonicalVenue.musicUserId,
+      sessionVersion: canonicalVenue.sessionVersion,
+    };
+    // A session id with no user cannot be looked up, so a token carrying one would skip
+    // the very check it exists to enforce.
+    expect(() => tokens.mintCanonical({ ...base, sessionId: bound.sessionId })).toThrow();
+    expect(() => tokens.mintCanonical({ ...base, userId: bound.userId })).toThrow();
+    expect(() => tokens.mintCanonical({ ...base, sessionId: "short", userId: bound.userId })).toThrow();
+    expect(() => tokens.mintCanonical({ ...base, sessionId: bound.sessionId, userId: "bad id!" })).toThrow();
+    const ticketBase = {
+      subject: CANONICAL_ACCOUNT, sessionVersion: canonicalVenue.sessionVersion,
+      subjectKind: CANONICAL_SUBJECT_KIND,
+    };
+    expect(() => tokens.mintSocketTicket({ ...ticketBase, sessionId: bound.sessionId })).toThrow();
+    expect(() => tokens.mintSocketTicket({ ...ticketBase, userId: bound.userId })).toThrow();
+    expect(() => tokens.mintSocketTicket({ ...ticketBase, sessionId: "no", userId: bound.userId })).toThrow();
   });
 });
