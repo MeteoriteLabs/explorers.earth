@@ -2,17 +2,13 @@ import { useCategoryNavigation } from "../../navigation/CategoryNavigationProvid
 import type { IntentAuthority } from "../../navigation/categoryNavigationPolicy";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
-import { GET_GUIDE_BY_ID_QUERY, GET_USER_ACCOUNT_QUERY } from "../api/queries";
-import {
-  DELETE_GUIDE_SECTION_MUTATION,
-  UPDATE_GUIDE_MUTATION,
-  CREATE_GUIDE_SECTION_MUTATION,
-} from "../api/mutations";
+import { useGuidesOwner } from "../hooks/useGuidesOwner";
+import { GuidesClient } from "../api/guidesClient";
+import { setGuidePublished } from "../api/guideListWrites";
 import {
   generateSingleSectionWithAI,
   enrichAndFormatSection,
@@ -68,7 +64,6 @@ const GuideDetailsPage = () => {
   // Check AI guide quota
   const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
 
-  const { user } = useAuthStore();
   const navigation = useCategoryNavigation();
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
     isOpen: boolean;
@@ -82,11 +77,9 @@ const GuideDetailsPage = () => {
     isOpen: boolean;
     listName: string;
   } | null>(null);
-
-  const { refetch: refetchAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
+  // On the owner's own guide page the author is the signed-in owner, which is why the
+  // Strapi users_permissions_user relation is not needed to name them.
+  const { user } = useAuthStore();
 
   const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
@@ -133,38 +126,39 @@ const GuideDetailsPage = () => {
     };
   }, []);
 
-  const { data, loading, error, refetch } = useQuery(GET_GUIDE_BY_ID_QUERY, {
-    variables: { documentId: guideId },
-    skip: !guideId,
-    fetchPolicy: "cache-and-network",
-    nextFetchPolicy: "cache-first",
-    notifyOnNetworkStatusChange: true,
-  });
+  // One bracketed owner read for this guide, its fields and every section. `guide` is the
+  // mapped legacy shape the rest of this page already reads; `observation` is the branded
+  // aggregate a section write states its revision from.
+  const { guide: ownedGuide, observation, content, loading, error, refresh: refetch } = useGuidesOwner(guideId);
+  const data = ownedGuide ? { guide: ownedGuide } : undefined;
 
-  const [deleteSection] = useMutation(DELETE_GUIDE_SECTION_MUTATION, {
-    refetchQueries: [
-      {
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guideId },
-      },
-    ],
-    awaitRefetchQueries: true,
-  });
+  // Deleting a section goes through the guide aggregate at the current revision, so a
+  // delete composed against a guide someone else has edited is refused rather than
+  // applied to a different set of sections than the user was looking at.
+  const deleteSection = async (sectionId: string) => {
+    if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
+    const intent = GuidesClient.prepareIntent(observation);
+    await GuidesClient.removeSection(intent, sectionId);
+    refetch();
+  };
 
-  const [updateGuide] = useMutation(UPDATE_GUIDE_MUTATION);
-
-  const [_createGuideSectionMutation] = useMutation(
-    CREATE_GUIDE_SECTION_MUTATION,
-    {
-      refetchQueries: [
-        {
-          query: GET_GUIDE_BY_ID_QUERY,
-          variables: { documentId: guideId },
-        },
-      ],
-      awaitRefetchQueries: true,
-    }
-  );
+  /**
+   * Saves the guide's tips and tags.
+   *
+   * The complete details object is sent, merged from the aggregate this page read, not a
+   * partial patch - the same rule the section writes follow. A partial would let a field
+   * this editor does not show arrive as a null and erase what another editor wrote.
+   */
+  const saveTips = async (input: {tipsNotes: unknown; tags: string[]}) => {
+    if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
+    const intent = GuidesClient.prepareIntent(observation);
+    await GuidesClient.writeDetails(intent, {
+      ...observation.aggregate.details,
+      tipsNotes: (input.tipsNotes ?? null) as Record<string, unknown> | unknown[] | null,
+      tags: input.tags,
+    });
+    refetch();
+  };
 
   // Refetch when returning from edit page
   useEffect(() => {
@@ -318,19 +312,20 @@ const GuideDetailsPage = () => {
   
   // Convert description to string if it is Strapi rich text block format
   const guideDescriptionText = (() => {
+    // The canonical collection carries a plain-text description, so there is no rich-block
+    // form to unwrap here any more.
     if (!guide.Description) return "";
     if (typeof guide.Description === "string") return guide.Description;
-    if (Array.isArray(guide.Description)) {
-      return guide.Description
-        .map((block: any) => block.children?.map((child: any) => child.text).join(" ") || "")
-        .join(" ");
-    }
     return "";
   })();
 
   const guideType = guide.Guide_Type || "";
-  const guideCategory = guide.Category || "";
-  const bestTimeToVisit = guide.Best_Time_To_Visit || "";
+  // Category and Best_Time_To_Visit are arrays canonically and were string-or-array in
+  // Strapi, so both are flattened to one display string here rather than at each use.
+  const asText = (value: string[] | string | null | undefined) =>
+    Array.isArray(value) ? value.filter(Boolean).join(", ") : value || "";
+  const guideCategory = asText(guide.Category);
+  const bestTimeToVisit = asText(guide.Best_Time_To_Visit);
   const sectionsCount = sections.length;
   const isItineraryBased = guideType?.toLowerCase().includes("itinerary") || sections.some((s: any) => s.Section_Type === "itinerary");
 
@@ -389,11 +384,7 @@ const GuideDetailsPage = () => {
 
     setDeletingSection(sectionToDelete.id);
     try {
-      await deleteSection({
-        variables: {
-          documentId: sectionToDelete.id,
-        },
-      });
+      await deleteSection(sectionToDelete.id);
       toast.success("Removed from guide!");
     } catch (err: any) {
       toast.error(err.message || "Failed to remove. Please try again.");
@@ -555,7 +546,7 @@ const GuideDetailsPage = () => {
         type="article"
         noIndex={!guide.Visibility}
         siteName="explorers"
-        author={guide.users_permissions_user?.username || guide.users_permissions_user?.email || "explorers User"}
+        author={user?.username || "explorers User"}
       />
       <div ref={scrollContainerRef} className="dashboard-theme min-h-screen bg-dashboard-bg text-dashboard-light pb-20 md:pb-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -675,7 +666,7 @@ const GuideDetailsPage = () => {
                     <TipsTagsTab
                       guide={guide}
                       guideId={guideId!}
-                      updateGuide={updateGuide}
+                      saveTips={saveTips}
                       onUpdate={refetch}
                     />
                     <TipsTimeline guide={guide} />
@@ -729,7 +720,9 @@ const GuideDetailsPage = () => {
           visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
           accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
           onSuccess={() => {
-            refetchAccount();
+            // The canonical owner read is account-scoped, so reloading the guide is what
+            // reflects a category visibility change here.
+            refetch();
           }}
         />
       )}
@@ -741,12 +734,9 @@ const GuideDetailsPage = () => {
           categoryName="Guides"
           onConfirm={async () => {
             try {
-              await updateGuide({
-                variables: {
-                  documentId: guideId,
-                  data: { Visibility: true },
-                },
-              });
+              const list = guideId ? content?.lists.get(guideId) : undefined;
+              if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
+              await setGuidePublished(list, true);
               refetch();
               toast.success(`"${listVisibilityPrompt.listName}" guide published!`);
             } catch (err: any) {
