@@ -109,23 +109,26 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
 
 ## What actually remains, and what it needs
 
-**Genuine decisions — do not pick these unilaterally:**
+**Nothing here is waiting on a decision any more.** All three that were are taken:
 
-- **D4, claim flow (step 3).** `/claimaccount` is routed (`routes/AuthRoutes.tsx:29`) and
-  linked from Login and Register; a signed-out visitor reaches it today. Three Strapi
-  dependencies and **no canonical support at all** — a search of `tunes/server`,
-  `tunes/shared` and `tunes/migrations` returns one comment and no code. It breaks
-  **mid-flow**: a claimant fills the form, uploads a document, and only then meets a dead
-  backend. Independent of D4: the upload sends `Bearer VITE_PUBLIC_ACCESS_TOKEN`
-  (`pages/ClaimAccount.tsx:131-139`) — a bundled client-side credential authorising writes
-  by any unauthenticated visitor. If the flow is rebuilt, it must not acquire an equivalent.
-- **Ticket 7.2, reference content.** `/terms`, `/privacy` and `/cookies` **go blank** at
-  retirement, plus the landing FAQ. No copy in the repo (i18n has labels only).
-  `page_contents` exists in `tunes/shared/schema.ts:535` but is the tunes app's own CMS table
-  and has **no locale column**, while both hooks key off `i18n.language` — and
-  `i18n/resources` ships 46 locales against a canonical `en|hi` enum. Options and costs are
-  in the sequence doc under step 7.
-- **D9, guide categories.** Implementation drafted — item 2 above.
+- **Ticket 7.2 — done** in `cc9f3e4b`. The copy lives in the repo at
+  `explorers-earth/src/content/reference/<locale>.json` behind `useReferenceContent`;
+  `useFaqs` and `usePlatformTerms` delegate to it and `LandingPage/api/queries.ts` is gone.
+  Ten locales, which is what Strapi actually had — not the i18n bundles' 47.
+- **D9, guide categories — done** in `f84f96df`. Suggestions come from the creator's own
+  history and the field accepts anything typed, so no vocabulary was invented.
+- **D4, the claim flow — the part that was mine is done** in `dfb16b35`, and my earlier
+  description of it here was wrong. It does **not** break mid-flow after a document upload:
+  the verification step is reachable only after a successful search, and the search is a
+  Strapi read, so the flow never reaches an upload. What it did was fail at the door with a
+  **misleading** message — "No account found with the provided details" — telling an owner
+  whose place is claimable that it is not. That now says the feature is unavailable and
+  explicitly that this does not mean the place is unclaimable, reaches no network, and no
+  longer carries `Bearer VITE_PUBLIC_ACCESS_TOKEN` to Strapi's `/upload`.
+
+  **Still D4's**, and unchanged: whether a canonical claim flow is rebuilt and in what shape
+  — 18 MISSING fields, no table, no route, no contract. If it is, an unauthenticated document
+  upload needs a server-issued, single-use, purpose-bound grant, the way recovery proofs do.
 
 **Not decisions, just not mine or not here:**
 
@@ -135,7 +138,10 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   `schedule` and `workflow_dispatch` only, so **none of the 12 canonical lifecycle browser
   cases gates a merge**, and `account-lifecycle.spec.ts` is the only lifecycle coverage that
   does. Wiring the canonical lane into a protected aggregate is merge governance, jointly
-  owned with 1.3, and the one-to-one retirement map is still unwritten.
+  owned with 1.3. The one-to-one retirement map is now written
+  ([`lifecycle-legacy-retirement-map.md`](lifecycle-legacy-retirement-map.md)) and found
+  2 clean gaps and 5 partials across the 11 legacy cases, so retirement is blocked on
+  coverage as well as on gating.
 - Steps 10–13 (Phase C) have not started.
 
 ## Owner decisions taken on 2026-10-08
