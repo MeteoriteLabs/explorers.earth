@@ -18,7 +18,17 @@ and still a draft.
 
 Two numbers set the shape of what is left, both measured at `d97a5733`:
 
-- **Frontend: 37 files, 70 live Apollo calls.** There is one Apollo link
+- **Corrected 2026-10-08: Apollo is not the whole frontend surface.** This doc originally
+  said the 70 calls below partition it and that reaching zero ends the dependency. That was
+  wrong. explorers-earth also reaches Strapi over REST through a *second* base,
+  `VITE_REST_API_URL`, used by 19 files. Thirteen point at tunes (payment, subscription,
+  AI) and are canonical; **four still hit Strapi-only endpoints** (`/upload`,
+  `/upload/files/:id`, `/guides`): `features/Favorites/components/AddRecommendation.tsx`
+  (step 7), `pages/ClaimAccount.tsx` (step 3), `pages/Home.tsx` (step 2),
+  `pages/Profile.tsx` (step 7). The two that were in Guides are done. Zero Apollo calls
+  would not have ended the dependency on its own.
+- **Frontend: 37 files, 70 live Apollo calls** when written; **26 files, 43 calls** as of
+  2026-10-08. There is one Apollo link
   (`src/main.tsx:32`) and it points at Strapi, so one live `useQuery`/`useMutation` is one
   Strapi dependency. Files importing `@apollo/client` only for `gql` are retired
   definitions, not consumers — counting imports instead of calls overstates the surface by
@@ -58,13 +68,15 @@ wrong and was not done. A guide section's places are denormalised provider snaps
 the section's blocks, so nothing writes either row for a guide — and those CHECKs are what
 make "a guide is never flattened into ordinary item rows" true in storage.
 
+**Owner side done (2026-10-08).** Client, view model, adapter, owner hook, editing context
+and every owner consumer are canonical: `GuidesPage`, `GuideDetailsPage`, `GuideSectionForm`,
+`GuideSectionFormPage`, `CreateGuidePage` and all six `GuideDetails` editors. The feature has
+**one** Strapi call left, and `guideService.ts` — the bearer-token `/upload` path — is deleted.
+
 Still to do:
-- Frontend: a Guides client, view model and adapter, then the 28 call sites across 12 files
-  (`GuidesPage`, `CreateGuidePage` + three steps, `GuideDetailsPage`, `GuideSectionForm`,
-  `GuideSectionFormPage`, the six `GuideDetails` editors).
-- `PublicGuideDetailPage` in PublicHome migrates with it.
-- The public (non-owner) guide read.
-- Guide category vocabulary — blocked on decision **D9**.
+- The public (non-owner) guide read and `PublicGuideDetailPage`, which go with **step 6**,
+  the public-detail package.
+- `CreateGuideStep2`'s guide category vocabulary — the one remaining call, blocked on **D9**.
 
 ### 2. Dashboard home — `pages/Home.tsx` · 10 calls, 1 file · no ticket
 - Found by measurement, recorded in no epic. Reads books, apps, products, people, places and guides lists straight from Strapi though five of those already have native owner reads.
@@ -78,9 +90,22 @@ Still to do:
 
 ## Phase B — close the gaps behind "complete"
 
-### 4. Auth pages — epic 2 · 9 calls, 7 files
-- `Register`, `ForgotPassword`, `ResetPassword`, `ResetLinkSent`, `ClaimAccount`, `hooks/useLogout`, `hooks/useUsernameValidation`.
-- Canonical auth is delivered; these screens were never converted, so **password reset and registration run on Strapi today**. Small, mechanical, highest consequence if broken.
+### 4. Auth pages — epic 2 · 4 calls, 4 files — **blocked on a decision, not on work**
+
+**Corrected 2026-10-08, and I had this wrong.** I listed these as small, mechanical screens
+that were simply never converted. They cannot be converted: `server/auth/betterAuth.ts` sets
+`emailAndPassword: {enabled: false}` with Google as the only provider, and epic 2 states
+"password auth off" and "Google only" as a scope boundary. There is nothing to point
+`Register`, `ForgotPassword`, `ResetPassword` and `ResetLinkSent` at — they work today
+against Strapi, and the behaviour they provide does not exist canonically.
+
+Retiring them is therefore a **product change**, not an engineering step: afterwards,
+signing up is Google-only and there is no password to reset. Needs decision **D10**.
+
+- `ClaimAccount` (3 calls plus a Strapi REST `/upload`) is the claim flow and belongs to
+  **step 3** under **D4**, not here.
+- `hooks/useLogout` and `hooks/useUsernameValidation` hold no live Apollo call — retired
+  `gql` definitions awaiting step 12's deletion.
 
 ### 5. Auth UX and lifecycle — [2.4](tickets/ticket-2-4.md)
 - Write the frozen 18+3 behaviour map first; the ticket names it as a blocking prerequisite.
@@ -172,6 +197,7 @@ Each blocks a step above, and none is an engineering question. Source: coverage 
 | **D6** | Instagram import scope | 7 | Without OAuth token storage, feed import works exactly once — at authorization. In scope with token storage, or dropped. |
 | **D7** | Per-field i18n (19 `account` fields, `faq`, `platform-term`, `recommendation-category`) | 7 | `revised-direction.md:47` instructs preserving language behaviour. That is an instruction to preserve, not authority to drop. Likely out of launch scope, but it needs saying. |
 | **D8** | Residual unaccounted fields (register §7.5) | 7 | `account.profile_place_media_details`, `account.localtunes_public` and others have neither a canonical equivalent nor a drop record. |
+| **D10** | Email/password registration and password reset | 4 | Found 2026-10-08. Canonical auth is Google-only with password auth off, by epic 2's own scope boundary, so `Register`, `ForgotPassword`, `ResetPassword` and `ResetLinkSent` have nothing canonical to move to. They work today against Strapi. Retiring them makes sign-up Google-only and removes password reset entirely — a user-visible change to how people get into the product, and the last Strapi consumer in that area either way. Either retire them, or add email/password to canonical auth and widen epic 2's boundary. |
 | **D9** | Guide category vocabulary | 1 | Found 2026-10-08 while migrating Guides. `CreateGuideStep2` reads `guideCategories { Category_Name }` from Strapi, so the vocabulary is Strapi content exactly as the Places taxonomy is in **D3** — and 5.1's rule against inventing production values applies the same way. Needs an export of the existing values, or a decision to ship a fixed list. The rest of Guides does not wait on it. |
 
 ## Standing facts worth not rediscovering
