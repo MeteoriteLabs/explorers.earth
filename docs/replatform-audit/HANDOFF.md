@@ -171,7 +171,15 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   rather than correctness. **An owner decision is needed** because 1.2 asks for the six legacy
   probes *and* canonical routes from one runtime, which is impossible; the three options and
   their costs are in that doc.
-- 7.1 and 7.3 (the rest of step 11) and steps 12–13 have not started.
+- **7.1 re-measured 2026-10-08** — [public parity state](public-parity-7-1-state.md). Three of
+  the 2026-10-05 review's four findings are resolved (the overlay is committed with its specs
+  migrated; the P0 UUID-as-legacy-subject seam is closed; category coverage is 8 of 9 with no
+  ninth to error on, now locked by an enum-driven test). **One is live and is the owner's
+  call:** `publicPlaceMedia.ts` still admits any `*.amazonaws.com` host and the Strapi origin,
+  so hiding an attachment does not deny its bytes — but tightening it inverts assertions
+  `PublicHome.place-image.test.tsx` makes positively, and blanks images that work today. Three
+  options in the doc. Full 7.1 parity stays gated on 6.3 by the ticket's own terms.
+- 7.3 (the rest of step 11) and steps 12–13 have not started.
 
 ## Owner decisions taken on 2026-10-08
 

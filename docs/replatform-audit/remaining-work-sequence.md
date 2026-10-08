@@ -600,8 +600,41 @@ real package: canonical env, and the fixture E2E lanes move with it), run both g
 the transition, or accept the red until step 12 reaches the fixture. The invariant doc has the
 costs.
 
+**7.1 re-measured 2026-10-08. Three of the review's four findings are resolved; one is live and
+is not decision-free.** Full writeup: [public parity state](public-parity-7-1-state.md).
+
+- **The uncommitted overlay is committed**, with both importer specs migrated in step, so the
+  fixture conversion did not land alone.
+- **The P0 identifier seam is closed.** `CategoryNavigationProvider.tsx:56` builds the
+  navigation API on the canonical `explorersApiClient`; the legacy `gql` document and the
+  type-only `ApolloClient` import in `categoryNavigationApi.ts` are residue that nothing
+  executes. *Correction to my own 2026-10-08 Apollo count: the handoff's grep looks for
+  `useQuery|useMutation|useLazyQuery|useApolloClient`, so a module taking an `ApolloClient` as a
+  **parameter** is invisible to it. The conclusion held, verified by reading the file, but the
+  command has that blind spot.*
+- **Category coverage is no longer 3 of 9 — it is 8 of 9, and there is no ninth to error on.**
+  `publicProfilePolicy.ts` declares exactly eight public categories and
+  `publicProfileContract.ts:6` validates with `z.enum(...)`, so `music` is rejected by the
+  parser and the route answers 400, never the empty success the review warned masks the gate.
+  The gateway's empty fall-through is unreachable through the route. **The risk has inverted**
+  to "a category is added to the enum before its producer lands", and
+  `public-category-coverage.test.ts` is written against that — enum-driven, so it cannot go
+  stale; 4 cases, 2 mutations (adding `music` without a producer fails all four).
+- **Live, and the owner's call: the media boundary.** `publicPlaceMedia.ts:35-38,59` still
+  admits any `*.amazonaws.com` host and the Strapi origin, so hiding an attachment does not
+  deny its bytes — the canonical projection emits only
+  `/api/explorers/v1/media/{id}/content`, and the 2026-10-07 owner note records that media is
+  *stored* in S3 but *served through the media route*, which is the gate a direct S3 URL skips.
+  It was not simply tightened because `PublicHome.place-image.test.tsx` **asserts the current
+  behaviour positively** across legacy Strapi-shaped fields, so closing it inverts asserted
+  behaviour and blanks images that work today. Three options and their costs are in the doc.
+
 Still open in this step:
-- 7.1: all nine public categories (3 of 9 at audit), privacy and public media, pins, cold-entry positives; commit the navigation slice that currently exists only as an uncommitted overlay.
+- 7.1 full parity, by the ticket's own terms: the 53-item duplicate-order traversal, the
+  table-driven visibility matrix, ETag invalidation after unpublish, same slug under two
+  accounts, reserved handles, the nine-route pin checks, and the two absent files
+  (`public-parity.spec.ts`, `publicVisibility.integration.test.ts`). The ticket makes full
+  parity depend on every category producer plus Music, and **6.3 has not landed**.
 - 7.3: milestone-2 evidence — the command flags it mandates do not exist in the runner yet.
 - Note `execution-packages.json:21` still describes 1.2's inventory as unextended; it is now stale on that point.
 
