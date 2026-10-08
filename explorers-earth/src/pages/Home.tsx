@@ -1,4 +1,9 @@
 import { memo, useState, useEffect, useMemo, useRef } from "react";
+import { useBooksOwnerContent } from "../features/Books/api/useBooksOwnerContent";
+import { useAppsOwner } from "../features/AppsAndTools/hooks/useAppsOwner";
+import { useProductsOwner } from "../features/Products/hooks/useProductsOwner";
+import { usePeopleOwner } from "../features/People/hooks/usePeopleOwner";
+import { useGuidesOwner } from "../features/Guides/hooks/useGuidesOwner";
 import { useTranslation } from "react-i18next";
 import useAuthStore from "../store/store";
 import Button from "../components/ui/Button";
@@ -26,7 +31,7 @@ import { useCityStore } from "../store/useCityStore";
 import useSetupStore from "../store/useSetupStore";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
 import { DASHBOARD_STATUS_QUERY } from "../features/Profile/api/UserStatus";
-import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "../features/Guides/api/queries";
+import { GET_USER_ACCOUNT_QUERY } from "../features/Guides/api/queries";
 import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
@@ -37,11 +42,7 @@ import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount
 
 // Category integrations
 import { useMoviesOwner } from "../features/Movies/api/explorersAdapter";
-import { BOOK_LISTS_BY_ACCOUNT } from "../features/Books/api/query";
 import { useGamesOwner } from "../features/Games/hooks/useGamesOwner";
-import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
-import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
-import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import type { PublicPageAnalyticsData } from "../features/Analytics/api/queries";
 import { getAnalyticsDateRange } from "../features/Analytics/utils/analyticsDateRange";
@@ -342,11 +343,7 @@ const Home = memo(() => {
   const movieLists = movieListsData?.movieLists || [];
 
   // Fetch book lists
-  const { data: bookListsData, refetch: refetchBooks } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  const { data: bookListsData, refetch: refetchBooks } = useBooksOwnerContent();
   const bookLists = bookListsData?.bookLists || [];
 
   // Fetch game lists
@@ -354,27 +351,15 @@ const Home = memo(() => {
   const gameLists = gameListsData?.gameLists || [];
 
   // Fetch apps & tools lists
-  const { data: appListsData, refetch: refetchApps } = useQuery(APP_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  const { data: appListsData, refetch: refetchApps } = useAppsOwner(undefined, Boolean(accountDocumentId && user?.username));
   const appLists = appListsData?.appLists || [];
 
   // Fetch products lists
-  const { data: productListsData, refetch: refetchProducts } = useQuery(PRODUCT_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  const { data: productListsData, refetch: refetchProducts } = useProductsOwner(undefined, Boolean(accountDocumentId && user?.username));
   const productLists = productListsData?.productLists || [];
 
   // Fetch people lists
-  const { data: personListsData, refetch: refetchPeople } = useQuery(PERSON_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  const { data: personListsData, refetch: refetchPeople } = usePeopleOwner(undefined, Boolean(accountDocumentId && user?.username));
   const personLists = personListsData?.personLists || [];
 
   // Fetch music playlists
@@ -384,24 +369,11 @@ const Home = memo(() => {
   } : undefined);
   const musicPlaylists = tunesDashboard.playlists || [];
 
-  // Fetch guides with network-only policy to match Recommendations behavior
-  // Fetch all guides (not just published) so cache gets updated when drafts are created/updated
-  const { data: guidesData, refetch: refetchGuides } = useQuery(GET_GUIDES_QUERY, {
-    variables: {
-      filters: {
-        account: {
-          documentId: {
-            eq: accountDocumentId,
-          },
-        },
-      },
-      pagination: {
-        limit: 100,
-      },
-    },
-    fetchPolicy: "network-only", // Always fetch fresh data, matching Recommendations
-    skip: !accountDocumentId || !user?.username,
-  });
+  // Ticket 5.3. The canonical owner read, which is already scoped to the signed-in owner
+  // and returns drafts as well as published guides, so there is nothing to filter and no
+  // cache policy to choose.
+  const { guides: ownedGuides, refresh: refetchGuides } = useGuidesOwner();
+  const guidesData = ownedGuides ? { guides: ownedGuides } : undefined;
 
   // Read only the bounded recent local-calendar range through the authenticated
   // backend boundary. Never download another account's analytics to the browser.
