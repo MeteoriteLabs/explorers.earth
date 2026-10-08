@@ -66,9 +66,15 @@ is **also no longer zero**: `.github/workflows/frontend-e2e-qualification.yml:12
 registers the canonical lane as `{ lane: lifecycle, command: "npm run
 explorers:test:lifecycle-browser --" }`, which resolves through
 `tunes/package.json:30` to `tsx scripts/profile-browser-fixture.ts --suite lifecycle`.
-C4's remaining live obligation is narrower than it reads: whether that workflow feeds a
-**protected** aggregate, and the one-to-one retirement map, are still to be settled. Do not
-retire `account-lifecycle.spec.ts` on the strength of this paragraph.
+**Settled 2026-10-08: that workflow does not gate anything.**
+`.github/workflows/frontend-e2e-qualification.yml:3-6` triggers on `schedule` (nightly,
+`23 3 * * *`) and `workflow_dispatch` only - there is no `pull_request` trigger - so it
+feeds no protected aggregate and never runs on a PR. The canonical lifecycle browser
+receipt is therefore **nightly, not gating**, and C4's warning holds for the reason it gave:
+retiring `account-lifecycle.spec.ts` - which does run in `test.yml` and `ci.yml` - would
+remove the only lifecycle coverage that gates a merge. Wiring the canonical lane into a
+protected aggregate is a merge-governance change owned jointly with 1.3, and the one-to-one
+retirement map is still unwritten; neither is done here.
 
 ## Legend
 
@@ -193,11 +199,14 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
    credentials belong to 6.1. L3 above covers HTTP and tab revocation only, and must not be
    read as covering sockets.
-5. **Hosted attestation of the browser receipts — PARTIALLY OPEN.** See the C4 correction
-   above: the canonical lane is registered in
-   `.github/workflows/frontend-e2e-qualification.yml:122`, but whether that workflow feeds a
-   protected aggregate, and the one-to-one map from each retired legacy case to its
-   canonical replacement, are unsettled. Until both are, `account-lifecycle.spec.ts` stays.
+5. **Hosted attestation of the browser receipts — OPEN, and now precisely stated.** The
+   canonical lane is registered at
+   `.github/workflows/frontend-e2e-qualification.yml:122`, but that workflow runs only on a
+   nightly schedule and manual dispatch, so **none of the 12 canonical lifecycle cases gates
+   a merge**. Two things are needed and neither belongs to this map: wiring the lane into a
+   protected aggregate (merge governance, owned jointly with 1.3) and the one-to-one map
+   from each retired legacy case to its canonical replacement. Until both exist,
+   `account-lifecycle.spec.ts` stays, because it is the only lifecycle coverage that gates.
 6. **The held-completion fence (L19) — DONE, and it was already done.** Kept as an entry
    rather than deleted, because this list previously said the opposite. Both cases run at
    `e2e/replatform/lifecycle.spec.ts:202`; the C1 correction above explains why a
