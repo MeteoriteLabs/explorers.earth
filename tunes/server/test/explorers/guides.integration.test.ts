@@ -8,6 +8,7 @@ import {
   readGuideDetails, readGuideSectionPage, reorderGuideSections, updateGuideSection, writeGuideDetails,
 } from "../../repositories/guideRepository";
 import {guideEmptySectionBlocks, type GuideCollectionDetails, type GuideSectionBlocks} from "../../../shared/explorersGuideContract";
+import {publicGuidesProjection} from "../../publicProfile/publicGuidesProjection";
 
 /**
  * Ticket 5.3. The guide aggregate against a real PostgreSQL 15.
@@ -411,6 +412,125 @@ describePg("C6 guide aggregate", () => {
     const pinned = await repository.updateCollection(accountId, collection.id, published.revision, {pinOrder: 0}, key());
     await repository.updateCollection(accountId, collection.id, pinned.revision, {pinOrder: null}, key());
     expect((await pool.query("SELECT pin_order FROM collections WHERE id=$1", [collection.id])).rows[0].pin_order).toBeNull();
+  });
+
+  // The public read. Ticket 5.3: there was no public guides projection at all before this,
+  // so a published guide was reachable only through Strapi.
+  describe("public read", () => {
+    async function publishedGuide(accountId: string, handle: string) {
+      await pool.query("UPDATE creator_accounts SET handle=$2 WHERE id=$1", [accountId, handle]);
+      await pool.query(`INSERT INTO account_category_settings(account_id,category,is_public,display_order)
+        SELECT $1,'guides',true,coalesce(max(display_order)+1,0) FROM account_category_settings WHERE account_id=$1
+        ON CONFLICT(account_id,category) DO UPDATE SET is_public=true`, [accountId]);
+      const collection = await guide(accountId);
+      const published = await repository.updateCollection(accountId, collection.id, collection.revision,
+        {visibility: "public", publicationState: "published"}, key());
+      return {collection, revision: published.revision};
+    }
+    const handle = () => "pub-" + randomUUID().slice(0, 8);
+
+    it("serves a published guide with its fields and sections", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), details()));
+      await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId),
+        {title: "Day one", description: "first", blocks: withMorning([place("m1")])}));
+
+      const result = await publicGuidesProjection(pool, owner, 12, undefined, collection.slug);
+
+      expect(result?.guides).toHaveLength(1);
+      const served = result!.guides[0];
+      expect(served).toMatchObject({Title: "Kerala in five days", Visibility: true, is_Multicity: true, Number_Of_Days: 5});
+      expect(served.Estimated_Budget).toBe(42000.5);
+      expect(served.guide_sections).toHaveLength(1);
+      // 0-based in storage, 1-based to the public views.
+      expect(served.guide_sections[0]).toMatchObject({Title: "Day one", Sequence: 1});
+      expect(served.guide_sections[0].Timeline.morning[0].geometry).toEqual({location: {lat: 9.9658, lng: 76.2421}});
+      expect(served.Guide_Section_Details)
+        .toEqual([{documentId: served.guide_sections[0].documentId, Title: "Day one", Sequence: 1}]);
+    });
+
+    it("omits a draft guide entirely rather than serving it unpublished", async () => {
+      const accountId = await account();
+      const owner = handle();
+      await publishedGuide(accountId, owner);
+      const draft = await guide(accountId);
+      const listed = await publicGuidesProjection(pool, owner, 12);
+      expect(listed?.guides.some((entry: {documentId: string}) => entry.documentId === draft.id)).toBe(false);
+      expect(await publicGuidesProjection(pool, owner, 12, undefined, draft.slug)).toBeUndefined();
+    });
+
+    it("stops serving a guide once it is unpublished", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection, revision} = await publishedGuide(accountId, owner);
+      expect((await publicGuidesProjection(pool, owner, 12, undefined, collection.slug))?.guides).toHaveLength(1);
+      await repository.updateCollection(accountId, collection.id, revision, {publicationState: "draft"}, key());
+      expect(await publicGuidesProjection(pool, owner, 12, undefined, collection.slug)).toBeUndefined();
+    });
+
+    it("serves nothing when the Guides category itself is not public", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      await pool.query("UPDATE account_category_settings SET is_public=false WHERE account_id=$1 AND category='guides'", [accountId]);
+      // Unpublishing the category removes every guide without touching a single guide row.
+      expect(await publicGuidesProjection(pool, owner, 12, undefined, collection.slug)).toBeUndefined();
+      expect(await publicGuidesProjection(pool, owner, 12)).toBeUndefined();
+    });
+
+    it("omits a section it cannot fully understand instead of half-rendering it", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId),
+        {title: "Day one", description: null, blocks: guideEmptySectionBlocks}));
+      // Storage refuses an unknown block_version, so this exercises the reader's own
+      // refusal by removing the blocks it understands.
+      await pool.query("UPDATE guide_sections SET blocks='{}'::jsonb WHERE collection_id=$1", [collection.id]);
+      const served = await publicGuidesProjection(pool, owner, 12, undefined, collection.slug);
+      expect(served?.guides[0].guide_sections).toEqual([]);
+    });
+
+    it("paginates sections and reports a cursor", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      for (let n = 0; n < 14; n += 1)
+        await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId),
+          {title: "Day " + n, description: null, blocks: guideEmptySectionBlocks}));
+      const first = await publicGuidesProjection(pool, owner, 12, undefined, collection.slug);
+      expect(first?.guides[0].guide_sections).toHaveLength(12);
+      expect(first?.guides[0].guide_sections_next_cursor).toBe("o12");
+      const second = await publicGuidesProjection(pool, owner, 12, "o12", collection.slug);
+      expect(second?.guides[0].guide_sections).toHaveLength(2);
+      expect(second?.guides[0].guide_sections_next_cursor).toBeNull();
+    });
+
+    it("does not fetch sections for a list page, which would make it unbounded", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId),
+        {title: "Day one", description: null, blocks: guideEmptySectionBlocks}));
+      const listed = await publicGuidesProjection(pool, owner, 12);
+      expect(listed?.guides.find((entry: {documentId: string}) => entry.documentId === collection.id)?.guide_sections).toEqual([]);
+    });
+
+    it("serves nothing for an unknown or ineligible creator", async () => {
+      expect(await publicGuidesProjection(pool, "missing-" + randomUUID().slice(0, 8), 12)).toBeUndefined();
+      const accountId = await account();
+      const owner = handle();
+      await publishedGuide(accountId, owner);
+      await pool.query("UPDATE creator_accounts SET public_profile=false WHERE id=$1", [accountId]);
+      expect(await publicGuidesProjection(pool, owner, 12)).toBeUndefined();
+    });
+
+    it("refuses an out-of-range page size rather than clamping it", async () => {
+      for (const limit of [0, -1, 25, 1.5])
+        await expect(publicGuidesProjection(pool, "anyone", limit)).rejects.toThrow("Invalid Guides page size");
+    });
   });
 
   it("deletes sections, details and the photo registry when the guide itself is deleted", async () => {
