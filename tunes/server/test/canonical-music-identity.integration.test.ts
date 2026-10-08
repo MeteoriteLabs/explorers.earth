@@ -361,12 +361,25 @@ describe("canonical Music identity against real PostgreSQL", () => {
       expect(guard.rowCount, "0039's ownership guard is missing from users").toBe(1);
       expect(["O", "A"]).toContain(guard.rows[0].tgenabled);
 
-      await client.query(
+      /*
+       * Every unique column here is randomised, the capability hash included. It was a
+       * fixed `"a".repeat(64)` and that collided with another suite's row in CI's shared
+       * database: the INSERT failed on `users_guest_capability_hash_unique` and the case
+       * reported as a broken ownership guard when the guard was fine.
+       *
+       * The INSERT is asserted to succeed for the same reason. The assertion that matters
+       * is the one on COMMIT, and it is only meaningful if the row actually reached the
+       * transaction - a future collision must fail as a collision, not quietly turn this
+       * into a test that never exercised the deferred trigger.
+       */
+      const inserted = await client.query(
         `INSERT INTO users(username,password,email,guest_url,venue_name,
            strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
          VALUES ($1,NULL,NULL,$2,'Unowned',NULL,NULL,$3)`,
         [`explorer-${randomUUID().replace(/-/g, "").slice(0, 24)}`,
-          randomUUID(), "a".repeat(64)]);
+          randomUUID(),
+          `${randomUUID()}${randomUUID()}`.replace(/-/g, "")]);
+      expect(inserted.rowCount, "the unowned row never reached the transaction").toBe(1);
       await expect(client.query("COMMIT")).rejects.toBeDefined();
     } finally {
       await client.query("ROLLBACK").catch(() => undefined);
