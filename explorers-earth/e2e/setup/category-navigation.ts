@@ -138,7 +138,11 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
     // Ticket 5.1. Places reads its owner lists natively now, so the contained fixture has
     // to serve them too - otherwise the Favorites page renders no lists and its header
     // controls never appear, which is exactly how the places navigation lane failed.
-    createNativeNavigationContentFixture('places', () => state.lists.recommendationLists, state.account.documentId)];
+    createNativeNavigationContentFixture('places', () => state.lists.recommendationLists, state.account.documentId),
+    // Ticket 5.3. Guides reads its owner content natively now, so the contained fixture has to
+    // serve it too - otherwise the guides navigation lane denies the content-snapshot read and
+    // the header controls never appear, which is exactly how it failed.
+    createNativeNavigationContentFixture('guides', () => state.lists.guides, state.account.documentId)];
   const booksCommands = new Map<string, { body: string; result: unknown }>();
   const denied: string[] = [];
   const vendors: string[] = [];
@@ -247,12 +251,13 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       booksCommands.set(replayKey,{body:serialized,result});
       return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);
     }
-    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people|places)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
+    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people|places|guides)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
       ?? (['/api/explorers/v1/collections','/api/explorers/v1/recommendations'].includes(url.pathname) ? url.searchParams.get('category') : undefined);
-    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : nativeCategory==='people' ? nativeContentFixtures[4] : nativeCategory==='places' ? nativeContentFixtures[5] : undefined;
-    // The editable list read is addressed by id with no category, so the fixture that owns
-    // that collection answers and the rest return undefined.
-    const editableReader = /^\/api\/explorers\/v1\/collections\/[0-9a-fA-F-]{36}\/editable$/.test(url.pathname)
+    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : nativeCategory==='people' ? nativeContentFixtures[4] : nativeCategory==='places' ? nativeContentFixtures[5] : nativeCategory==='guides' ? nativeContentFixtures[6] : undefined;
+    // Two reads are addressed by collection id with no category in the path - the editable
+    // list read, and the Guides aggregate - so the fixture that owns that collection answers
+    // and the rest return undefined. Guides joined this set in ticket 5.3.
+    const editableReader = /^\/api\/explorers\/v1\/collections\/[0-9a-fA-F-]{36}\/(?:editable|guide)$/.test(url.pathname)
       ? nativeContentFixtures.find(fixture => fixture(url) !== undefined) : undefined;
     if(url.origin===origin && request.method()==='GET' && (nativeReader ?? editableReader)) {
       const authenticated=await hasOwnerSession();state.apiCalls.push({path:url.pathname,method:'GET',authenticated});

@@ -7,84 +7,55 @@ Written to end a long session. Start here, then use
 
 **PR #119 is the integration branch for all ten epics. Do not land it incrementally.**
 
-## Do these three things first
+## Read these three first — two are closed, and how they closed is the useful part
 
-### 1. One CI check is still red, and it is fully diagnosed
+Items 1 and 2 were open when this document was written and are now done. They are kept
+because each one failed in a way that will recur: a fix that looked like one line and was
+three, and a check that passed because the check was broken.
 
-`🎭 E2E Category A` and `🎭 E2E Category B` fail on one case:
-`category-navigation-a.spec.ts:474` → *"guides: Auto saved → header Off → reload → Hub On →
-Manual explicit Pin"*. The assertion is the harness's own route guard
-(`e2e/setup/category-navigation.ts:546`, `assertClean`) reporting four **denied** requests:
+### 1. CI is green again, and the guides E2E fix needed three things, not one
 
-```
-GET /api/explorers/v1/categories/guides/content-snapshot   (x4)
-```
+Both `🎭 E2E Category A` and `🎭 E2E Category B` failed on the same cause and share the same
+harness, so one fix covered both. It took more than the one-line change I first wrote down
+here, which is worth recording because the first two attempts each looked right and changed
+nothing:
 
-Cause, not a guess: `e2e/setup/category-navigation.ts:250` matches native content reads with
+1. **The allowlist regex** at `e2e/setup/category-navigation.ts:250` matched native content
+   reads for `movies|games|apps|products|people|places`. Guides became the seventh, so its
+   `content-snapshot` fell through to the catch-all deny. Added `guides`, plus a seventh
+   `nativeContentFixtures` entry and its arm in the `nativeReader` chain - the shape of
+   change Places already had at `:138-141`.
+2. **The guide aggregate read was still denied.** `GET /collections/:id/guide` is addressed by
+   collection id with **no category in the path**, so the category regex could never match it
+   and my new fixture branch was never reached. The editable-list read has exactly this
+   property and its own dispatch, so that predicate now covers `(?:editable|guide)`.
+3. **The DTO rejected my fixture.** `guideAggregateDtoSchema.revision` is a number; I passed a
+   string. The fixture serves an empty guide - the same default the service returns for a
+   collection with no details row - because this lane exercises navigation and pinning, not
+   guide content.
 
-```
-/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people|places)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/
-```
+Verified locally, not inferred: the guides case passes in 23s, and the whole Category A lane
+is **19/19** so the other six categories are undisturbed.
 
-**`guides` is not in that alternation.** Guides became the seventh category to read its owner
-content natively, and the contained harness never learned about it, so the request falls
-through to the catch-all deny at `:545`.
+### 2. D9 is done — the uncommitted work is committed
 
-The change has an exact precedent in the same file — Places, at `:138-141`, with a comment
-saying why. Three edits:
+Landed in `f84f96df`. The guide category picker now suggests the categories this creator has
+already used and accepts anything typed; it invents no vocabulary, because which category
+names exist is product copy.
 
-1. Add `guides` to the alternation at `:250`.
-2. Add a seventh entry to `nativeContentFixtures` (`:133-141`):
-   `createNativeNavigationContentFixture('guides', () => state.lists.guides, state.account.documentId)`.
-   `state.lists.guides` already exists — it is read at `:470`.
-3. Extend the `nativeReader` chain at `:252` with `nativeCategory==='guides' ? nativeContentFixtures[6]`.
+Two things that came out of it are worth carrying forward:
 
-**Verify, do not assume:** the guides fixture state is shaped from the legacy GraphQL guide
-objects (`guide_sections` as its child root, see the category table at `:29`), so confirm
-`createNativeNavigationContentFixture` renders them into a valid content-snapshot the way it
-does Places' `recommendation_lists`. Run:
-
-```bash
-cd explorers-earth && npx playwright test --config=playwright.category-navigation-a.config.ts
-```
-
-I did not make this change because it needs that Playwright run to be honest about, and I
-was at the end of a long session. Everything else on the PR is green: `npx tsc -b` exits 0
-and `npm run build` succeeds after `f818e1a9`.
-
-### 2. There is uncommitted work in the tree, and it is not safe to commit as-is
-
-Two files, both for **decision D9** (the guide category picker):
-
-- `explorers-earth/src/features/Guides/components/CreateGuideStep2.tsx` — modified
-- `explorers-earth/src/features/Guides/components/__tests__/CreateGuideStep2.categories.test.tsx` — new
-
-What the change does: the picker read a Strapi `guideCategories` collection. The canonical
-contract stores free strings (`guide_collection_details.categories` is
-`z.array(filled(100)).max(24)`), so that collection was only a suggestion list. But the field
-is **required with "select at least 4"** and had no free-text entry, and an empty list
-rendered *"No categories available"* with no way forward — so at retirement **guide creation
-becomes impossible, not merely worse.** The change derives suggestions from the categories
-this creator has already used (via `useGuidesOwner`) and lets them type a new one.
-
-**Why it is not committed: the new test file hangs the vitest worker.** `tests 0ms`, then
-`Worker exited unexpectedly` after 170s. What I established:
-
-- The component **mounts fine and fast** in isolation — a one-test smoke file with the same
-  four mocks passes in under a second. So it is not the module graph or the mocks.
-- The hang starts once a test *interacts* (`fireEvent.change` on the category input).
-- Prime suspect, unverified: `CreateGuideStep2.tsx:119-129`. That effect calls
-  `setSelectedCategories(initialCategories)` with `initialCategories = []` as a **default
-  parameter** — a fresh array identity on every render — and the array is in its own
-  dependency list. Any re-render re-runs the effect, which sets state, which re-renders. A
-  single mount survives it; typing may be what tips it into a loop. If that is it, it is a
-  **pre-existing latent bug** in the component, not something the migration introduced, and
-  the test is the first thing to have provoked it.
-
-Next step: confirm that hypothesis (pass a stable array from the test, or memoize the
-defaults in the component) before committing either file. Do not commit the component change
-without a passing test — the free-text path is the load-bearing part, and a mutation check
-proved nothing currently covers it.
+- The test hang was a **latent render loop**: `initialCategories` and
+  `initialBestTimeToVisit` defaulted to inline `[]`, a fresh identity every render, and the
+  prop-sync effect lists both in its dependencies. Mounting survived it; the first
+  interaction did not. The defaults are module-level constants now. It was never live - the
+  single caller passes stable `formData` references - so only a caller omitting those props
+  could reach it. **If another component in this codebase syncs props to state with array
+  defaults, it has the same bug.**
+- My first mutation check reported all 5 tests passing with the free-text affordance removed,
+  which would have meant the load-bearing path was uncovered. The check itself was broken:
+  the patch script's `replace()` silently no-opped because the pattern had shifted and I had
+  omitted the `assert`. **Always assert the mutation applied**, or a no-op reads as coverage.
 
 ### 3. Read the frozen map before touching lifecycle work
 

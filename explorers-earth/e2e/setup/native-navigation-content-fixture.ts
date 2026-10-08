@@ -1,9 +1,10 @@
 import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
 import { bookFixtureId } from './books-owner-content';
 import * as contract from '../../../tunes/shared/explorersOwnerContentContract';
+import { guideAggregateDtoSchema } from '../../../tunes/shared/explorersGuideContract';
 
 /** Contained collection fixtures only; nonempty recommendations require their own qualified adapter. */
-export function createNativeNavigationContentFixture(category: 'movies' | 'games' | 'apps' | 'products' | 'people' | 'places', lists: () => Record<string, any>[], legacyAccountId: string) {
+export function createNativeNavigationContentFixture(category: 'movies' | 'games' | 'apps' | 'products' | 'people' | 'places' | 'guides', lists: () => Record<string, any>[], legacyAccountId: string) {
   let signature = '', revision = 0;
   const snapshots = new Map<string, { revision: string; expiresAt: number }>();
   return (url: URL): { status: number; body: unknown } | undefined => {
@@ -34,6 +35,24 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
         ...(category === 'products' || category === 'people' ? { locationLink: null } : {}),
       }) } };
     }
+    // Ticket 5.3. The guide aggregate read, which only Guides has: the Guides surfaces fetch
+    // a guide's details and its ordered sections by collection id. Served as an empty guide -
+    // the same default the service returns when a collection has no details row yet - because
+    // this lane exercises navigation and pinning, not guide content.
+    const guideAggregate = category === 'guides'
+      ? /^\/collections\/([0-9a-fA-F-]{36})\/guide$/.exec(path) : null;
+    if (guideAggregate) {
+      const owned = lists().find(list => bookFixtureId('collection', list.documentId) === guideAggregate[1]);
+      if (!owned) return;
+      return { status: 200, body: { guide: guideAggregateDtoSchema.parse({
+        collectionId: guideAggregate[1], revision: revision + 1,
+        details: { guideType: null, multiCity: false, numberOfDays: null, estimatedBudget: null,
+          budgetCurrency: null, budgetType: null, bestTimeToVisit: [], categories: [], tags: [],
+          tipsNotes: null, locationEntityId: null,
+          place: { name: null, address: null, placeId: null, rating: null, ratingsCount: null, lat: null, lng: null } },
+        coverMediaId: null, sections: [], sectionCount: 0, nextCursor: null,
+      }) } };
+    }
     const snapshot = path === `/categories/${category}/content-snapshot`;
     const validate = path === `/categories/${category}/content-snapshot/validate`;
     const stream = path === '/collections' && url.searchParams.get('category') === category ? 'collections'
@@ -51,7 +70,9 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
     if (!parsed.success || parsed.data.category !== category) return fail('INVALID_INPUT', 422);
     const source = lists();
     if (source.some(list => list.account?.documentId !== legacyAccountId)) return fail('FORBIDDEN', 403);
-    const relation = category === 'movies' ? 'recommended_movies' : category === 'games' ? 'recommended_games' : category === 'apps' ? 'recommended_apps' : category === 'products' ? 'recommended_products' : category === 'places' ? 'recommended_places' : 'recommended_people';
+    // Guides' children are sections, not recommendations of an entity, so its relation key
+    // differs from every other category's - the same distinction the canonical schema makes.
+    const relation = category === 'movies' ? 'recommended_movies' : category === 'games' ? 'recommended_games' : category === 'apps' ? 'recommended_apps' : category === 'products' ? 'recommended_products' : category === 'places' ? 'recommended_places' : category === 'guides' ? 'guide_sections' : 'recommended_people';
     if (source.some(list => !Array.isArray(list[relation]) || list[relation].length !== 0)) return fail('PROVIDER_UNAVAILABLE', 503);
     const next = JSON.stringify(source);
     if (next !== signature) { signature = next; revision++; }
