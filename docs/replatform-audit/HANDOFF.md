@@ -1,4 +1,9 @@
-# Handoff — replatform, as of 2026-10-08
+# Handoff — replatform, as of 2026-10-09 (wave 1 merged)
+
+> **Current as of `69e0d47f`** (PR #120, wave 1: D1, D2, D4, D6, D7, D8, D10 decided and
+> landed). If `git log --oneline -1` shows something later, check this file against it before
+> trusting its "remains" sections — they have drifted twice already, and a stale remains-list
+> is the most misleading thing a handoff can carry.
 
 Written to end a long session. Start here, then use
 [the sequence doc](remaining-work-sequence.md) as the backlog. Branch
@@ -80,19 +85,19 @@ receipts; three obligations remain.
 |---|---|
 | 1. Guides (5.3) | Done |
 | 2. Dashboard home | Done |
-| 3. Claim flow | **Open — D4.** Measured, not implemented. See below. |
+| 3. Claim flow | **Done.** D4 decided against it; the flow is dropped in `7399cfe1`. |
 | 4. Auth pages | Done. Was never D10's — see below. |
 | 5. Auth UX and lifecycle (2.4) | Prerequisite discharged; 2 of 6 obligations done; 3 remain |
 | 6. Public place/person detail | Done |
 | 7. Profile, Settings, Analytics | Done. Ticket 7.2's reference content landed 2026-10-08 |
 | 8. Music glue | Done |
-| 9. Billing | Done, without pre-empting D1 |
+| 9. Billing | Done. D1 has since landed too: AI features removed (`76224913`) and the monthly request cap (`6fcf0187`). |
 
 Apollo hook consumers outside tests: **19 → 2**, and the milestone is sharper than the
 number. The two left are `AuthSyncManager` and `useLogout`, and both hold nothing but
 `apollo.clearStore()` — cache plumbing that goes with Apollo in step 12. So as of 2026-10-08
 **the frontend makes no Strapi read or write through Apollo at all.** `CreateGuideStep2` went
-with D9, `ClaimAccount` with the claim-flow containment, and `useFaqs`/`usePlatformTerms`
+with D9, `ClaimAccount` when D4 dropped the flow, and `useFaqs`/`usePlatformTerms`
 with ticket 7.2.
 
 What that does **not** mean is that the frontend is off Strapi — see the REST note in the
@@ -117,18 +122,12 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   Ten locales, which is what Strapi actually had — not the i18n bundles' 47.
 - **D9, guide categories — done** in `f84f96df`. Suggestions come from the creator's own
   history and the field accepts anything typed, so no vocabulary was invented.
-- **D4, the claim flow — the part that was mine is done** in `dfb16b35`, and my earlier
-  description of it here was wrong. It does **not** break mid-flow after a document upload:
-  the verification step is reachable only after a successful search, and the search is a
-  Strapi read, so the flow never reaches an upload. What it did was fail at the door with a
-  **misleading** message — "No account found with the provided details" — telling an owner
-  whose place is claimable that it is not. That now says the feature is unavailable and
-  explicitly that this does not mean the place is unclaimable, reaches no network, and no
-  longer carries `Bearer VITE_PUBLIC_ACCESS_TOKEN` to Strapi's `/upload`.
-
-  **Still D4's**, and unchanged: whether a canonical claim flow is rebuilt and in what shape
-  — 18 MISSING fields, no table, no route, no contract. If it is, an unauthenticated document
-  upload needs a server-issued, single-use, purpose-bound grant, the way recovery proofs do.
+- **D4 — decided against, and the flow is gone.** `7399cfe1 feat(5.4): drop the claim flow,
+  which D4 decided against` removed `pages/ClaimAccount.tsx` outright, along with the
+  truthful-refusal change I had made as an interim step and its test. Nothing to carry
+  forward except the note for anyone who rebuilds it: an unauthenticated document upload
+  needs a server-issued, single-use, purpose-bound grant, the way recovery proofs do — not
+  a `VITE_PUBLIC_ACCESS_TOKEN` shipped to the browser, which is what the old flow used.
 
 **Not decisions, just not mine or not here:**
 
