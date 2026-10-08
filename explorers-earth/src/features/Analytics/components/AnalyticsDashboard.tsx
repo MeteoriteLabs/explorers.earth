@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { useQuery, gql } from '@apollo/client';
+import { useCanonicalAccount } from '../../Profile/api/useCanonicalAccount';
 import { AnalyticsEvent, PublicPageAnalyticsData } from '../api/queries';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../../store/store';
@@ -16,7 +16,6 @@ import MediaItemsInListChart from './charts/MediaItemsInListChart';
 import GuidesChart from './charts/GuidesChart';
 import AnalyticsDateRangeControls from './AnalyticsDateRangeControls';
 import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
-import { selectCompletedAccount } from '../../music/musicIdentityCoordinator';
 import {
   AnalyticsTimeFilter,
   getAnalyticsDateRange,
@@ -35,7 +34,6 @@ type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
  */
 const AnalyticsDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { user, isAuthenticated, token } = useAuthStore();
   const [eventsWithCountries, setEventsWithCountries] = useState<AnalyticsEvent[]>([]);
   const [accountAnalyticsData, setAccountAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -58,33 +56,14 @@ const AnalyticsDashboard: React.FC = () => {
     { value: 'custom', label: t('analytics.dashboard.timeFilter.custom') },
   ] as const, [t]);
 
-  // Fetch account data to get the correct account ID for filtering analytics
-  const {
-    data: accountData,
-    loading: accountLoading,
-    error: accountError,
-  } = useQuery(gql`
-    query GetAccountId($documentId: ID!) {
-      usersPermissionsUser(documentId: $documentId) {
-        createdAt
-        accounts {
-          documentId
-          Account_Name
-          Account_Type
-          mobile_number
-          createdAt
-        }
-      }
-    }
-  `, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-
-  const selectedAccount = selectCompletedAccount(
-    accountData?.usersPermissionsUser?.accounts,
-  );
-  const accountDocumentId = selectedAccount?.documentId;
+  const { isAuthenticated, token } = useAuthStore();
+  // Ticket 3.4. The canonical account read, which is already scoped to the signed-in
+  // owner - so there is no user document to look up and no completed account to select
+  // from a list. One owner, one account.
+  const canonicalAccount = useCanonicalAccount();
+  const accountLoading = canonicalAccount.isPending;
+  const accountError = canonicalAccount.error ?? undefined;
+  const accountDocumentId = canonicalAccount.data?.id;
   const loading = accountLoading || analyticsLoading;
   const error = accountError || analyticsError;
 
