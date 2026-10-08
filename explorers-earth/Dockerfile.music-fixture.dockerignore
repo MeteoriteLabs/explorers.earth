@@ -849,7 +849,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/Details/Overview.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/Details/Photos.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/PersonOverview.tsx
-!explorers-earth/src/features/PublicHome/components/PlaceDetails/PlaceDetails.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/PlaceOverview.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceMapView.tsx
 !explorers-earth/src/features/PublicHome/components/ProfileRecommendationsLayouts.tsx
@@ -1061,7 +1060,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/UseCases.tsx
 !explorers-earth/src/pages/onboardingAccountDecision.ts
 !explorers-earth/src/pages/onboardingFinalizeLock.ts
-!explorers-earth/src/pages/public/PlaceDetailsPage.tsx
 !explorers-earth/src/pages/public/ProfileMusic.tsx
 !explorers-earth/src/pages/public/PublicHomePage.tsx
 !explorers-earth/src/pages/public/PublicMusic.tsx
