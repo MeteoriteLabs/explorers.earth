@@ -60,15 +60,19 @@ const ENV_READ_ALLOWLIST = [
   },
 ];
 
-/** Strapi-named modules permitted inside the canonical closure. */
-const MODULE_ALLOWLIST = [
-  {
-    file: "server/services/strapiIdentityGateway.ts",
-    reason:
-      "Filename only. The canonical closure imports fingerprintStrapiProof (a bare sha256) and cancelResponseBody/readBoundedResponseBody (generic Response-body helpers, also used by youtubeReadService). The StrapiIdentityGateway class is constructed only in routes/index.ts, which is outside the closure.",
-    disposition: "Move those pure helpers to a neutral module (8.1b/8.3).",
-  },
-];
+/**
+ * Strapi-named modules permitted inside the canonical closure.
+ *
+ * Empty since 2026-10-09, and that is the point of ticket 8.1a's last engineering item.
+ * The single entry was `server/services/strapiIdentityGateway.ts`, allowlisted on filename
+ * alone: the closure imported `fingerprintStrapiProof` (a bare sha256) and
+ * `cancelResponseBody`/`readBoundedResponseBody` (generic Response-body helpers also used
+ * by youtubeReadService), while the gateway class itself is constructed only in
+ * routes/index.ts, outside the closure. Those four symbols now live in
+ * `proofFingerprint.ts` and `upstreamResponseBody.ts`, so no Strapi-named module is in the
+ * closure at all and the entry would now be stale - which this scan fails on.
+ */
+const MODULE_ALLOWLIST = [];
 
 /** Constructions that would mean a canonical request can reach Strapi. */
 const CLIENT_CONSTRUCTION = /new\s+(Strapi[A-Za-z]*)\s*\(/;
