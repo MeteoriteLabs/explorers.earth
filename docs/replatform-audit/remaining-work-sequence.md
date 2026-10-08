@@ -559,9 +559,51 @@ executed boot receipt with outbound Strapi denied. The fourth is small: move
 `services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.
 
 ### 11. Parity and milestone evidence — [7.1](tickets/ticket-7-1.md), [7.3](tickets/ticket-7-3.md), [1.2](tickets/ticket-1-2.md)
+
+**1.2's inventory extension is DONE 2026-10-08; the obligation it serves is not closed, and the
+reason turned out to be structural.** Full writeup: [the route-graph
+invariant](route-graph-invariant.md).
+
+The 2026-10-05 review said the invariant passed vacuously because the inventory probed six
+legacy paths and the test pinned the count to exactly six. That was right and one level too
+shallow. **The inventory listed no canonical routes because the fixture serves none:**
+`docker-compose.replatform.yml:56,106` set `EXPLORERS_API_MODE: legacy-music`, and the legacy
+composition mounts only analytics and public-profile routes from the Explorers set. The fixture
+is the legacy runtime, not a canonical one with a thin inventory.
+
+What landed:
+
+- Five canonical probes beside the original six — the Better Auth group's origin guard,
+  `/api/explorers/v1/me`, `/api/explorers/v1/account/lifecycle`, `/api/explorers/v1/collections`
+  and `/health/live` — with the expected count now **derived from the inventory** instead of the
+  literal `6`. The probe mechanism gained a request `method` and dotted field paths, because
+  canonical errors are nested `{error:{code,...}}` where every legacy probe asserted a flat field.
+- `tunes/server/test/contracts/platform-route-signatures.test.ts`, which drives the same probe
+  list against the **real** `createCanonicalApp` and asserts each recorded status and body field
+  is what the app actually answers. This is the piece that matters: an inventory can be
+  internally consistent and describe nothing, which is what went wrong before. It needs no
+  container, and that is measured too — none of the five paths touches the database, and the
+  test asserts the stub pool recorded zero queries.
+- 13 cases across the two files; three mutations confirm each fails for its own reason,
+  including an expectation drifting away from the real app.
+
+**The cost, stated plainly: `platform:test:routes` now fails in CI** (`test.yml:302-310`),
+because against a `legacy-music` fixture those five routes are genuinely absent. That is the
+ticket's mandated behaviour — "a failure, not a skip" — and the first time the invariant could
+fail at all. The message diagnoses itself rather than reporting a bare mismatch. **Reverting is
+one commit and restores the vacuous pass, not correctness.**
+
+**Owner decision, because the ticket asks for two incompatible things:** keep the six legacy
+probes (four of which are legacy-only surfaces) *and* require canonical routes the legacy
+runtime does not serve. One runtime cannot answer both. Flip the fixture to canonical now (a
+real package: canonical env, and the fixture E2E lanes move with it), run both graphs during
+the transition, or accept the red until step 12 reaches the fixture. The invariant doc has the
+costs.
+
+Still open in this step:
 - 7.1: all nine public categories (3 of 9 at audit), privacy and public media, pins, cold-entry positives; commit the navigation slice that currently exists only as an uncommitted overlay.
 - 7.3: milestone-2 evidence — the command flags it mandates do not exist in the runner yet.
-- 1.2: extend the route-parity inventory to the landed canonical routes and raise its expected count. Epic 1's one open obligation; shared files, so coordinator-allocated.
+- Note `execution-packages.json:21` still describes 1.2's inventory as unextended; it is now stale on that point.
 
 ### 12. Retire Strapi — [8.1b](tickets/ticket-8-1.md), [8.2](tickets/ticket-8-2.md), [8.3](tickets/ticket-8-3.md)
 - Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features.

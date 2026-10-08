@@ -162,7 +162,16 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   `AnalyticsDashboard.test.tsx` seeds `token: 'private-user-token'`, which production never
   issues, so every existing test ran the path no real owner is on. If another suite seeds a
   token or credential, check whether canonical auth actually issues it.
-- Steps 11–13 (rest of Phase C) have not started.
+- **Step 11 started 2026-10-08. 1.2's route-parity inventory is extended and bound to the real
+  app** — [the route-graph invariant](route-graph-invariant.md). The review's "passes
+  vacuously" was one level too shallow: the fixture runs `EXPLORERS_API_MODE: legacy-music`
+  and serves none of the canonical routes, so the invariant is unsatisfied at its root.
+  **`platform:test:routes` now fails in CI as a result, by design** — that is the ticket's
+  mandated "failure, not a skip", and reverting is one commit that restores the vacuous pass
+  rather than correctness. **An owner decision is needed** because 1.2 asks for the six legacy
+  probes *and* canonical routes from one runtime, which is impossible; the three options and
+  their costs are in that doc.
+- 7.1 and 7.3 (the rest of step 11) and steps 12–13 have not started.
 
 ## Owner decisions taken on 2026-10-08
 
