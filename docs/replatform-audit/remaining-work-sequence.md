@@ -275,7 +275,36 @@ as live.
 - Remaining: `Settings`, and the ticket obligations below.
 - **3.4**: 10 analytics identities are authored and **0 attested** — add the analytics lane to the runner and the suite manifest. Its consent and privacy obligations are also open, and are not a rewiring job.
 - **3.2**: the mandated upload-hook changes were never made.
-- **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally dead; plus the reference-content module (`faq`, `platform-term`, legal copy — 7 MISSING fields) and the canonical email suppression table.
+- **7.2**: the dashboard gates on a token canonical auth never sets, so it is structurally
+  dead; plus the reference-content module and the canonical email suppression table.
+
+  **The reference content is the last Strapi read in steps 1-9 that I am not deciding, and
+  the reason is not that it is hard.** Measured 2026-10-08:
+
+  - Four live, routed surfaces read it: the landing page's `<FAQ />` (`pages/Landing.tsx:131`)
+    and `/terms`, `/privacy`, `/cookies` (`routes/AuthRoutes.tsx:35-37`), through
+    `useFaqs` and `usePlatformTerms`.
+  - **At retirement those three legal pages go blank.** A product with no reachable Terms,
+    Privacy or Cookie policy is a different kind of breakage from a missing feature, which
+    is why this one is worth a decision rather than a default.
+  - There is no content in the repo to fall back on. The i18n bundles carry UI labels
+    (`auth.termsAndConditions`, `cookieConsent.*`) and **no body copy and no FAQ entries**.
+  - `page_contents` already exists in `tunes/shared/schema.ts:535` with
+    `slug`/`title`/`content`/`is_published` and the comment "'terms', 'privacy', etc." - but
+    it is the **tunes** app's own CMS table (serial id, `created_by` referencing
+    `users.id`), and it has **no locale column**. Both hooks are locale-keyed off
+    `i18n.language`.
+  - And the locale dimension is bigger than the canonical contract: `i18n/resources` ships
+    **46 locales** while `updateAccountInputSchema.locale` is `z.enum(["en","hi"])`. Any
+    table design has to say which of those it serves, and any static-content design has to
+    say what a visitor on one of the other 44 sees.
+
+  So the decision is: reuse and extend `page_contents` (cross-app coupling, needs a locale
+  column), create a canonical explorers reference-content table with locale (a new
+  owner-editable surface and an admin to edit it), or move the copy into the repo as
+  deploy-time content (removes a runtime dependency from legally-required pages, and takes
+  away editing without a deploy). The third is the most robust and the biggest change to how
+  the owner works, which is exactly why it is not mine to pick.
 - Decisions **D2**, **D6**, **D7**, **D8** all land in this step.
 
 ### 8. Music glue — epic 6 tail · **1 call**, not 4 — mostly already done
