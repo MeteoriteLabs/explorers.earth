@@ -14,12 +14,7 @@ import Home, {
   getHomeRecentAnalyticsScope,
 } from "../Home";
 
-const { accountQuery, accountScope, translate } = vi.hoisted(() => ({
-  accountQuery: {
-    loading: false,
-    error: undefined as Error | undefined,
-    hasCachedAccount: false,
-  },
+const { accountScope, translate } = vi.hoisted(() => ({
   accountScope: { current: "account-1" },
   translate: vi.fn((key: string, options?: Record<string, string>) => {
     const messages: Record<string, string> = {
@@ -94,11 +89,12 @@ describe("Home analytics", () => {
     vi.clearAllMocks();
     nativeGames.read.mockReturnValue({data:{gameLists:[]},loading:false,error:undefined,refetch:vi.fn()});
     nativeMovies.read.mockReturnValue({data:{movieLists:[]},loading:false,error:undefined,refetch:vi.fn()});
-    vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
+    // Read at call time, so a case that changes the signed-in identity gets the account
+    // that identity resolves to rather than the one captured when the mock was set up.
+    vi.mocked(explorersApiClient.getMyProfile).mockImplementation(
+      async () => canonicalAccountFixture({ id: accountScope.current }),
+    );
     Element.prototype.scrollIntoView = vi.fn();
-    accountQuery.loading = false;
-    accountQuery.error = undefined;
-    accountQuery.hasCachedAccount = false;
     accountScope.current = "account-1";
     useAuthStore.setState({
       isAuthenticated: true,
@@ -111,42 +107,6 @@ describe("Home analytics", () => {
         blocked: false,
       },
     });
-    queryMock.mockImplementation((query) => {
-      const operation = operationName(query);
-      if (operation === "GetUserAccount") {
-        return {
-          data: (accountQuery.loading && !accountQuery.hasCachedAccount) || accountQuery.error ? undefined : {
-            usersPermissionsUser: {
-              accounts: [{
-                documentId: accountScope.current,
-                Account_Name: "Explorer",
-                Account_Type: "personal",
-                mobile_number: "1234567890",
-              }],
-            },
-          },
-          loading: accountQuery.loading,
-          error: accountQuery.error,
-          refetch: vi.fn(),
-        } as never;
-      }
-      if (operation === "user") {
-        return {
-          data: {
-            accounts: [{
-              documentId: accountScope.current,
-              Account_Name: "Explorer",
-              Feed_Data: [],
-              recommendation_lists: [],
-            }],
-          },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as never;
-      }
-      return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as never;
-    });
   });
 
   it('reads Movies summary through native ownership without a legacy Movies Apollo query',async()=>{
@@ -156,7 +116,9 @@ describe("Home analytics", () => {
     fireEvent.click(await screen.findByRole('button',{name:/Movies/}));
     expect(await screen.findByText('Native Movie summary')).toBeInTheDocument();
     expect(nativeMovies.read).toHaveBeenCalled();
-    expect(queryMock.mock.calls.map(call=>operationName(call[0]))).not.toContain('MovieListsByAccount');
+    // Stronger than the operation-name check this replaces: the dashboard issues no Apollo
+    // query at all, so there is no legacy Movies read to look for.
+    expect(queryMock).not.toHaveBeenCalled();
     expect(screen.getByAltText('Native Movie summary')).toHaveAttribute('src','/api/explorers/v1/media/poster/content');
   });
 
@@ -167,7 +129,7 @@ describe("Home analytics", () => {
     fireEvent.click(await screen.findByRole('button',{name:/Games/}));
     expect(await screen.findByText('Native Game summary')).toBeInTheDocument();
     expect(nativeGames.read).toHaveBeenCalled();
-    expect(queryMock.mock.calls.map(call=>operationName(call[0]))).not.toContain('GameListsByAccount');
+    expect(queryMock).not.toHaveBeenCalled();
     expect(screen.getByAltText('Native Game summary')).toHaveAttribute('src','/api/explorers/v1/media/poster/content');
   });
 
@@ -206,26 +168,25 @@ describe("Home analytics", () => {
     expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
   });
 
-  it("keeps analytics loading on a cold account lookup before requesting the resolved account", async () => {
-    accountQuery.loading = true;
+  it("keeps analytics loading on a cold account read before requesting the resolved account", async () => {
+    let resolveAccount!: () => void;
+    vi.mocked(explorersApiClient.getMyProfile).mockImplementation(() => new Promise((resolve) => {
+      resolveAccount = () => resolve(canonicalAccountFixture({ id: accountScope.current }));
+    }));
     readEvents.mockReturnValue(new Promise(() => undefined));
 
-    const view = render(<Home />);
+    render(<Home />);
 
     expect(readEvents).not.toHaveBeenCalled();
 
-    accountQuery.loading = false;
-    useAuthStore.setState((state) => ({
-      user: state.user ? { ...state.user } : null,
-    }));
-    view.rerender(<Home />);
+    resolveAccount();
 
     await waitFor(() => expect(readEvents).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-1" })));
     expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
   });
 
-  it("does not request analytics when the account lookup completes with an error", async () => {
-    accountQuery.error = new Error("account lookup failed");
+  it("does not request analytics when the account read fails", async () => {
+    vi.mocked(explorersApiClient.getMyProfile).mockRejectedValue(new Error("account read failed"));
 
     render(<Home />);
 
@@ -233,15 +194,25 @@ describe("Home analytics", () => {
     expect(readEvents).not.toHaveBeenCalled();
   });
 
-  it("keeps the card loading without querying a retained account while Apollo refetches it", async () => {
-    accountQuery.loading = true;
-    accountQuery.hasCachedAccount = true;
+  // This replaces a case that asserted the card stayed loading rather than query a retained
+  // Apollo result during a refetch. There is no retained result to guard any more: the
+  // canonical read is keyed by identity and session generation, so a different viewer is a
+  // different cache entry with no data, not a stale one. The privacy guarantee that case
+  // existed for is asserted directly instead - a signed-in viewer's analytics are never
+  // read for the previous viewer's account.
+  it("never reads analytics for the previous viewer's account after the identity changes", async () => {
+    readEvents.mockResolvedValue([]);
+    const view = render(<Home />);
+    await waitFor(() => expect(readEvents).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-1" })));
 
-    render(<Home />);
+    accountScope.current = "account-2";
+    useAuthStore.setState({
+      user: { id: "2", documentId: "user-2", username: "other-explorer", email: "other@example.com", blocked: false },
+    });
+    view.rerender(<Home />);
 
-    expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
-    await Promise.resolve();
-    expect(readEvents).not.toHaveBeenCalled();
+    await waitFor(() => expect(readEvents).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-2" })));
+    expect(readEvents.mock.calls.filter(([scope]) => scope.accountId === "account-1")).toHaveLength(1);
   });
 
   it("renders a successful empty analytics response as an accessible visible zero", async () => {

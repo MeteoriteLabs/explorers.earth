@@ -92,9 +92,26 @@ Still to do:
   the public-detail package.
 - `CreateGuideStep2`'s guide category vocabulary — the one remaining call, blocked on **D9**.
 
-### 2. Dashboard home — `pages/Home.tsx` · 10 calls, 1 file · no ticket
-- Found by measurement, recorded in no epic. Reads books, apps, products, people, places and guides lists straight from Strapi though five of those already have native owner reads.
-- Mostly rewiring to hooks that already exist. Early, because it is a cross-category consumer that would otherwise be the last file blocking retirement.
+### 2. Dashboard home — `pages/Home.tsx` · 10 calls, 1 file · no ticket — **DONE 2026-10-08**
+- Found by measurement, recorded in no epic. Read books, apps, products, people, places and
+  guides straight from Strapi though five already had native owner reads.
+- The last four were three reads of **the same account, read three different ways** -
+  `GetDashboardStatus` by user document id, `accountsDetailQuery` filtered by username, and
+  `GET_USER_ACCOUNT_QUERY` to recover the account id - plus one write. All three collapsed
+  into the `useCanonicalAccount` call the file was already making.
+- `GetDashboardStatus` was **inert**: it selected `usersPermissionsUser` and its only
+  consumer read `dashboardStatusData?.me?.accounts`, a field the document never returned, so
+  the completion check always fell through to the canonical Places read beside it. It
+  fetched a large payload on every dashboard load and decided nothing.
+- The write was a stale duplicate: Home had its own copy of the Places list create, on the
+  Strapi mutation with the thumbnail posted to Strapi `/upload` and `display_order`
+  computed from whatever lists this component happened to have loaded.
+  `useCreateLocation` already does it canonically, and the server assigns
+  `display_order` - which is also the only correct answer, since another tab may have
+  created a list since this one loaded. Home now delegates to it.
+- **Still there, deliberately:** `resolveCoverUrl` prepends the Strapi host to a stored
+  `/uploads/...` media path. That is not a Strapi API call, it is display-time resolution
+  of legacy media, and it stops mattering when the media is migrated - step 12, not here.
 
 ### 3. Claim flow — [5.4](tickets/ticket-5-4.md) · 18 MISSING fields
 - Claim service, repository, routes and migration — none of it exists.
@@ -184,7 +201,7 @@ there is no canonical password to change, for the same reason sign-up is Google-
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **17** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **16** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.

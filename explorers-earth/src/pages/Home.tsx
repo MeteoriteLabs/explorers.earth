@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import useAuthStore from "../store/store";
 import Button from "../components/ui/Button";
 import ShareIcon from "../assets/icons/ShareIcon";
-import { useQuery, useMutation } from "@apollo/client";
 import { getCurrentDomain } from "../utils/getCurrentDomain";
 import { EarthLoader } from "../components/EarthLoader";
 import MobileIcon from "../assets/icons/MobileIcon";
@@ -19,7 +18,6 @@ import InstagramIcon from "../assets/icons/InstagramIcon";
 import ShareModal from "../components/ShareModal";
 import { GlobeDemo } from "../components/ui/GlobeDemo";
 import ThemedIcon from "../components/ui/ThemedIcon";
-import { accountsDetailQuery } from "../features/PublicHome/api/query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toUrlSlug } from "../utils/formatAddress";
 import SEO from "../components/SEO";
@@ -30,15 +28,14 @@ import { IMAGE_CONFIG } from "../config";
 import { useCityStore } from "../store/useCityStore";
 import useSetupStore from "../store/useSetupStore";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
-import { DASHBOARD_STATUS_QUERY } from "../features/Profile/api/UserStatus";
-import { GET_USER_ACCOUNT_QUERY } from "../features/Guides/api/queries";
 import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
-import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
 import { publicMusicShareUrl } from "../features/music/musicShareUrl";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { toProfileViewModel } from "../features/Profile/api/profileClient";
+import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 
 // Category integrations
 import { useMoviesOwner } from "../features/Movies/api/explorersAdapter";
@@ -51,9 +48,7 @@ import { readExplorersAnalyticsEvents } from "../services/explorersAnalyticsClie
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { GOOGLE_PLACES_API_BASE_URL } from "../config";
 
 // Modals
 import AddLocationModal from "../components/ui/AddLocationModal";
@@ -67,7 +62,6 @@ import { CreateGuideModal } from "../features/Guides";
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
-import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 
 type HomeAnalyticsState = "loading" | "ready" | "unavailable";
@@ -109,12 +103,6 @@ export function getHomeAnalyticsCard(
   };
 }
 
-// S3 upload helpers
-import {
-  generateLocationThumbnailPath,
-  generateRandomFileName,
-  sanitizeUsername,
-} from "../utils/uploadPathGenerator";
 
 
 const resolveCoverUrl = (
@@ -276,55 +264,35 @@ const Home = memo(() => {
   const [prefillTitle, setPrefillTitle] = useState<string>("");
 
   const queryClient = useQueryClient();
-  const [createRecommendationLink] = useMutation(createRecommendationLinkMutation);
 
   // Create UTM parameters for sharing
   const profileUtmParams = createUtmParams.directShare();
   const recommendationUtmParams = createUtmParams.directShare();
   const guidesUtmParams = createUtmParams.directShare();
 
-  // Query for dashboard status to check completion (includes published status)
-  const { data: dashboardStatusData, loading: dashboardStatusLoading } = useQuery(DASHBOARD_STATUS_QUERY, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    fetchPolicy: "cache-and-network",
-    skip: !user?.username || !user?.documentId,
-  });
-
-  const { data, loading, error } = useQuery(accountsDetailQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: user?.username,
-        },
-      },
-    },
-    fetchPolicy: "network-only",
-    skip: !user?.username, // Skip query if user is not authenticated
-  });
+  // Ticket 3.1. The dashboard's three Strapi reads were all the same account, read three
+  // ways: GetDashboardStatus by user document id, accountsDetailQuery filtered by username,
+  // and GET_USER_ACCOUNT_QUERY to recover the account id. useCanonicalAccount above is
+  // already that account, already scoped to the signed-in owner, so all three are gone.
+  //
+  // GetDashboardStatus was also inert. It selected usersPermissionsUser, and its only
+  // consumer read dashboardStatusData?.me?.accounts - a field the document never returned -
+  // so the completion check always fell through to the canonical Places read beside it. It
+  // fetched a large payload on every dashboard load and decided nothing.
+  const loading = canonicalAccount.isPending;
+  const error = canonicalAccount.error ?? undefined;
 
   useEffect(() => {
-    if (!loading && !dashboardStatusLoading) {
+    if (!loading) {
       (window as any).__dashboardLoaded = true;
     }
-  }, [loading, dashboardStatusLoading]);
+  }, [loading]);
 
   const { data: userLists, refetch: refetchUserLists } = usePlacesOwner(undefined, Boolean(user?.username));
 
-  // Get account documentId for guides query (reuse existing query pattern)
-  const {
-    data: accountDataForGuides,
-    loading: accountLookupLoading,
-    error: accountLookupError,
-  } = useQuery(GET_USER_ACCOUNT_QUERY, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-    fetchPolicy: "cache-first", // Reuse cache if available
-  });
-
-  const selectedAccount = selectCompletedAccount(accountDataForGuides?.usersPermissionsUser?.accounts);
-  const accountDocumentId = selectedAccount?.documentId;
+  // One owner has one canonical account, so there is no list of accounts to pick a
+  // completed one out of.
+  const accountDocumentId = canonicalAccount.data?.id;
 
   // Native Movies are scoped to the canonical account, independently of legacy categories.
   const { data: movieListsData, refetch: refetchMovies, loading: moviesLoading, error: moviesError } = useMoviesOwner();
@@ -367,7 +335,7 @@ const Home = memo(() => {
   // backend boundary. Never download another account's analytics to the browser.
   useEffect(() => {
     let active = true;
-    if (accountLookupLoading) {
+    if (canonicalAccount.isPending) {
       setAnalyticsData([]);
       setAnalyticsState("loading");
       return () => {
@@ -375,7 +343,7 @@ const Home = memo(() => {
       };
     }
 
-    if (accountLookupError || !accountDocumentId || !token) {
+    if (canonicalAccount.error || !accountDocumentId || !token) {
       setAnalyticsData([]);
       setAnalyticsState("unavailable");
       return () => {
@@ -405,7 +373,7 @@ const Home = memo(() => {
     return () => {
       active = false;
     };
-  }, [accountDocumentId, accountLookupError, accountLookupLoading, token]);
+  }, [accountDocumentId, canonicalAccount.error, canonicalAccount.isPending, token]);
 
   // Refetch guides when navigating back from guide creation/editing (matching Recommendations pattern)
   useEffect(() => {
@@ -427,7 +395,9 @@ const Home = memo(() => {
     return () => window.removeEventListener("focus", handleFocus);
   }, [accountDocumentId, user?.username, refetchGuides]);
 
-  const account = data?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
+  // The same compatibility mapping Profile and Settings use, so the presentation below and
+  // ProfileSetupAccordion keep reading Account_Name, Bio, social_media and the two images.
+  const account = canonicalAccount.data ? toProfileViewModel(canonicalAccount.data) : undefined;
   const url = getCurrentDomain();
 
   const activeTabShareUrl = useMemo(() => {
@@ -458,23 +428,13 @@ const Home = memo(() => {
   // Calculate completion flags - Enhanced profile completion check
   const isProfileComplete = canonicalAccount.data?.onboardingStatus === "complete";
 
-  const isRecommendationsComplete = useMemo(() => {
-    // Try dashboardStatusData first, then fallback to listNames
-    const dashboardAccount = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
-    const lists = dashboardAccount?.recommendation_lists || listNames;
-
-    const isComplete = calculateIsRecommendationsComplete(lists);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Recommendations Complete Check:', {
-        isComplete,
-        dashboardLists: dashboardAccount?.recommendation_lists?.length || 0,
-        listNamesCount: listNames?.length || 0
-      });
-    }
-
-    return isComplete;
-  }, [dashboardStatusData, listNames, accountDocumentId]);
+  // The canonical Places lists, which is what this always actually read: the Strapi
+  // dashboard-status branch it used to prefer selected a field that document never
+  // returned, so this fallback was the only live path.
+  const isRecommendationsComplete = useMemo(
+    () => calculateIsRecommendationsComplete(listNames),
+    [listNames],
+  );
 
   // Extensible: Check if ALL setup points are complete
   // Add new setup points here as the app grows
@@ -483,7 +443,7 @@ const Home = memo(() => {
   const isAllSetupComplete = useMemo(() => {
     // Wait for critical data to load before making a decision
     // Don't show setup card during loading - show loading spinner instead
-    if (canonicalAccount.isPending || dashboardStatusLoading || loading) {
+    if (canonicalAccount.isPending) {
       return false; // Wait for data to load - loading state handles this
     }
 
@@ -505,14 +465,12 @@ const Home = memo(() => {
         isRecommendationsComplete,
         bothComplete,
         hasAccountData: !!hasAccountData,
-        dashboardStatusLoading,
-        loading
       });
     }
 
     // If both steps are complete, hide the setup card immediately
     return bothComplete;
-  }, [isProfileComplete, isRecommendationsComplete, canonicalAccount.data, canonicalAccount.isPending, dashboardStatusLoading, loading]);
+  }, [isProfileComplete, isRecommendationsComplete, canonicalAccount.data, canonicalAccount.isPending]);
 
   const totalActiveListsCount = useMemo(() => {
     const activePlaces = listNames?.filter((list: any) => list.Visibility === true)?.length || 0;
@@ -694,6 +652,24 @@ const Home = memo(() => {
 
   const navigate = useNavigate();
 
+  // Ticket 5.1. Creating a Places list is one flow, and it already exists canonically.
+  // Home had its own copy on the Strapi createRecommendationList mutation, with the
+  // thumbnail posted to Strapi's /upload and display_order computed from whatever lists
+  // happened to be loaded in this component. useCreateLocation does the same thing against
+  // the owner API: the list and its location are created in one command, the thumbnail
+  // becomes owned media, and the server assigns display_order as max+1 - which is also the
+  // only correct answer, since another tab may have created a list since this one loaded.
+  const { handleLocationSubmit } = useCreateLocation({
+    setIsLocationModalOpen: setShowCreatePlacesModal,
+    refetchCities: async () => refetchUserLists(),
+    setIsLoading: () => undefined,
+    onCreated: () => {
+      setShowCreatePlacesModal(false);
+      navigate("/recommendations", { state: { justCreatedList: true } });
+    },
+  });
+
+
   const shareButtons = [
     {
       name: t("dashboard.home.shareButtons.instagram"),
@@ -722,7 +698,7 @@ const Home = memo(() => {
   ];
 
   // Show loading state if any critical query is loading
-  if (loading || dashboardStatusLoading || canonicalAccount.isPending) {
+  if (canonicalAccount.isPending) {
     if ((window as any).__dashboardLoaded) {
       return <HomeSkeleton />;
     }
@@ -813,135 +789,7 @@ const Home = memo(() => {
     else if (activeTab === "people") setShowCreatePeopleModal(true);
   };
 
-  const handlePlacesSubmit = async (values: any): Promise<boolean> => {
-    const toastId = toast.loading("Creating Places list and uploading location image...");
-    try {
-      const placeDetails = await axios.get(
-        `${GOOGLE_PLACES_API_BASE_URL}/${
-          values.placeId
-        }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location,photos&key=${
-          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-        }`
-      );
-      const photoReferences = placeDetails.data.photos?.map(
-        (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
-      ) || [];
-
-      let photoUrl: string | undefined;
-
-      // Only upload to S3 if photos are available
-      if (photoReferences.length > 0) {
-        const googlePhotoResponse = await fetch(
-          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
-            photoReferences[0]
-          }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
-          { redirect: "follow" }
-        );
-        
-        if (googlePhotoResponse.ok) {
-          const imageBlob = await googlePhotoResponse.blob();
-          const username = sanitizeUsername(user?.username || "user");
-          const randomFileName = generateRandomFileName(
-            `${values.listName || "location"}.jpg`
-          );
-          const structuredPath = generateLocationThumbnailPath(username);
-
-          const formData = new FormData();
-          formData.append(
-            "files",
-            new File([imageBlob], randomFileName, { type: imageBlob.type })
-          );
-          formData.append("path", structuredPath);
-
-          const token = useAuthStore.getState().token;
-          const uploadResponse = await axios.post(
-            `${import.meta.env.VITE_REST_API_URL}/upload`,
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-            }
-          );
-
-          const uploadedImage = uploadResponse.data?.[0];
-          if (uploadedImage?.url) {
-            photoUrl = uploadedImage.url;
-          }
-        }
-      }
-
-      // Calculate display_order (max + 1)
-      const existingLists = listNames || [];
-      let nextDisplayOrder = 1;
-      if (existingLists.length > 0) {
-        const orders = existingLists
-          .map((l: any) => l.display_order)
-          .filter((o: any) => typeof o === "number");
-        if (orders.length > 0) {
-          nextDisplayOrder = Math.max(...orders) + 1;
-        } else {
-          nextDisplayOrder = existingLists.length + 1;
-        }
-      }
-
-      const response = await createRecommendationLink({
-        variables: {
-          data: {
-            Instagram_Media_URL: values.recommendationSocialLink,
-            List_Name: values.listName,
-            Visibility: false,
-            List_Name_Details: {
-              note: values.note,
-              thumbnail: photoUrl,
-              location: placeDetails?.data?.location,
-              place_id: values.placeId,
-            },
-            slug: toUrlSlug(values.listName),
-            account: accountDocumentId,
-            display_order: nextDisplayOrder,
-            is_pinned: false,
-          },
-        },
-      });
-
-      if (response.data) {
-        // Best-effort refresh — a refetch failure AFTER a successful create must
-        // NOT report failure (that would re-open/retry and create a duplicate).
-        try {
-          refetchUserLists();
-          const updatedCity = userLists?.recommendationLists?.find(
-            (list) => list.List_Name === values.listName
-          );
-          if (updatedCity) {
-            setSelectedCity({
-              documentId: updatedCity.documentId,
-              List_Name: updatedCity.List_Name,
-              slug: updatedCity.slug ?? undefined,
-              Visibility: updatedCity.Visibility,
-              is_pinned: updatedCity.is_pinned,
-              pin_order: updatedCity.pin_order,
-              display_order: updatedCity.display_order,
-            });
-          }
-        } catch (refetchError) {
-          console.warn("Failed to refetch lists after creating a place:", refetchError);
-        }
-        toast.success("Places list created successfully!", { id: toastId });
-        setShowCreatePlacesModal(false);
-        navigate('/recommendations', { state: { justCreatedList: true } });
-        return true;
-      }
-      // No data returned — treat as failure so the modal stays open.
-      toast.error("Failed to create places list", { id: toastId });
-      return false;
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to create places list", { id: toastId });
-      return false;
-    }
-  };
+  const handlePlacesSubmit = (values: any): Promise<boolean> => handleLocationSubmit(values);
 
   const getAddButtonStyles = (_cat?: any) => {
     return { backgroundColor: "#3B82F6", color: "white" };
