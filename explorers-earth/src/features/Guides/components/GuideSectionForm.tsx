@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useMutation, useApolloClient } from "@apollo/client";
+import {useGuideEditing} from '../context/GuideEditingProvider';
 import { toast } from "sonner";
 import { Reorder } from "framer-motion";
 import TiptapEditor from "../../Favorites/components/TiptapEditor";
@@ -9,11 +9,6 @@ import {
   htmlToBlocks,
   blocksToHtml,
 } from "../../../utils/strapiBlocksConverter";
-import {
-  CREATE_GUIDE_SECTION_MUTATION,
-  UPDATE_GUIDE_SECTION_MUTATION,
-} from "../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../api/queries";
 import ClockIcon from "../../../assets/icons/ClockIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
 import StayIcon from "../../../assets/icons/StayIcon";
@@ -65,7 +60,6 @@ interface GuideSectionFormProps {
 }
 
 const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
-  guideDocumentId,
   sectionId,
   initialData,
   existingSections = [],
@@ -75,7 +69,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   onCancel,
   onLoadingChange,
 }) => {
-  const apolloClient = useApolloClient();
+  const {addSection, saveSection} = useGuideEditing();
   const user = useAuthStore((state) => state.user);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -169,8 +163,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<"morning" | "afternoon" | "evening">("morning");
   const [tempTimelinePlace, setTempTimelinePlace] = useState<Places | null>(null);
 
-  const [createSection] = useMutation(CREATE_GUIDE_SECTION_MUTATION);
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
+
 
   // Media viewer for activity photos - track which activity is being viewed
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
@@ -998,8 +991,6 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         evening: eveningPlaces,
       };
 
-      const timelineString = JSON.stringify(timelineData);
-
       // Extract budget data from timeline places
       // Prioritize new currency format (budgetAmount/budgetCurrency) over customBudget, then Google API data
       const extractBudgetData = (places: any[]) => {
@@ -1028,8 +1019,6 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         evening: extractBudgetData(eveningPlaces),
       };
 
-      const budgetString = JSON.stringify(budgetData);
-
       // Generate complete transport segments (including defaults)
       const completeSegments = generateCompleteTransportSegments();
 
@@ -1038,14 +1027,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         segments: completeSegments,
       };
 
-      const transportString = JSON.stringify(transportData);
-
       // Prepare Stay JSON (accommodations)
       const stayData: StayData = {
         accommodations: stayAccommodations,
       };
-
-      const stayString = JSON.stringify(stayData);
 
       // Prepare Activity JSON (activities/attractions)
       // Wait for any in-flight activity photo uploads so we never persist an
@@ -1084,80 +1069,45 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         activities: activitiesForSave,
       };
 
-      const activityString = JSON.stringify(activityData);
-
       // Prepare Map_Details with location for multi-city guides
-      let mapDetailsString = null;
-      if (isMultiCityGuide && selectedLocation) {
-        const mapDetails = {
-          location: selectedLocation,
-        };
-        mapDetailsString = JSON.stringify(mapDetails);
-      }
+      // Map_Details carries the chosen location for a multi-city stop.
+      const mapDetails = isMultiCityGuide && selectedLocation ? {location: selectedLocation} : null;
+
+      // The form always composes the whole section, so create and update send the same
+      // blocks; only where they land differs.
+      const blocks = {
+        Timeline: timelineData,
+        Transport: transportData,
+        Stay: stayData,
+        Recommendation_Activity: activityData,
+        Budget: budgetData,
+        Map_Details: mapDetails,
+      };
+      // Description is rich blocks in the form and plain text on the section, so it is
+      // flattened rather than stored twice in two shapes.
+      const descriptionText = Array.isArray(descriptionBlocks)
+        ? descriptionBlocks
+            .map((block: any) => (block.children ?? []).map((child: any) => child.text ?? "").join(""))
+            .join(String.fromCharCode(10))
+            .trim() || null
+        : null;
 
       if (sectionId) {
-        // Update existing section
-        await updateSection({
-          variables: {
-            documentId: sectionId,
-            data: {
-              Title: title,
-              Description: descriptionBlocks,
-              Sequence: sequence,
-              Timeline: timelineString,
-              Transport: transportString,
-              Stay: stayString,
-              Recommendation_Activity: activityString,
-              Budget: budgetString,
-              Map_Details: mapDetailsString,
-            },
-          },
-        });
+        await saveSection(sectionId, {title, description: descriptionText, ...blocks});
         toast.success("Changes saved successfully!");
       } else {
-        // Validate location for multi-city guides
         if (isMultiCityGuide && !selectedLocation) {
           toast.error("Please select a location for this day/stop");
           setLoading(false);
           return;
         }
-
-        // Create new section
-        // First, fetch the guide's internal ID via REST API
-        const { getGuideById } = await import("../guideService");
-        const guideData = await getGuideById(guideDocumentId);
-
-        if (!guideData?.id) {
-          throw new Error("Unable to connect to guide");
-        }
-
-        // Create the section using GraphQL
-        const { data } = await createSection({
-          variables: {
-            data: {
-              Title: title,
-              Description: descriptionBlocks,
-              Sequence: sequence,
-              Timeline: timelineString,
-              Transport: transportString,
-              Stay: stayString,
-              Recommendation_Activity: activityString,
-              Budget: budgetString,
-              Map_Details: mapDetailsString,
-              guide: guideData.id,
-            },
-          },
-        });
-
-        if (data?.createGuideSection?.documentId) {
-          toast.success("Added to your guide!");
-        }
+        // No guide id and no REST lookup: Strapi needed its internal numeric id to build
+        // the relation, which is why this used to fetch the guide before every create.
+        // Sequence is 1-based in the form and the position is 0-based in storage.
+        await addSection({title, description: descriptionText, ...blocks},
+          Number.isFinite(sequence) && sequence > 0 ? sequence - 1 : undefined);
+        toast.success("Added to your guide!");
       }
-
-      // Refetch the guide data
-      await apolloClient.refetchQueries({
-        include: [GET_GUIDE_BY_ID_QUERY],
-      });
 
       if (onSuccess) {
         onSuccess();

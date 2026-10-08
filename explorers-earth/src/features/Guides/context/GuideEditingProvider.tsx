@@ -35,6 +35,14 @@ export type GuideEditing = {
   * show arrive empty and erase what another editor wrote.
   */
  saveSection: (sectionId: string, save: GuideSectionSave) => Promise<void>;
+ /**
+  * Appends a section, or inserts it at a position.
+  *
+  * There is no guide id to supply. Strapi needed the guide's internal numeric id to build
+  * the relation, which is why the form used to fetch it over REST before every create;
+  * the section belongs to the guide this provider is for.
+  */
+ addSection: (save: GuideSectionSave, position?: number) => Promise<void>;
  /** Merges a change into the guide's own fields, sending the complete details object. */
  saveDetails: (patch: Partial<GuideCollectionDetails>) => Promise<void>;
  /**
@@ -89,6 +97,18 @@ export function GuideEditingProvider({observation, list, reload, children}: {
       Section_tags: (save.Section_tags ?? mapped.Section_tags) as never,
      }),
     });
+    reload();
+   },
+   addSection: async (save, position) => {
+    const current = require();
+    const intent = GuidesClient.prepareIntent(current);
+    await GuidesClient.addSection(intent, {
+     title: save.title,
+     description: save.description,
+     // A new section starts from empty blocks, so anything the caller omits is genuinely
+     // empty rather than inherited from a section that does not exist yet.
+     blocks: toCanonicalSectionBlocks(save as never),
+    }, position);
     reload();
    },
    saveDetails: async (patch) => {

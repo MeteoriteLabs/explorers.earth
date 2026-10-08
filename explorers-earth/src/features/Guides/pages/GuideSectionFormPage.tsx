@@ -7,13 +7,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useQuery } from "@apollo/client";
 import { motion } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import Button from "../../../components/ui/Button";
 import BackIcon from "../../../assets/icons/BackIcon";
 import GuideSectionForm from "../components/GuideSectionForm";
-import { GET_GUIDE_BY_ID_QUERY } from "../api/queries";
+import { useGuidesOwner } from "../hooks/useGuidesOwner";
+import { GuideEditingProvider } from "../context/GuideEditingProvider";
 
 const GuideSectionFormPage = () => {
     const { guideId } = useParams<{ guideId: string }>();
@@ -27,12 +27,10 @@ const GuideSectionFormPage = () => {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Fetch the guide to get sections list + multi-city info
-    const { data, loading, error } = useQuery(GET_GUIDE_BY_ID_QUERY, {
-        variables: { documentId: guideId },
-        skip: !guideId,
-        fetchPolicy: "cache-and-network",
-    });
+    // This page stands on its own route, so it reads the guide itself rather than
+    // inheriting one. The form beneath it writes through the editing provider below.
+    const { guide: ownedGuide, observation, content, loading, error, refresh } = useGuidesOwner(guideId);
+    const data = ownedGuide ? { guide: ownedGuide } : undefined;
 
     // Fallback: reset submitting after 10 s in case of error
     useEffect(() => {
@@ -85,6 +83,7 @@ const GuideSectionFormPage = () => {
     else if (isEditMode) headingText = "Edit Day/Stop";
 
     return (
+        <GuideEditingProvider observation={observation} list={guideId ? content?.lists.get(guideId) : undefined} reload={refresh}>
         <div className="dashboard-theme bg-dashboard-bg text-dashboard-light">
             {/*
         Bottom padding keeps content clear of the floating action bar.
@@ -201,6 +200,7 @@ const GuideSectionFormPage = () => {
                 </div>
             </div>
         </div>
+        </GuideEditingProvider>
     );
 };
 
