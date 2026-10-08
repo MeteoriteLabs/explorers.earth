@@ -582,6 +582,8 @@ const PlaceDetails = memo(() => {
             return isPersonType ? (
               <PersonOverview
                 personId={isExpanded.documentId}
+                // Already found above, which is how this branch knows it is a person.
+                person={clickedItem}
                 onClose={() => setIsExpanded({ visible: false, documentId: null })}
                 isPublicProfile={true}
               />

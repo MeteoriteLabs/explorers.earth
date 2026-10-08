@@ -1105,6 +1105,9 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         {isExpanded.visible && (
           <PlaceOverview
             placeId={isExpanded.documentId}
+            // The dashboard already holds this place from its own owner read, so it is
+            // handed over rather than fetched again inside the modal.
+            publicPlace={allFilteredPlaces?.find((place: {documentId: string}) => place.documentId === isExpanded.documentId)}
             onClose={() => setIsExpanded({ visible: false, documentId: null, type: null })}
           />
         )}
