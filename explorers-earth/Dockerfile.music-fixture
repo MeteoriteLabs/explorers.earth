@@ -38,6 +38,7 @@ COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPe
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts
 COPY tunes/shared/explorersPlaceLinkContract.ts /workspace/tunes/shared/explorersPlaceLinkContract.ts
 COPY tunes/shared/explorersGuideContract.ts /workspace/tunes/shared/explorersGuideContract.ts
+COPY tunes/shared/explorersLifecycleObservation.ts /workspace/tunes/shared/explorersLifecycleObservation.ts
 COPY tunes/shared/explorersGameContract.ts /workspace/tunes/shared/explorersGameContract.ts
 COPY tunes/shared/explorersGameOwnerContract.ts /workspace/tunes/shared/explorersGameOwnerContract.ts
 RUN npm run build

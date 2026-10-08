@@ -36,7 +36,10 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deletion-feedback", classification: "canonical-explorers-owner" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deactivation", classification: "canonical-explorers-owner" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deletion", classification: "canonical-explorers-owner" }),
-      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/recovery/status", classification: "canonical-explorers-recovery", ownerSource: "single-use-google-bound-recovery-proof" }),
+      // Read-only observation, bound to the proof but not single-use - see ownerFor. The
+      // transition route on the next line is where single-use still holds, and the two
+      // being different labels is the point.
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/recovery/status", classification: "canonical-explorers-recovery", ownerSource: "google-bound-recovery-proof-within-expiry-read-only" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/complete", classification: "canonical-explorers-recovery", policy: "google-bound-five-minute-proof+origin-on-mutation" }),
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),

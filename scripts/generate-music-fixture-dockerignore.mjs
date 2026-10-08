@@ -53,6 +53,7 @@ const fixedFiles = [
   // Ticket 5.3. explorersApiClient is in this context and imports the guide contract, so
   // the contract has to travel with it or the image's frontend build cannot resolve it.
   "tunes/shared/explorersGuideContract.ts",
+  "tunes/shared/explorersLifecycleObservation.ts",
   "tunes/shared/explorersGameContract.ts",
   "tunes/shared/explorersGameOwnerContract.ts",
   // Ticket 5.3. Named explicitly because discovery only picks up the *Client/*ViewModel/

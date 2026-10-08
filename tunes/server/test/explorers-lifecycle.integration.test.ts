@@ -123,6 +123,128 @@ describe("canonical account lifecycle", () => {
   beforeAll(() => { pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST }); app = createCanonicalApp(pool, config); });
   afterAll(async () => { await pool?.end(); });
 
+  // Ticket 2.4 package L0. The typed observation, and in particular the two outcomes that
+  // could not be reached before: requireRecoveryPrincipal gates on an unconsumed proof and
+  // on the account still being suspended or pending_deletion, so a recovery that succeeded
+  // and a terminal deletion were both answered with 403 - identically to an expired proof.
+  describe("typed lifecycle observation", () => {
+    async function proofFor(owner: Awaited<ReturnType<typeof identity>>) {
+      const context = await app.auth.$context;
+      const temporary = await context.internalAdapter.createSession(owner.userId, false);
+      const proof = await issueRecoveryProof(pool, { userId: owner.userId,
+        subject: `google-${owner.userId}`, sessionId: temporary.id });
+      return { cookie: `explorers_recovery_proof=${proof.token}`, id: proof.id };
+    }
+    const observe = (cookie: string) =>
+      request(app.app).get("/api/explorers/v1/recovery/status").set("cookie", cookie);
+
+    // The defect. A client whose success response was lost re-reads and is told the
+    // recovery already took effect, instead of being refused.
+    it("reports a completed recovery whose response was lost as recovered, not as a refusal", async () => {
+      const owner = await identity();
+      const deactivated = await request(app.app).post("/api/explorers/v1/account/deactivation")
+        .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+        .send({ expectedRevision: owner.revision });
+      expect(deactivated.status).toBe(200);
+      const proof = await proofFor(owner);
+      const completed = await request(app.app).post("/api/explorers/v1/recovery/complete")
+        .set("origin", config.baseURL).set("cookie", proof.cookie)
+        .send({ expectedRevision: deactivated.body.lifecycle.revision });
+      expect(completed.status).toBe(200);
+
+      // Same cookie the client still holds, because clearCookie only reached a response
+      // that was delivered.
+      const observed = await observe(proof.cookie);
+      expect(observed.status).toBe(200);
+      expect(observed.body.recovery).toMatchObject({ outcome: "recovered", status: "active" });
+
+      // And the consumed proof still cannot transition anything.
+      expect((await request(app.app).post("/api/explorers/v1/recovery/complete")
+        .set("origin", config.baseURL).set("cookie", proof.cookie)
+        .send({ expectedRevision: completed.body.lifecycle.revision })).status).toBe(403);
+    });
+
+    it("reports a terminally deleted account as terminal rather than as an expired proof", async () => {
+      const owner = await identity();
+      await pendingDeletion(owner);
+      const proof = await proofFor(owner);
+      // deleted_at travels with the status: creator_accounts_deleted_valid requires it.
+      await pool.query("UPDATE creator_accounts SET status='deleted',deleted_at=now() WHERE id=$1", [owner.accountId]);
+
+      const observed = await observe(proof.cookie);
+      expect(observed.status).toBe(200);
+      expect(observed.body.recovery).toMatchObject({ outcome: "terminal", status: "deleted" });
+      // Terminal is terminal: the proof buys no transition on it.
+      expect((await request(app.app).post("/api/explorers/v1/recovery/complete")
+        .set("origin", config.baseURL).set("cookie", proof.cookie)
+        .send({ expectedRevision: owner.revision + 1 })).status).toBe(403);
+    });
+
+    it("routes a failed lifecycle operation to manual review with a quotable reference", async () => {
+      const owner = await identity();
+      const operationId = await pendingDeletion(owner);
+      const proof = await proofFor(owner);
+      await pool.query(`UPDATE account_lifecycle_operations SET state='failed',failure_code='music_release_timeout',
+        updated_at=now() WHERE id=$1`, [operationId]);
+
+      const observed = await observe(proof.cookie);
+      expect(observed.status).toBe(200);
+      expect(observed.body.recovery).toMatchObject({ outcome: "manual_review", reason: "operation_failed",
+        failureCode: "music_release_timeout", operationId, status: "pending_deletion" });
+      // The owner's own words are not in the observation. The feedback reason exists on the
+      // account and must not travel in a payload a support flow passes around.
+      expect(JSON.stringify(observed.body)).not.toContain("Leaving");
+    });
+
+    it("keeps observation read-only and bounded to the proof's own lifetime", async () => {
+      const owner = await identity();
+      const deactivated = await request(app.app).post("/api/explorers/v1/account/deactivation")
+        .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+        .send({ expectedRevision: owner.revision });
+      const proof = await proofFor(owner);
+
+      const before = await pool.query("SELECT status,revision::text,consumed_at FROM creator_accounts a, account_recovery_proofs p WHERE a.id=$1 AND p.id=$2", [owner.accountId, proof.id]);
+      expect((await observe(proof.cookie)).body.recovery)
+        .toMatchObject({ outcome: "pending", revision: deactivated.body.lifecycle.revision });
+      // Observing twice changes nothing, so a client may re-read as often as it needs to.
+      expect((await observe(proof.cookie)).status).toBe(200);
+      const after = await pool.query("SELECT status,revision::text,consumed_at FROM creator_accounts a, account_recovery_proofs p WHERE a.id=$1 AND p.id=$2", [owner.accountId, proof.id]);
+      expect(after.rows).toEqual(before.rows);
+
+      // Expiry and revocation are still refused exactly as they are for a transition: the
+      // widening is to a consumed proof inside its window, not to a dead one.
+      // Both timestamps move together: account_recovery_five_minute_check pins expires_at
+      // to issued_at + 5 minutes, so a proof cannot be expired by shortening its window.
+      await pool.query(`UPDATE account_recovery_proofs SET issued_at=issued_at-interval '10 minutes',
+        expires_at=expires_at-interval '10 minutes' WHERE id=$1`, [proof.id]);
+      expect((await observe(proof.cookie)).status).toBe(403);
+      await pool.query(`UPDATE account_recovery_proofs SET issued_at=issued_at+interval '10 minutes',
+        expires_at=expires_at+interval '10 minutes',revoked_at=now() WHERE id=$1`, [proof.id]);
+      expect((await observe(proof.cookie)).status).toBe(403);
+    });
+
+    it("grants no ordinary authority and no other account", async () => {
+      const owner = await identity();
+      await request(app.app).post("/api/explorers/v1/account/deactivation")
+        .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+        .send({ expectedRevision: owner.revision });
+      const proof = await proofFor(owner);
+      const stranger = await identity();
+
+      // The observation authority reads its own binding only - there is no account
+      // selector to point elsewhere - and it is not a session.
+      expect((await observe(proof.cookie)).body.recovery).toMatchObject({ accountId: owner.accountId });
+      expect((await request(app.app).get("/api/explorers/v1/me").set("cookie", proof.cookie)).status).toBe(401);
+      expect((await request(app.app).get("/api/explorers/v1/account/lifecycle").set("cookie", proof.cookie)).status).toBe(401);
+      expect(stranger.accountId).not.toBe(owner.accountId);
+    });
+
+    it("refuses a proof that does not exist at all", async () => {
+      expect((await observe(`explorers_recovery_proof=${"a".repeat(43)}`)).status).toBe(403);
+      expect((await observe("explorers_recovery_proof=short")).status).toBe(403);
+    });
+  });
+
   it("rechecks revoked web sessions and OAuth operation scopes inside the lifecycle service", async () => {
     const owner = await identity();
     const session = await pool.query<{ id: string; session_version: string }>(
@@ -202,7 +324,8 @@ describe("canonical account lifecycle", () => {
     const proofCookie = `explorers_recovery_proof=${proof.token}`;
     const status = await request(app.app).get("/api/explorers/v1/recovery/status").set("cookie", proofCookie);
     expect(status.status).toBe(200);
-    expect(status.body.recovery).toMatchObject({ status: "suspended", revision: changed.body.lifecycle.revision });
+    expect(status.body.recovery).toMatchObject({ outcome: "pending", status: "suspended",
+      revision: changed.body.lifecycle.revision, kind: "deactivate" });
     expect((await request(app.app).get("/api/explorers/v1/me").set("cookie", proofCookie)).status).toBe(401);
     const recovered = await request(app.app).post("/api/explorers/v1/recovery/complete")
       .set("origin", config.baseURL).set("cookie", proofCookie)

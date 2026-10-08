@@ -123,18 +123,58 @@ retire `account-lifecycle.spec.ts` on the strength of this paragraph.
 These are the rows above that are **not** discharged, plus the obligations 2.4 states
 outside the behaviour set. Nothing here is counted as covered anywhere in this map.
 
-1. **The typed lifecycle observation union — OPEN.** C3 narrowed L0's absence claim
-   correctly: the observation authority already exists and must not be duplicated.
-   `server/routes/explorersLifecycleRoutes.ts:46-53` exposes `GET
-   /api/explorers/v1/recovery/status` under `requireRecoveryPrincipal`, returning
-   `{recovery:{status, revision}}` read straight from `creator_accounts`. That is a raw
-   status read. It does not distinguish a **terminal** outcome from a still-**pending**
-   operation from an **unknown/indeterminate** one, which is exactly the distinction a
-   client that lost its response needs in order to re-observe without replaying its proof.
-   Extend that route; do not add a second observation endpoint.
-2. **The manual-review DTO — OPEN.** `manualReview` and `manual_review` have **zero hits**
-   across `tunes/server`, `tunes/shared` and `explorers-earth/src` at this SHA. There is no
-   server contract and no UI contract. C3's finding is unchanged.
+1. **The typed lifecycle observation union — DONE 2026-10-08.**
+   `tunes/shared/explorersLifecycleObservation.ts` defines the union over outcomes
+   (`recovered` / `pending` / `terminal` / `manual_review` / `unknown`) and a pure
+   `classifyLifecycleObservation`, so every outcome is reachable in a unit test. C3 is
+   followed: `GET /api/explorers/v1/recovery/status` returns it and **no second endpoint was
+   added**. `ReactivateConfirm.tsx` now has a state per outcome.
+
+   Writing it found that **C3 is wrong about one thing, and the error mattered.** C3 says a
+   client which lost its response "can re-observe state through `/recovery/status` without
+   replaying the proof". It could not. `requireRecoveryPrincipal` gates on `consumed_at IS
+   NULL` **and** `a.status IN ('suspended','pending_deletion')`, and a successful recovery
+   violates both — so the re-read returned **403**, indistinguishable from an expired proof.
+   A terminal account was excluded by the same status filter, so `terminal` could never be
+   reported either. Two of the five outcomes were unreachable by construction.
+
+   **This required a security boundary change, and it is called out rather than buried.**
+   `requireRecoveryObservation` in `server/auth/accountRecovery.ts` is a separate authority
+   with its own brand and `purpose`, not assignable to `RecoveryPrincipal` or to `Actor`.
+   Relative to the transition principal it drops exactly two conditions — `consumed_at IS
+   NULL`, and the account-status filter — and keeps all the others, including the proof's
+   original five-minute expiry and the revocation check. So the widening is: *for the
+   remainder of a proof's own lifetime, its holder may read that one account's lifecycle
+   status after using it.* It writes nothing, resolves only the binding already on the
+   proof, returns no profile or content, and cannot be exchanged for a session.
+   `/recovery/complete` keeps the strict gate untouched.
+
+   The security inventory was updated to stop saying something untrue: that route's
+   `ownerSource` was `single-use-google-bound-recovery-proof` and is now
+   `google-bound-recovery-proof-within-expiry-read-only`
+   (`tunes/scripts/inventory-runtime-surfaces.ts`, and the regenerated
+   `docs/architecture/music-runtime-surface-inventory.json`).
+
+   **If the owner would rather a consumed proof read nothing, revert the authority split.**
+   The consequence of reverting is explicit: the lost-response and terminal cases become
+   unreportable again, which is the defect L0 exists to remove.
+
+   Receipts: `server/test/explorers-lifecycle-observation.test.ts` (17 classifier cases,
+   including every indeterminate input and the ordering rules);
+   `server/test/explorers-lifecycle.integration.test.ts` "typed lifecycle observation"
+   (6 cases against real PostgreSQL, covering the two formerly unreachable outcomes,
+   read-only-ness, expiry, revocation and that the authority grants nothing else);
+   `explorers-earth/src/pages/__tests__/Reactivate.music-transport.test.tsx` (5 cases, one
+   per rendered outcome). Mutation-checked: putting `requireRecoveryPrincipal` back fails
+   exactly the recovered and terminal cases.
+2. **The manual-review DTO — DONE 2026-10-08.** `lifecycleManualReviewSchema` in the same
+   contract file, reached by two derivations: `operation_failed` (the latest operation is in
+   state `failed`) and `orphaned_transition` (the account is mid-transition with no
+   operation to account for it). It carries a quotable operation reference and an internal
+   failure **code** — never the owner's own feedback text, which a test asserts does not
+   travel in the payload. The UI contract is the `review` state in `ReactivateConfirm.tsx`,
+   which shows the reference and deliberately offers **no action**, since re-entering a
+   stuck flow is how one stuck account becomes a loop.
 3. **The real Google callback acceptance — OPEN and not satisfiable by a fixture.** The
    provider-adapter boundary is well covered
    (`server/test/explorers-recovery-callback.integration.test.ts`, 8 cases), but every one
@@ -158,19 +198,17 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
    (`tunes/scripts/lifecycle-browser-guards.ts:12-13`) and no spec runs them. L18 is
    adjacent but not sufficient: it covers a delayed *response* against a new owner, not a
    completion *held* across a verified replacement and a returning session.
-7. **A hardening note, not a required behaviour.** `/recovery/status:50-52` indexes
-   `account.rows[0]` without checking it. It cannot be reached with no row today, because
-   `requireRecoveryPrincipal` resolves an existing binding and terminal deletion retains a
-   tombstone row (`server/test/explorers-lifecycle.integration.test.ts:615`). It is worth
-   folding into obligation 1 when the typed union is written, since "no row" is precisely
-   the indeterminate case that union exists to express.
+7. **The hardening note is closed by obligation 1.** `/recovery/status` used to index
+   `account.rows[0]` unchecked. The observation query no longer joins `creator_accounts` at
+   all — a missing row now reaches the classifier and becomes `unknown`, which is exactly
+   what that outcome is for.
 
 ## What this map does not license
 
 - It does not retire any existing coverage. 2.4 is explicit that old workflow coverage must
-  not be retired against a partial map, and this map is partial — six open obligations.
+  not be retired against a partial map, and this map is partial — four open obligations remain.
 - It does not give a percentage. 21 of the 22 behaviour rows have receipts and L19 does
-  not, but reporting "21/22" would still be misleading while obligations 1-6 are open (7 is a hardening note, not a required behaviour):
+  not, but reporting "21/22" would still be misleading while obligations 3-6 are open (7 is a hardening note, not a required behaviour):
   those are contract and attestation gaps that no behaviour row can discharge, and one of
   them — the real Google callback — is a prerequisite 2.4 says a fixture cannot satisfy.
 - It does not substitute for the original enumeration, which remains lost. See the first

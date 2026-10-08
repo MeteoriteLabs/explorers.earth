@@ -4,8 +4,9 @@ import type { Pool } from "pg";
 import type { ExplorersAuth, ExplorersAuthConfig } from "../auth/betterAuth";
 import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { AccountLifecycleFailure, AccountLifecycleService } from "../application/accountLifecycle";
-import { recoverAccount, requireRecoveryPrincipal } from "../auth/accountRecovery";
+import { recoverAccount, requireRecoveryObservation, requireRecoveryPrincipal } from "../auth/accountRecovery";
 import { recoveryProofCookie, recoveryProofCookieOptions } from "../auth/recoveryCallback";
+import { classifyLifecycleObservation } from "../../shared/explorersLifecycleObservation";
 
 export function setupExplorersLifecycleRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig) {
   const service = new AccountLifecycleService(pool);
@@ -43,12 +44,43 @@ export function setupExplorersLifecycleRoutes(app: Express, pool: Pool, auth: Ex
       { requestId: randomUUID(), idempotencyKey: request.get("idempotency-key") });
     return { status: 200, body: { lifecycle } };
   }));
+  // Ticket 2.4 package L0. The existing observation authority, now returning a typed
+  // outcome rather than a raw status - C3 is explicit that a second endpoint must not be
+  // added, so this extends this one.
+  //
+  // The latest operation is read in the same statement as the account, so the two cannot
+  // be observed a transaction apart and produce an outcome that was never true: an account
+  // read before a failure with an operation read after it would classify as pending when
+  // it is already manual review. The subselect matches getAccountLifecycle's ordering, so
+  // "latest operation" means the same thing on both routes.
   app.get("/api/explorers/v1/recovery/status", async (request, response) => {
     try {
-      const principal = await requireRecoveryPrincipal(request, pool);
-      const account = await pool.query<{ revision: string; status: string }>(
-        "SELECT revision::text,status FROM creator_accounts WHERE id=$1", [principal.accountId]);
-      response.json({ recovery: { status: account.rows[0].status, revision: Number(account.rows[0].revision) } });
+      // The observation authority, not the transition principal: see
+      // requireRecoveryObservation. /recovery/complete below keeps the stricter gate.
+      const principal = await requireRecoveryObservation(request, pool);
+      const account = await pool.query<{ revision: string; status: string; operation_id: string | null;
+        operation_kind: string | null; operation_state: string | null; failure_code: string | null }>(
+        `SELECT a.revision::text,a.status,o.id AS operation_id,o.kind AS operation_kind,
+           o.state AS operation_state,o.failure_code
+         FROM creator_accounts a
+         LEFT JOIN LATERAL (SELECT id,kind,state,failure_code FROM account_lifecycle_operations
+           WHERE account_id=a.id ORDER BY created_at DESC,id DESC LIMIT 1) o ON true
+         WHERE a.id=$1`, [principal.accountId]);
+      // No row is the indeterminate case, not a crash. The previous code indexed rows[0]
+      // unconditionally; it was unreachable because a bound principal implies an account
+      // row, but "unknown" is precisely what this union exists to be able to say.
+      const row = account.rows[0];
+      response.json({
+        recovery: classifyLifecycleObservation({
+          accountId: principal.accountId,
+          status: row?.status ?? null,
+          revision: row ? Number(row.revision) : null,
+          operation: row?.operation_id
+            ? { id: row.operation_id, kind: row.operation_kind ?? "", state: row.operation_state ?? "",
+              failureCode: row.failure_code }
+            : null,
+        }),
+      });
     } catch (error) { sendError(request, response, error); }
   });
   app.post("/api/explorers/v1/recovery/complete", async (request, response) => {

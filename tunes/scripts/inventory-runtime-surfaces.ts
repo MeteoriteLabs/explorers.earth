@@ -93,8 +93,16 @@ function ownerFor(path: string, classification: string): string {
   if (classification === "native-session") return "native-session-only";
   if (classification === "canonical-explorers-owner") return "verified-google-session+active-initial-account-binding";
   if (classification === "canonical-explorers-auth") return "better-auth-session-or-provider-flow";
-  if (classification === "canonical-explorers-recovery") return path === "/api/explorers/v1/recovery/start"
-    ? "trusted-origin+signed-short-lived-recovery-intent" : "single-use-google-bound-recovery-proof";
+  if (classification === "canonical-explorers-recovery") {
+    if (path === "/api/explorers/v1/recovery/start") return "trusted-origin+signed-short-lived-recovery-intent";
+    // /recovery/status is read-only observation and is deliberately NOT single-use: ticket
+    // 2.4 package L0 requires it to report a completed recovery and a terminal deletion,
+    // neither of which is observable while the proof must be unconsumed. It stays bound to
+    // the same Google-issued proof and to its original five-minute expiry, and writes
+    // nothing. The transition route below keeps the single-use gate.
+    if (path === "/api/explorers/v1/recovery/status") return "google-bound-recovery-proof-within-expiry-read-only";
+    return "single-use-google-bound-recovery-proof";
+  }
   return "none";
 }
 

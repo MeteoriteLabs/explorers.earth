@@ -664,7 +664,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 24
+      "line": 25
     },
     {
       "method": "POST",
@@ -674,7 +674,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 28
+      "line": 29
     },
     {
       "method": "POST",
@@ -684,7 +684,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "block-or-deactivate",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 34
+      "line": 35
     },
     {
       "method": "POST",
@@ -694,17 +694,17 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 40
+      "line": 41
     },
     {
       "method": "GET",
       "path": "/api/explorers/v1/recovery/status",
       "classification": "canonical-explorers-recovery",
-      "ownerSource": "single-use-google-bound-recovery-proof",
+      "ownerSource": "google-bound-recovery-proof-within-expiry-read-only",
       "policy": "google-bound-five-minute-proof+origin-on-mutation",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 46
+      "line": 56
     },
     {
       "method": "POST",
@@ -714,7 +714,7 @@
       "policy": "google-bound-five-minute-proof+origin-on-mutation",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 54
+      "line": 86
     },
     {
       "method": "POST",

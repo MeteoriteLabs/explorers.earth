@@ -27,6 +27,66 @@ export async function requireRecoveryPrincipal(request: Request, pool: Pool): Pr
   return { userId: row.user_id, accountId: row.account_id, purpose: "account-recovery", proofId: row.id } as RecoveryPrincipal;
 }
 
+declare const observationBrand: unique symbol;
+/**
+ * Authority to LOOK at one account's lifecycle, and nothing else.
+ *
+ * Separate from RecoveryPrincipal and deliberately not assignable to it: it carries its own
+ * brand and a different `purpose`, so it cannot be passed to recoverAccount or to anything
+ * that takes an Actor. Observing is not transitioning.
+ *
+ * Ticket 2.4 package L0 requires lifecycle observation to distinguish a terminal outcome
+ * from a pending one from an indeterminate one, and C3 notes that a client which lost its
+ * response must be able to re-observe without replaying its proof. Neither is possible
+ * through requireRecoveryPrincipal, which gates on `consumed_at IS NULL` and on the account
+ * still being `suspended` or `pending_deletion`:
+ *
+ *  - A recovery that succeeded consumes the proof and makes the account active, so the
+ *    client that lost that response is refused. The cookie is cleared only on delivered
+ *    success precisely so this read can answer - and the read said 403.
+ *  - A terminally deleted account is excluded by the status filter, so "terminal" could
+ *    never be reported and a permanent deletion looked exactly like a transient failure.
+ *
+ * ## The boundary this widens, stated plainly
+ *
+ * Relative to requireRecoveryPrincipal this drops exactly two conditions: `consumed_at IS
+ * NULL`, and the account-status filter. It keeps every other one - the token must match a
+ * stored hash, carry the account-recovery purpose, not be revoked, and **still be within
+ * its original five-minute expiry**. So the widening is: for the remainder of a proof's own
+ * lifetime, the holder may read that one account's lifecycle status after using it.
+ *
+ * What it does not do: it performs no write, it resolves only the binding already stored on
+ * the proof, it returns no profile or content, and it cannot be exchanged for a session. A
+ * revoked or expired proof is refused here exactly as it is there.
+ *
+ * This is a security boundary change and it is called out in the commit rather than left
+ * for a reader to notice. If the owner would rather a consumed proof read nothing, the
+ * alternative is that the lost-response and terminal cases stay unreportable, which is the
+ * defect L0 exists to remove.
+ */
+export type RecoveryObservationAuthority = {
+  userId: string; accountId: string; purpose: "account-recovery-observation"; proofId: string;
+  readonly [observationBrand]: true;
+};
+
+export async function requireRecoveryObservation(request: Request, pool: Pool): Promise<RecoveryObservationAuthority> {
+  const token = request.cookies?.[recoveryProofCookie];
+  if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
+    throw new AccountLifecycleFailure(403, "RECOVERY_INVALID", "Recovery proof is unavailable");
+  }
+  const digest = createHash("sha256").update(token).digest();
+  // No join to creator_accounts: a missing account row must reach the classifier as the
+  // indeterminate case rather than be turned into a refusal here.
+  const result = await pool.query<{ id: string; user_id: string; account_id: string }>(
+    `SELECT p.id,p.user_id,p.account_id FROM account_recovery_proofs p
+      WHERE p.token_hash=$1 AND p.purpose='account-recovery'
+        AND p.revoked_at IS NULL AND p.expires_at>clock_timestamp()`, [digest]);
+  const row = result.rows[0];
+  if (!row) throw new AccountLifecycleFailure(403, "RECOVERY_INVALID", "Recovery proof is unavailable");
+  return { userId: row.user_id, accountId: row.account_id,
+    purpose: "account-recovery-observation", proofId: row.id } as RecoveryObservationAuthority;
+}
+
 export async function recoverAccount(pool: Pool, principal: RecoveryPrincipal, input: RevisionInput,
   _context: RequestContext): Promise<AccountLifecycleDto> {
   if (principal.purpose !== "account-recovery" || !Number.isSafeInteger(input?.expectedRevision) || input.expectedRevision < 1) {
