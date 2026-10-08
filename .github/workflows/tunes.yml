@@ -94,6 +94,8 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: tunes/package-lock.json
+      - name: Check retired Strapi dependencies (ticket 8.1a)
+        run: node scripts/check-retired-dependencies.mjs
       - name: Test Tunes
         working-directory: tunes
         env:

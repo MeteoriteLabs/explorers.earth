@@ -142,7 +142,19 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   ([`lifecycle-legacy-retirement-map.md`](lifecycle-legacy-retirement-map.md)) and found
   2 clean gaps and 5 partials across the 11 legacy cases, so retirement is blocked on
   coverage as well as on gating.
-- Steps 10–13 (Phase C) have not started.
+- Step 10's **classification is done** (2026-10-08) —
+  [the server-side Strapi classification](strapi-server-classification.md), plus the named
+  static scan `scripts/check-retired-dependencies.mjs`, wired into `tunes.yml`. Headline: no
+  reachable canonical path touches Strapi and canonical startup needs no `STRAPI_*`; the
+  "55 files" was never the denominator, and most of the volume is `strapi_*` **columns**
+  (data about a retired system, not calls into one). `strapiOrigin` needs no loosening — it is
+  legacy-path only. What is left of 8.1a is three owner items (compose `${VAR:?}` loosening,
+  the `music-reconcile.yml` cron disablement, an executed boot receipt) and one small move.
+- **New live defect found there, owned by 3.4, not by retirement:** the analytics events panel
+  is permanently empty and silent, because its read is gated on an auth-store token canonical
+  auth never sets — while the canonical `GET /api/explorers/analytics/summary` already exists
+  behind `requireActor` and has no caller. Details in the classification doc, section D.
+- Steps 11–13 (rest of Phase C) have not started.
 
 ## Owner decisions taken on 2026-10-08
 

@@ -1,14 +1,14 @@
 # Source inventory
 
-Commit `79ef17d0b88c7e11b49d618fc7c888a513f29fa8`. All tracked runtime TS/JS source; excludes test directories and test/spec files. Parse gql template literals; occurrences count separately, not unique names or proven live operations. TypeScript AST additionally identifies untagged operation strings/templates. REST lines are candidates, not registered endpoints.
+Commit `5253fcb21a46caabb7512bf6de5762b952705f31`. All tracked runtime TS/JS source; excludes test directories and test/spec files. Parse gql template literals; occurrences count separately, not unique names or proven live operations. TypeScript AST additionally identifies untagged operation strings/templates. REST lines are candidates, not registered endpoints.
 
 ## Tagged GraphQL operation counts
 
 ```json
 {
   "Explorers": {
-    "query": 108,
-    "mutation": 86,
+    "query": 79,
+    "mutation": 73,
     "subscription": 0
   },
   "Tunes": {
@@ -25,11 +25,6 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 
 | Kind | Name | Root fields | Source |
 |---|---|---|---|
-| query | MusicIdentityEligibility | usersPermissionsUser | explorers-earth/src/components/AuthSyncManager.tsx:11 |
-| query | user | usersPermissionsUser | explorers-earth/src/components/Header.tsx:24 |
-| query | CheckOnboardingStatus | usersPermissionsUser | explorers-earth/src/components/ProtectedRoute.tsx:13 |
-| query | SidebarAccount | usersPermissionsUser | explorers-earth/src/components/Sidenav.tsx:21 |
-| query | GetAccountId | usersPermissionsUser | explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx:66 |
 | mutation | CreateAppList | createAppList | explorers-earth/src/features/AppsAndTools/api/mutation.ts:6 |
 | mutation | UpdateAppList | updateAppList | explorers-earth/src/features/AppsAndTools/api/mutation.ts:40 |
 | mutation | DeleteAppList | deleteAppList | explorers-earth/src/features/AppsAndTools/api/mutation.ts:76 |
@@ -37,14 +32,13 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | mutation | UpdateRecommendedApp | updateRecommendedApp | explorers-earth/src/features/AppsAndTools/api/mutation.ts:138 |
 | mutation | DeleteRecommendedApp | deleteRecommendedApp | explorers-earth/src/features/AppsAndTools/api/mutation.ts:188 |
 | mutation | ToggleAppPin | updateRecommendedApp | explorers-earth/src/features/AppsAndTools/api/mutation.ts:199 |
-| query | AppListsByAccount | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:6 |
-| query | AppsByList | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:57 |
-| query | PinnedApps | recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:115 |
-| query | PublicAppData | appLists, recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:155 |
-| query | AppListBySlug | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:219 |
-| query | AppsByCategory | recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:269 |
-| query | AppCategories | appCategories | explorers-earth/src/features/AppsAndTools/api/query.ts:307 |
-| query | MyAccountForApps | usersPermissionsUser | explorers-earth/src/features/AppsAndTools/components/dashboard/AppsHome.tsx:30 |
+| query | AppListsByAccount | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:86 |
+| query | AppsByList | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:137 |
+| query | PinnedApps | recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:195 |
+| query | PublicAppData | appLists, recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:235 |
+| query | AppListBySlug | appLists | explorers-earth/src/features/AppsAndTools/api/query.ts:299 |
+| query | AppsByCategory | recommendedApps | explorers-earth/src/features/AppsAndTools/api/query.ts:349 |
+| query | AppCategories | appCategories | explorers-earth/src/features/AppsAndTools/api/query.ts:387 |
 | mutation | register | register | explorers-earth/src/features/Authentication/api/mutation.ts:4 |
 | mutation | login | login | explorers-earth/src/features/Authentication/api/mutation.ts:20 |
 | mutation | forgotPassword | forgotPassword | explorers-earth/src/features/Authentication/api/mutation.ts:36 |
@@ -69,7 +63,6 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | query | BookListBySlug | bookLists | explorers-earth/src/features/Books/api/query.ts:259 |
 | query | PublicBookData | bookLists | explorers-earth/src/features/Books/api/query.ts:313 |
 | query | BookCategories | bookCategories | explorers-earth/src/features/Books/api/query.ts:367 |
-| query | MyAccountForBooks | usersPermissionsUser | explorers-earth/src/features/Books/components/dashboard/BooksHome.tsx:29 |
 | mutation | CreateRecommendationList | createRecommendationList | explorers-earth/src/features/Favorites/api/mutation.ts:3 |
 | mutation | CreateRecommendationCategory | createRecommendationCategory | explorers-earth/src/features/Favorites/api/mutation.ts:25 |
 | mutation | CreateRecommendedPlace | createRecommendedPlace | explorers-earth/src/features/Favorites/api/mutation.ts:34 |
@@ -91,10 +84,6 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | query | recommendedplace | recommendedPlace | explorers-earth/src/features/Favorites/api/query.ts:127 |
 | query | RecommendedPlaces | recommendedPlaces | explorers-earth/src/features/Favorites/api/query.ts:161 |
 | query | AllRecommendedPlaces | recommendationList | explorers-earth/src/features/Favorites/api/query.ts:184 |
-| query | LocationWithPeopleForLink | recommendationList | explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx:19 |
-| query | MyAccountForPeopleLink | usersPermissionsUser | explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx:40 |
-| query | LocationWithProductsForLink | recommendationList | explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx:19 |
-| query | MyAccountForProductsLink | usersPermissionsUser | explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx:41 |
 | query | (anonymous) | claimablePlaceProfiles | explorers-earth/src/features/Favorites/services/claimablePlaceProfileService.ts:47 |
 | mutation | CreateGameList | createGameList | explorers-earth/src/features/Games/api/mutation.ts:6 |
 | mutation | UpdateGameList | updateGameList | explorers-earth/src/features/Games/api/mutation.ts:40 |
@@ -103,15 +92,14 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | mutation | UpdateRecommendedGame | updateRecommendedGame | explorers-earth/src/features/Games/api/mutation.ts:159 |
 | mutation | DeleteRecommendedGame | deleteRecommendedGame | explorers-earth/src/features/Games/api/mutation.ts:195 |
 | mutation | ToggleGamePin | updateRecommendedGame | explorers-earth/src/features/Games/api/mutation.ts:206 |
-| query | GameListsByAccount | gameLists | explorers-earth/src/features/Games/api/query.ts:6 |
-| query | GamesByList | gameLists | explorers-earth/src/features/Games/api/query.ts:70 |
-| query | GameDetails | recommendedGames | explorers-earth/src/features/Games/api/query.ts:145 |
-| query | PinnedGames | recommendedGames | explorers-earth/src/features/Games/api/query.ts:194 |
-| query | GamesByGenre | recommendedGames | explorers-earth/src/features/Games/api/query.ts:240 |
-| query | GameListBySlug | gameLists | explorers-earth/src/features/Games/api/query.ts:274 |
-| query | PublicGameData | gameLists, recommendedGames | explorers-earth/src/features/Games/api/query.ts:327 |
-| query | GameCategories | gameCategories | explorers-earth/src/features/Games/api/query.ts:399 |
-| query | MyAccountForGames | usersPermissionsUser | explorers-earth/src/features/Games/components/dashboard/GamesHome.tsx:28 |
+| query | GameListsByAccount | gameLists | explorers-earth/src/features/Games/api/query.ts:69 |
+| query | GamesByList | gameLists | explorers-earth/src/features/Games/api/query.ts:133 |
+| query | GameDetails | recommendedGames | explorers-earth/src/features/Games/api/query.ts:208 |
+| query | PinnedGames | recommendedGames | explorers-earth/src/features/Games/api/query.ts:257 |
+| query | GamesByGenre | recommendedGames | explorers-earth/src/features/Games/api/query.ts:303 |
+| query | GameListBySlug | gameLists | explorers-earth/src/features/Games/api/query.ts:337 |
+| query | PublicGameData | gameLists, recommendedGames | explorers-earth/src/features/Games/api/query.ts:390 |
+| query | GameCategories | gameCategories | explorers-earth/src/features/Games/api/query.ts:462 |
 | mutation | CreateGuide | createGuide | explorers-earth/src/features/Guides/api/mutations.ts:3 |
 | mutation | UpdateGuide | updateGuide | explorers-earth/src/features/Guides/api/mutations.ts:19 |
 | mutation | DeleteGuide | deleteGuide | explorers-earth/src/features/Guides/api/mutations.ts:37 |
@@ -119,14 +107,7 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | mutation | UpdateGuideSection | updateGuideSection | explorers-earth/src/features/Guides/api/mutations.ts:65 |
 | mutation | DeleteGuideSection | deleteGuideSection | explorers-earth/src/features/Guides/api/mutations.ts:85 |
 | query | GetUserAccount | usersPermissionsUser | explorers-earth/src/features/Guides/api/queries.ts:4 |
-| query | GetGuides | guides | explorers-earth/src/features/Guides/api/queries.ts:18 |
-| query | GetGuideById | guide | explorers-earth/src/features/Guides/api/queries.ts:60 |
-| query | GetGuideCategories | guideCategories | explorers-earth/src/features/Guides/api/queries.ts:109 |
-| query | GetGuideSections | guideSections | explorers-earth/src/features/Guides/api/queries.ts:118 |
-| query | GetPublicGuides | guides | explorers-earth/src/features/Guides/api/queries.ts:145 |
-| query | GetPublicGuideById | guide | explorers-earth/src/features/Guides/api/queries.ts:180 |
-| query | PlatformTerms | platformTerms | explorers-earth/src/features/LandingPage/api/queries.ts:3 |
-| query | Faqs | faqs | explorers-earth/src/features/LandingPage/api/queries.ts:13 |
+| query | GetGuideCategories | guideCategories | explorers-earth/src/features/Guides/api/queries.ts:20 |
 | mutation | CreateMovieList | createMovieList | explorers-earth/src/features/Movies/api/mutation.ts:6 |
 | mutation | UpdateMovieList | updateMovieList | explorers-earth/src/features/Movies/api/mutation.ts:40 |
 | mutation | DeleteMovieList | deleteMovieList | explorers-earth/src/features/Movies/api/mutation.ts:76 |
@@ -142,7 +123,6 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | query | MovieListBySlug | movieLists | explorers-earth/src/features/Movies/api/query.ts:253 |
 | query | PublicMovieData | movieLists | explorers-earth/src/features/Movies/api/query.ts:307 |
 | query | MovieCategories | movieCategories | explorers-earth/src/features/Movies/api/query.ts:361 |
-| query | MyAccountForMovies | usersPermissionsUser | explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx:32 |
 | mutation | CreatePersonList | createPersonList | explorers-earth/src/features/People/api/mutation.ts:6 |
 | mutation | UpdatePersonList | updatePersonList | explorers-earth/src/features/People/api/mutation.ts:42 |
 | mutation | DeletePersonList | deletePersonList | explorers-earth/src/features/People/api/mutation.ts:78 |
@@ -150,13 +130,12 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | mutation | UpdateRecommendedPerson | updateRecommendedPerson | explorers-earth/src/features/People/api/mutation.ts:144 |
 | mutation | DeleteRecommendedPerson | deleteRecommendedPerson | explorers-earth/src/features/People/api/mutation.ts:200 |
 | mutation | TogglePersonPin | updateRecommendedPerson | explorers-earth/src/features/People/api/mutation.ts:211 |
-| query | PersonListsByAccount | personLists | explorers-earth/src/features/People/api/query.ts:6 |
-| query | PeopleByList | personLists | explorers-earth/src/features/People/api/query.ts:56 |
-| query | PinnedPeople | recommendedPeople | explorers-earth/src/features/People/api/query.ts:113 |
-| query | PublicPeopleData | personLists | explorers-earth/src/features/People/api/query.ts:153 |
-| query | PersonListBySlug | personLists | explorers-earth/src/features/People/api/query.ts:200 |
-| query | PersonCategories | peopleCategories | explorers-earth/src/features/People/api/query.ts:249 |
-| query | MyAccountForPeople | usersPermissionsUser | explorers-earth/src/features/People/components/dashboard/PeopleHome.tsx:30 |
+| query | PersonListsByAccount | personLists | explorers-earth/src/features/People/api/query.ts:88 |
+| query | PeopleByList | personLists | explorers-earth/src/features/People/api/query.ts:138 |
+| query | PinnedPeople | recommendedPeople | explorers-earth/src/features/People/api/query.ts:195 |
+| query | PublicPeopleData | personLists | explorers-earth/src/features/People/api/query.ts:235 |
+| query | PersonListBySlug | personLists | explorers-earth/src/features/People/api/query.ts:282 |
+| query | PersonCategories | peopleCategories | explorers-earth/src/features/People/api/query.ts:331 |
 | mutation | CreateProductList | createProductList | explorers-earth/src/features/Products/api/mutation.ts:6 |
 | mutation | UpdateProductList | updateProductList | explorers-earth/src/features/Products/api/mutation.ts:42 |
 | mutation | DeleteProductList | deleteProductList | explorers-earth/src/features/Products/api/mutation.ts:78 |
@@ -164,21 +143,14 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | mutation | UpdateRecommendedProduct | updateRecommendedProduct | explorers-earth/src/features/Products/api/mutation.ts:142 |
 | mutation | DeleteRecommendedProduct | deleteRecommendedProduct | explorers-earth/src/features/Products/api/mutation.ts:194 |
 | mutation | ToggleProductPin | updateRecommendedProduct | explorers-earth/src/features/Products/api/mutation.ts:205 |
-| query | ProductListsByAccount | productLists | explorers-earth/src/features/Products/api/query.ts:6 |
-| query | ProductsByList | productLists | explorers-earth/src/features/Products/api/query.ts:58 |
-| query | PinnedProducts | recommendedProducts | explorers-earth/src/features/Products/api/query.ts:117 |
-| query | PublicProductData | productLists, recommendedProducts | explorers-earth/src/features/Products/api/query.ts:157 |
-| query | ProductListBySlug | productLists | explorers-earth/src/features/Products/api/query.ts:221 |
-| query | ProductsByCategory | recommendedProducts | explorers-earth/src/features/Products/api/query.ts:272 |
-| query | ProductCategories | productCategories | explorers-earth/src/features/Products/api/query.ts:310 |
-| query | MyAccountForProducts | usersPermissionsUser | explorers-earth/src/features/Products/components/dashboard/ProductsHome.tsx:30 |
+| query | ProductListsByAccount | productLists | explorers-earth/src/features/Products/api/query.ts:87 |
+| query | ProductsByList | productLists | explorers-earth/src/features/Products/api/query.ts:139 |
+| query | PinnedProducts | recommendedProducts | explorers-earth/src/features/Products/api/query.ts:198 |
+| query | PublicProductData | productLists, recommendedProducts | explorers-earth/src/features/Products/api/query.ts:238 |
+| query | ProductListBySlug | productLists | explorers-earth/src/features/Products/api/query.ts:302 |
+| query | ProductsByCategory | recommendedProducts | explorers-earth/src/features/Products/api/query.ts:353 |
+| query | ProductCategories | productCategories | explorers-earth/src/features/Products/api/query.ts:391 |
 | query | GetDashboardStatus | usersPermissionsUser | explorers-earth/src/features/Profile/api/UserStatus.ts:5 |
-| mutation | UpdateAccount | updateAccount | explorers-earth/src/features/Profile/api/mutation.ts:3 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/features/Profile/api/mutation.ts:30 |
-| query | UsersPermissionsUser | usersPermissionsUser | explorers-earth/src/features/Profile/api/query.ts:3 |
-| mutation | createAccount | createAccount | explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts:169 |
-| mutation | UpdateAccount | updateAccount | explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts:181 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts:208 |
 | query | PublicCategoryListCounts | recommendationLists, bookLists, movieLists, gameLists, appLists, productLists, personLists, guides | explorers-earth/src/features/PublicHome/api/query.ts:5 |
 | query | RecommendationLists | recommendationLists | explorers-earth/src/features/PublicHome/api/query.ts:42 |
 | query | RecommendationCategories | recommendationCategories | explorers-earth/src/features/PublicHome/api/query.ts:60 |
@@ -194,8 +166,6 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | query | Account | accounts | explorers-earth/src/features/PublicHome/api/query.ts:478 |
 | query | Account | account | explorers-earth/src/features/PublicHome/api/query.ts:513 |
 | query | Account | account | explorers-earth/src/features/PublicHome/api/query.ts:521 |
-| query | UsersPermissionsUser | usersPermissionsUser | explorers-earth/src/features/Settings/Settings.tsx:47 |
-| query | SettingsAccount | usersPermissionsUser | explorers-earth/src/features/Settings/Settings.tsx:55 |
 | mutation | update | changePassword | explorers-earth/src/features/Settings/api/mutation.ts:3 |
 | mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/features/Settings/api/mutation.ts:21 |
 | mutation | DeleteExplorerAccount | deleteAccount | explorers-earth/src/features/Settings/api/mutation.ts:34 |
@@ -206,19 +176,7 @@ Parse failures: 0. Untagged client and server GraphQL strings/templates are sepa
 | query | UsersPermissionsUser | usersPermissionsUser | explorers-earth/src/features/Settings/api/mutation.ts:122 |
 | mutation | AddReasonForLeaving | createReasonForLeaving | explorers-earth/src/features/Settings/api/mutation.ts:134 |
 | query | CheckPublishedLists | bookLists, gameLists, appLists, productLists, movieLists, personLists, guides, recommendationLists | explorers-earth/src/features/Settings/api/mutation.ts:143 |
-| query | UsersPermissionsUser | usersPermissionsUser | explorers-earth/src/features/Settings/components/BillingTab.tsx:15 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/features/Settings/components/BillingTab.tsx:25 |
-| query | CategoryNavigationAccount | usersPermissionsUser | explorers-earth/src/features/navigation/categoryNavigationApi.ts:7 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/pages/Checkout.tsx:26 |
-| mutation | createAccount | createAccount | explorers-earth/src/pages/Checkout.tsx:39 |
-| query | MusicPageEligibility | usersPermissionsUser | explorers-earth/src/pages/Music.tsx:28 |
-| mutation | createAccount | createAccount | explorers-earth/src/pages/OnBoarding.tsx:58 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/pages/OnBoarding.tsx:77 |
-| query | CheckAccount | usersPermissionsUser | explorers-earth/src/pages/OnBoarding.tsx:91 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/pages/OnBoarding.tsx:106 |
-| mutation | UpdateAccount | updateAccount | explorers-earth/src/pages/OnBoarding.tsx:117 |
-| mutation | UpdateUsersPermissionsUser | updateUsersPermissionsUser | explorers-earth/src/pages/SubscriptionPlans.tsx:17 |
-| query | CheckUsernameAvailability | accounts | explorers-earth/src/utils/usernameAPI.ts:7 |
+| query | CategoryNavigationAccount | usersPermissionsUser | explorers-earth/src/features/navigation/categoryNavigationApi.ts:9 |
 | mutation | login | login | tunes/client/src/lib/graphql-mutations.ts:9 |
 | mutation | register | register | tunes/client/src/lib/graphql-mutations.ts:25 |
 | mutation | forgotPassword | forgotPassword | tunes/client/src/lib/graphql-mutations.ts:41 |
@@ -280,23 +238,55 @@ These require reachability classification in the architecture report; declaratio
 | POST | /api/logout | tunes/server/auth.ts:671 |
 | GET | /api/check | tunes/server/auth.ts:737 |
 | GET | /api/csrf-token | tunes/server/auth.ts:746 |
-| GET | env | tunes/server/config/music-startup.ts:115 |
+| ALL | /api/auth | tunes/server/auth/canonicalApp.ts:61 |
+| ALL | /api/auth/*splat | tunes/server/auth/canonicalApp.ts:62 |
+| GET | /health/live | tunes/server/auth/canonicalApp.ts:65 |
+| POST | /api/explorers/v1/recovery/start | tunes/server/auth/canonicalApp.ts:100 |
+| GET | /api/explorers/v1/me | tunes/server/auth/canonicalApp.ts:118 |
+| GET | env | tunes/server/config/music-startup.ts:123 |
 | GET | /health/live | tunes/server/deployment/music-health.ts:43 |
 | GET | /health/ready | tunes/server/deployment/music-health.ts:47 |
 | GET | /api/music-entry/status | tunes/server/deployment/music-health.ts:70 |
 | GET | /health/live | tunes/server/deployment/music-local-health.ts:32 |
 | GET | /health/ready | tunes/server/deployment/music-local-health.ts:36 |
 | GET | /api/music-entry/status | tunes/server/deployment/music-local-health.ts:72 |
-| GET | env | tunes/server/index.ts:20 |
+| GET | env | tunes/server/index.ts:25 |
 | GET | /health/live | tunes/server/publicProfile/localPublicProfileGatewayApp.ts:28 |
-| POST | /api/explorers/analytics/music-account/:accountDocumentId/events | tunes/server/routes/explorersAnalyticsRoutes.ts:189 |
-| POST | /api/explorers/analytics/music/:publicSlug/events | tunes/server/routes/explorersAnalyticsRoutes.ts:225 |
-| POST | /api/explorers/analytics/events | tunes/server/routes/explorersAnalyticsRoutes.ts:275 |
-| GET | /api/explorers/analytics/events | tunes/server/routes/explorersAnalyticsRoutes.ts:322 |
-| GET | /api/explorers/v1/profiles/:username | tunes/server/routes/explorersPublicProfileRoutes.ts:24 |
-| GET | /api/explorers/v1/profiles/:username/recommendations/:category | tunes/server/routes/explorersPublicProfileRoutes.ts:38 |
-| GET | /api/explorers/v1/profiles/:username/recommendations/:category/:slug | tunes/server/routes/explorersPublicProfileRoutes.ts:54 |
-| GET | /itunes-api/search | tunes/server/routes/index.ts:280 |
+| PATCH | /api/explorers/v1/account | tunes/server/routes/explorersAccountRoutes.ts:11 |
+| POST | /api/explorers/analytics/music-account/:accountDocumentId/events | tunes/server/routes/explorersAnalyticsRoutes.ts:191 |
+| POST | /api/explorers/analytics/music/:publicSlug/events | tunes/server/routes/explorersAnalyticsRoutes.ts:228 |
+| POST | /api/explorers/analytics/events | tunes/server/routes/explorersAnalyticsRoutes.ts:280 |
+| GET | /api/explorers/analytics/events | tunes/server/routes/explorersAnalyticsRoutes.ts:328 |
+| GET | /api/explorers/analytics/summary | tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts:29 |
+| GET | /api/explorers/v1/catalog/games | tunes/server/routes/explorersCatalogRoutes.ts:12 |
+| ALL | /api/explorers/v1/catalog/games | tunes/server/routes/explorersCatalogRoutes.ts:17 |
+| GET | /api/explorers/v1/catalog/movie-genres | tunes/server/routes/explorersCatalogRoutes.ts:18 |
+| ALL | /api/explorers/v1/catalog/movie-genres | tunes/server/routes/explorersCatalogRoutes.ts:19 |
+| GET | /api/explorers/v1/catalog/books | tunes/server/routes/explorersCatalogRoutes.ts:20 |
+| ALL | /api/explorers/v1/catalog/books | tunes/server/routes/explorersCatalogRoutes.ts:25 |
+| GET | /api/explorers/v1/catalog/movies | tunes/server/routes/explorersCatalogRoutes.ts:26 |
+| ALL | /api/explorers/v1/catalog/movies | tunes/server/routes/explorersCatalogRoutes.ts:27 |
+| GET | /api/explorers/v1/account/lifecycle | tunes/server/routes/explorersLifecycleRoutes.ts:25 |
+| POST | /api/explorers/v1/account/deletion-feedback | tunes/server/routes/explorersLifecycleRoutes.ts:29 |
+| POST | /api/explorers/v1/account/deactivation | tunes/server/routes/explorersLifecycleRoutes.ts:35 |
+| POST | /api/explorers/v1/account/deletion | tunes/server/routes/explorersLifecycleRoutes.ts:41 |
+| GET | /api/explorers/v1/recovery/status | tunes/server/routes/explorersLifecycleRoutes.ts:56 |
+| POST | /api/explorers/v1/recovery/complete | tunes/server/routes/explorersLifecycleRoutes.ts:86 |
+| POST | /api/explorers/v1/media | tunes/server/routes/explorersMediaRoutes.ts:19 |
+| DELETE | /api/explorers/v1/media/:id | tunes/server/routes/explorersMediaRoutes.ts:39 |
+| GET | /api/explorers/v1/media/:id/content | tunes/server/routes/explorersMediaRoutes.ts:98 |
+| POST | /api/explorers/v1/music/identity/ensure | tunes/server/routes/explorersMusicIdentityRoutes.ts:31 |
+| GET | /api/explorers/v1/public/recommendations/search | tunes/server/routes/explorersPublicContentRoutes.ts:9 |
+| ALL | /api/explorers/v1/public/recommendations/search | tunes/server/routes/explorersPublicContentRoutes.ts:19 |
+| GET | /api/explorers/v1/public/handles/:handle/available | tunes/server/routes/explorersPublicContentRoutes.ts:24 |
+| ALL | /api/explorers/v1/public/handles/:handle/available | tunes/server/routes/explorersPublicContentRoutes.ts:33 |
+| GET | /api/explorers/v1/public/profiles/:username/collections/:category | tunes/server/routes/explorersPublicContentRoutes.ts:46 |
+| GET | /api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations | tunes/server/routes/explorersPublicContentRoutes.ts:47 |
+| GET | /api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id | tunes/server/routes/explorersPublicContentRoutes.ts:48 |
+| GET | /api/explorers/v1/profiles/:username | tunes/server/routes/explorersPublicProfileRoutes.ts:53 |
+| GET | /api/explorers/v1/profiles/:username/recommendations/:category | tunes/server/routes/explorersPublicProfileRoutes.ts:67 |
+| GET | /api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug | tunes/server/routes/explorersPublicProfileRoutes.ts:89 |
+| GET | /api/explorers/v1/profiles/:username/recommendations/:category/:slug | tunes/server/routes/explorersPublicProfileRoutes.ts:94 |
 | GET | /api/music/features | tunes/server/routes/musicFeatureRoutes.ts:13 |
 | GET | /api/music-fixture/readiness | tunes/server/routes/musicFixtureProbe.ts:23 |
 | POST | /api/music/identity/ensure | tunes/server/routes/musicIdentityRoutes.ts:83 |
@@ -307,41 +297,42 @@ These require reachability classification in the architecture report; declaratio
 | POST | /api/music/identity/lifecycle/suspend | tunes/server/routes/musicIdentityRoutes.ts:235 |
 | POST | /api/music/identity/lifecycle/resume | tunes/server/routes/musicIdentityRoutes.ts:238 |
 | GET | /api/music/identity/current | tunes/server/routes/musicIdentityRoutes.ts:244 |
-| GET | /api-docs | tunes/server/routes/musicOpenApiRoutes.ts:767 |
-| GET | /api/music/public-profile/:accountDocumentId | tunes/server/routes/musicSurfaceRoutes.ts:160 |
-| GET | /api/music/public-resource/v1/:publicSlug | tunes/server/routes/musicSurfaceRoutes.ts:185 |
-| GET | /api/playlists | tunes/server/routes/musicSurfaceRoutes.ts:208 |
-| POST | /api/playlists | tunes/server/routes/musicSurfaceRoutes.ts:212 |
-| GET | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:228 |
-| PATCH | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:236 |
-| DELETE | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:248 |
-| POST | /api/playlists/:playlistId/songs | tunes/server/routes/musicSurfaceRoutes.ts:255 |
-| DELETE | /api/playlists/:playlistId/songs/:songId | tunes/server/routes/musicSurfaceRoutes.ts:271 |
-| PATCH | /api/playlists/:playlistId/reorder | tunes/server/routes/musicSurfaceRoutes.ts:280 |
-| PATCH | /api/playlists/:playlistId/visibility | tunes/server/routes/musicSurfaceRoutes.ts:291 |
-| GET | /api/playlist/songs | tunes/server/routes/musicSurfaceRoutes.ts:302 |
-| POST | /api/music/queue/replace | tunes/server/routes/musicSurfaceRoutes.ts:306 |
-| GET | /api/music/dashboard | tunes/server/routes/musicSurfaceRoutes.ts:329 |
-| POST | /api/music/queue/append | tunes/server/routes/musicSurfaceRoutes.ts:333 |
-| PATCH | /api/music/guest-controls | tunes/server/routes/musicSurfaceRoutes.ts:358 |
-| GET | /api/music/guest-controls | tunes/server/routes/musicSurfaceRoutes.ts:366 |
-| POST | /api/playlist/songs | tunes/server/routes/musicSurfaceRoutes.ts:374 |
-| POST | /api/playlist/currently-playing | tunes/server/routes/musicSurfaceRoutes.ts:382 |
-| DELETE | /api/playlist/songs/bulk | tunes/server/routes/musicSurfaceRoutes.ts:417 |
-| DELETE | /api/playlist/songs/:songId | tunes/server/routes/musicSurfaceRoutes.ts:426 |
-| PATCH | /api/playlist/songs/:songId/position | tunes/server/routes/musicSurfaceRoutes.ts:433 |
-| DELETE | /api/playlist/history | tunes/server/routes/musicSurfaceRoutes.ts:447 |
-| DELETE | /api/playlist/history/:songId | tunes/server/routes/musicSurfaceRoutes.ts:451 |
-| POST | /api/youtube/search | tunes/server/routes/musicSurfaceRoutes.ts:467 |
-| POST | /api/youtube/video-from-url | tunes/server/routes/musicSurfaceRoutes.ts:479 |
-| POST | /api/music/publication | tunes/server/routes/musicSurfaceRoutes.ts:491 |
-| POST | /api/music/paid/import | tunes/server/routes/musicSurfaceRoutes.ts:525 |
-| GET | /api/music/entitlement | tunes/server/routes/musicSurfaceRoutes.ts:535 |
-| GET | /api/playlist/:guestUrl | tunes/server/routes/musicSurfaceRoutes.ts:551 |
-| POST | /api/playlist/:guestUrl/youtube/search | tunes/server/routes/musicSurfaceRoutes.ts:573 |
-| POST | /api/playlist/:guestUrl/youtube/video-from-url | tunes/server/routes/musicSurfaceRoutes.ts:587 |
-| POST | /api/playlist/:guestUrl/requests | tunes/server/routes/musicSurfaceRoutes.ts:600 |
-| ALL | /{*musicRetiredPath} | tunes/server/routes/musicSurfaceRoutes.ts:691 |
+| GET | /api-docs | tunes/server/routes/musicOpenApiRoutes.ts:810 |
+| GET | /api/music/public-profile/:accountDocumentId | tunes/server/routes/musicSurfaceRoutes.ts:171 |
+| GET | /api/music/public-resource/v1/:publicSlug | tunes/server/routes/musicSurfaceRoutes.ts:196 |
+| GET | /api/playlists | tunes/server/routes/musicSurfaceRoutes.ts:219 |
+| POST | /api/playlists | tunes/server/routes/musicSurfaceRoutes.ts:223 |
+| GET | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:239 |
+| PATCH | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:247 |
+| DELETE | /api/playlists/:playlistId | tunes/server/routes/musicSurfaceRoutes.ts:259 |
+| POST | /api/playlists/:playlistId/songs | tunes/server/routes/musicSurfaceRoutes.ts:266 |
+| DELETE | /api/playlists/:playlistId/songs/:songId | tunes/server/routes/musicSurfaceRoutes.ts:282 |
+| PATCH | /api/playlists/:playlistId/reorder | tunes/server/routes/musicSurfaceRoutes.ts:291 |
+| PATCH | /api/playlists/:playlistId/visibility | tunes/server/routes/musicSurfaceRoutes.ts:302 |
+| GET | /api/playlist/songs | tunes/server/routes/musicSurfaceRoutes.ts:313 |
+| POST | /api/music/queue/replace | tunes/server/routes/musicSurfaceRoutes.ts:317 |
+| POST | /api/music/socket-ticket | tunes/server/routes/musicSurfaceRoutes.ts:344 |
+| GET | /api/music/dashboard | tunes/server/routes/musicSurfaceRoutes.ts:356 |
+| POST | /api/music/queue/append | tunes/server/routes/musicSurfaceRoutes.ts:360 |
+| PATCH | /api/music/guest-controls | tunes/server/routes/musicSurfaceRoutes.ts:385 |
+| GET | /api/music/guest-controls | tunes/server/routes/musicSurfaceRoutes.ts:393 |
+| POST | /api/playlist/songs | tunes/server/routes/musicSurfaceRoutes.ts:401 |
+| POST | /api/playlist/currently-playing | tunes/server/routes/musicSurfaceRoutes.ts:409 |
+| DELETE | /api/playlist/songs/bulk | tunes/server/routes/musicSurfaceRoutes.ts:444 |
+| DELETE | /api/playlist/songs/:songId | tunes/server/routes/musicSurfaceRoutes.ts:453 |
+| PATCH | /api/playlist/songs/:songId/position | tunes/server/routes/musicSurfaceRoutes.ts:460 |
+| DELETE | /api/playlist/history | tunes/server/routes/musicSurfaceRoutes.ts:474 |
+| DELETE | /api/playlist/history/:songId | tunes/server/routes/musicSurfaceRoutes.ts:478 |
+| POST | /api/youtube/search | tunes/server/routes/musicSurfaceRoutes.ts:494 |
+| POST | /api/youtube/video-from-url | tunes/server/routes/musicSurfaceRoutes.ts:506 |
+| POST | /api/music/publication | tunes/server/routes/musicSurfaceRoutes.ts:518 |
+| POST | /api/music/paid/import | tunes/server/routes/musicSurfaceRoutes.ts:552 |
+| GET | /api/music/entitlement | tunes/server/routes/musicSurfaceRoutes.ts:562 |
+| GET | /api/playlist/:guestUrl | tunes/server/routes/musicSurfaceRoutes.ts:578 |
+| POST | /api/playlist/:guestUrl/youtube/search | tunes/server/routes/musicSurfaceRoutes.ts:600 |
+| POST | /api/playlist/:guestUrl/youtube/video-from-url | tunes/server/routes/musicSurfaceRoutes.ts:614 |
+| POST | /api/playlist/:guestUrl/requests | tunes/server/routes/musicSurfaceRoutes.ts:627 |
+| ALL | /{*musicRetiredPath} | tunes/server/routes/musicSurfaceRoutes.ts:718 |
 | POST | /api/user/request-reactivation | tunes/server/routes/reactivationRoutes.ts:134 |
 | GET | /api/user/reactivate | tunes/server/routes/reactivationRoutes.ts:165 |
 | GET | /robots.txt | tunes/server/seo-routes.ts:178 |
@@ -375,95 +366,102 @@ These require reachability classification in the architecture report; declaratio
 
 | File | Signals |
 |---|---|
-| explorers-earth/src/components/AuthSyncManager.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/components/AuthSyncManager.tsx | DOCUMENT_ID |
 | explorers-earth/src/components/CircularPlacesModal.tsx | DOCUMENT_ID |
-| explorers-earth/src/components/Header.tsx | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/components/ProfileSetupAccordion.tsx | STRAPI_REFERENCE, UPLOAD |
-| explorers-earth/src/components/ProtectedRoute.tsx | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/components/PublicNav.tsx | STRAPI_REFERENCE |
-| explorers-earth/src/components/Sidenav.tsx | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/components/ui/Carousel.tsx | DOCUMENT_ID |
 | explorers-earth/src/components/ui/Dropdown.tsx | DOCUMENT_ID |
+| explorers-earth/src/content/reference/index.ts | STRAPI_REFERENCE |
 | explorers-earth/src/features/Analytics/api/queries.ts | STRAPI_REFERENCE |
-| explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Analytics/components/charts/LocationEngagementChart.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Analytics/components/charts/RecommendedPlacesChart.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/AppsAndTools/api/appsClient.ts | STRAPI_REFERENCE, UPLOAD |
+| explorers-earth/src/features/AppsAndTools/api/appsViewModel.ts | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/AppsAndTools/api/query.ts | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/AppsAndTools/api/query.ts | GRAPHQL, STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/dashboard/AddAppPage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/dashboard/AppListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/AppsAndTools/components/dashboard/AppTopPicksManager.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/AppsAndTools/components/dashboard/AppsHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/AppsAndTools/components/dashboard/AppTopPicksManager.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/AppsAndTools/components/dashboard/AppsHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/public/AppCarouselRow.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/public/AppTopPicksHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/public/AppTopPicksMobileHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/public/PublicAppList.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/components/public/PublicApps.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/AppsAndTools/hooks/useAppsOwner.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/AppsAndTools/utils/appHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Authentication/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Authentication/api/queries.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Authentication/api/userQueries.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Authentication/components/PlaceProfileCard.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Authentication/hooks/useCurrentUser.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Authentication/hooks/useCurrentUser.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Books/api/booksViewModel.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Books/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Books/api/publicBooksContinuation.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Books/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Books/components/dashboard/AddBookPage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Books/api/useBookListCommands.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Books/api/useBooksOwnerContent.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Books/components/dashboard/AddBookPage.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/dashboard/BookListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Books/components/dashboard/BooksHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Books/components/dashboard/BooksHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/dashboard/TopReadsManager.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/public/BookCarouselRow.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Books/components/public/BookDetailModal.tsx | STRAPI_REFERENCE |
+| explorers-earth/src/features/Books/components/public/BookDetailModal.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/public/PublicBookList.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/public/PublicBookSubject.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Books/components/public/PublicBooks.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Books/components/public/PublicBooks.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/public/TopReadsHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/components/public/TopReadsMobileHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Books/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Books/utils/bookHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/api/mutation.ts | GRAPHQL, STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/api/placesCommands.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/Favorites/api/placesViewModel.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/components/AddPlaceOverlay.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/components/AddRecommendation.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/components/LinksAndQR.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/components/RecommendForm.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/components/Recommendations.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/components/Recommendations.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/components/TopPlacesByCategory.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Favorites/hooks/useCreateLocation.ts | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/hooks/useMenuItems.ts | DOCUMENT_ID |
-| explorers-earth/src/features/Favorites/hooks/useRecommedationFields.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/hooks/useMenuItems.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/hooks/usePlacesOwner.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Favorites/hooks/useRecommedationFields.ts | STRAPI_REFERENCE |
 | explorers-earth/src/features/Favorites/services/claimablePlaceProfileService.ts | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Games/api/gamesViewModel.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Games/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Games/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Games/components/dashboard/AddGamePage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Games/components/dashboard/AddGamePage.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/dashboard/GameListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Games/components/dashboard/GamesHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Games/components/dashboard/GamesHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/dashboard/TopGamesManager.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/public/GameCarouselRow.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Games/components/public/GameDetailModal.tsx | UPLOAD |
 | explorers-earth/src/features/Games/components/public/PublicGames.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/public/PublicGamesGenre.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/public/PublicGamesList.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Games/components/public/TopGamesHero.tsx | UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Games/components/public/TopGamesHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Games/components/public/TopGamesMobileHero.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/Games/hooks/useGamesOwner.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Games/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Games/utils/gameHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
-| explorers-earth/src/features/Guides/GuidesPage.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/Guides/GuidesPage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Guides/api/guideCreation.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/Guides/api/guidesClient.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/Guides/api/guidesViewModel.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Guides/api/mutations.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/features/Guides/api/queries.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/CreateGuidePage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Guides/components/CreateGuidePage.tsx | STRAPI_REFERENCE, UPLOAD |
 | explorers-earth/src/features/Guides/components/CreateGuideStep2.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/Guides/components/GuideCard.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/components/GuideDetails/BudgetTable.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/components/GuideDetails/BudgetTimeline.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/GuideDetails/EditGeneralTipsModal.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/GuideDetails/EditJourneyRouteModal.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/GuideDetails/EditStayModal.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/GuideDetails/EditTipModal.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Guides/components/GuideDetails/GuideHeader.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/Guides/components/GuideDetails/EditGeneralTipsModal.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/Guides/components/GuideDetails/ItineraryView.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/components/GuideDetails/SectionCard.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/components/GuideDetails/SectionFormModal.tsx | DOCUMENT_ID |
@@ -474,19 +472,26 @@ These require reachability classification in the architecture report; declaratio
 | explorers-earth/src/features/Guides/components/Shared/DescriptionRenderer.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/Guides/components/TopPicksHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/components/TopPicksMobileHero.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Guides/guideService.ts | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Guides/context/GuideEditingProvider.tsx | STRAPI_REFERENCE |
+| explorers-earth/src/features/Guides/hooks/useGuidesOwner.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/pages/GuideDetailsPage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Guides/pages/GuideSectionFormPage.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Guides/services/activityPhotoService.ts | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/features/Guides/services/aiSectionGenerationService.ts | STRAPI_REFERENCE, UPLOAD |
 | explorers-earth/src/features/Guides/types/guideSectionTypes.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Guides/types/index.ts | DOCUMENT_ID |
-| explorers-earth/src/features/LandingPage/api/queries.ts | GRAPHQL |
+| explorers-earth/src/features/LandingPage/hooks/useFaqs.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/LandingPage/hooks/usePlatformTerms.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/LandingPage/hooks/useReferenceContent.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/Movies/api/explorersAdapter.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Movies/api/moviesViewModel.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Movies/api/publicMoviesContinuation.ts | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Movies/components/dashboard/AddMoviePage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Movies/api/usePublicMovieGenre.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Movies/components/dashboard/AddMoviePage.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/components/dashboard/MovieListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/components/dashboard/TopPicksManager.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/components/public/MovieCarouselRow.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Movies/components/public/MovieDetailModal.tsx | STRAPI_REFERENCE |
@@ -498,47 +503,50 @@ These require reachability classification in the architecture report; declaratio
 | explorers-earth/src/features/Movies/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Movies/utils/movieHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/People/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/People/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
-| explorers-earth/src/features/People/components/dashboard/PeopleHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/People/api/peopleClient.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/People/api/peopleViewModel.ts | DOCUMENT_ID |
+| explorers-earth/src/features/People/api/query.ts | GRAPHQL, STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/People/components/dashboard/PeopleHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/dashboard/PersonListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/People/components/dashboard/PersonTopPicksManager.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/People/components/dashboard/PersonTopPicksManager.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PersonCarouselRow.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PersonTopPicksHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PersonTopPicksMobileHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PublicPeople.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PublicPersonList.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/People/components/public/PublicPersonSector.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/People/hooks/usePeopleOwner.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/People/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/People/utils/personHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Products/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Products/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Products/api/productsClient.ts | STRAPI_REFERENCE |
+| explorers-earth/src/features/Products/api/productsViewModel.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Products/api/query.ts | GRAPHQL, STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/dashboard/ProductListView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Products/components/dashboard/ProductTopPicksManager.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/Products/components/dashboard/ProductsHome.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Products/components/dashboard/ProductTopPicksManager.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/features/Products/components/dashboard/ProductsHome.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/public/ProductCarouselRow.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/public/ProductTopPicksHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/public/ProductTopPicksMobileHero.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/public/PublicProductList.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/Products/components/public/PublicProducts.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/Products/hooks/useProductsOwner.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Products/types/index.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Products/utils/productHelpers.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Profile/api/UserStatus.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Profile/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Profile/api/query.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Profile/components/FeedFields.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
-| explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Profile/api/profileClient.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Profile/components/FeedFields.tsx | UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/features/Profile/components/ProfileForm.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/Profile/config/profileInitialValues.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/api/publicProfilePagination.ts | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/api/query.ts | GRAPHQL, STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/MapView.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/PublicHome/components/PlaceDetails/PersonOverview.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/PublicHome/components/PlaceDetails/PlaceDetails.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/PublicHome/components/PlaceDetails/PlaceOverview.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PlaceMapView.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/ProfileRecommendationsTab.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PublicGuideDetailPage.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/PublicHome/components/PublicGuideModal.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PublicGuideViews/DayNavigationView.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PublicGuideViews/PublicGuideJourneyView.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PublicGuideViews/PublicGuideStayView.tsx | DOCUMENT_ID |
@@ -549,36 +557,38 @@ These require reachability classification in the architecture report; declaratio
 | explorers-earth/src/features/PublicHome/components/PublicProfile.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/PublicProfileThemeProvider.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts | STRAPI_REFERENCE, UPLOAD |
-| explorers-earth/src/features/Settings/Settings.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/PublicHome/utils/publicProfileContent.ts | DOCUMENT_ID |
+| explorers-earth/src/features/Settings/Settings.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/Settings/api/mutation.ts | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/features/Settings/components/BillingTab.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/features/Settings/components/BillingTab.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/features/Settings/components/ProfileAccountSettings.tsx | DOCUMENT_ID |
 | explorers-earth/src/features/music/MusicPublishProvider.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/music/PublicMusicAvailabilityProvider.tsx | DOCUMENT_ID |
-| explorers-earth/src/features/music/musicApi.ts | STRAPI_REFERENCE |
 | explorers-earth/src/features/music/musicIdentityCoordinator.ts | DOCUMENT_ID |
-| explorers-earth/src/features/navigation/CategoryNavigationProvider.tsx | DOCUMENT_ID |
+| explorers-earth/src/features/navigation/CategoryNavigationProvider.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/features/navigation/categoryNavigationApi.ts | GRAPHQL, DOCUMENT_ID |
 | explorers-earth/src/hooks/useAIGuideQuota.ts | DOCUMENT_ID |
 | explorers-earth/src/hooks/useMediaViewer.ts | DOCUMENT_ID |
 | explorers-earth/src/lib/apolloCache.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/lib/localTunesApiClient.ts | STRAPI_REFERENCE |
 | explorers-earth/src/main.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
-| explorers-earth/src/pages/Checkout.tsx | GRAPHQL, STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/pages/Checkout.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/pages/ClaimAccount.tsx | STRAPI_REFERENCE, UPLOAD |
 | explorers-earth/src/pages/EmailVerification.tsx | STRAPI_REFERENCE |
-| explorers-earth/src/pages/Favorites.tsx | DOCUMENT_ID |
-| explorers-earth/src/pages/GoogleAuthRedirect.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/pages/Favorites.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/pages/ForgotPassword.tsx | STRAPI_REFERENCE |
 | explorers-earth/src/pages/Home.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
-| explorers-earth/src/pages/Login.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
-| explorers-earth/src/pages/Music.tsx | GRAPHQL, DOCUMENT_ID |
-| explorers-earth/src/pages/OnBoarding.tsx | GRAPHQL, STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
+| explorers-earth/src/pages/Music.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
+| explorers-earth/src/pages/OnBoarding.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
 | explorers-earth/src/pages/Profile.tsx | STRAPI_REFERENCE, UPLOAD, DOCUMENT_ID |
-| explorers-earth/src/pages/RecommendationsHub.tsx | DOCUMENT_ID |
+| explorers-earth/src/pages/RecommendationsHub.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/pages/Register.tsx | STRAPI_REFERENCE |
-| explorers-earth/src/pages/SubscriptionPlans.tsx | GRAPHQL, DOCUMENT_ID |
+| explorers-earth/src/pages/ResetLinkSent.tsx | STRAPI_REFERENCE |
+| explorers-earth/src/pages/ResetPassword.tsx | STRAPI_REFERENCE |
+| explorers-earth/src/pages/SubscriptionPlans.tsx | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/pages/public/ProfileMusic.tsx | DOCUMENT_ID |
 | explorers-earth/src/services/aiGuideService.ts | STRAPI_REFERENCE |
+| explorers-earth/src/services/explorersAnalyticsClient.ts | DOCUMENT_ID |
 | explorers-earth/src/services/geminiService.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | explorers-earth/src/services/googleBooksService.ts | STRAPI_REFERENCE |
 | explorers-earth/src/services/igdbService.ts | UPLOAD |
@@ -594,7 +604,6 @@ These require reachability classification in the architecture report; declaratio
 | explorers-earth/src/utils/rating.ts | STRAPI_REFERENCE |
 | explorers-earth/src/utils/strapiBlocksConverter.ts | STRAPI_REFERENCE |
 | explorers-earth/src/utils/uploadPathGenerator.ts | STRAPI_REFERENCE, DOCUMENT_ID |
-| explorers-earth/src/utils/usernameAPI.ts | GRAPHQL, DOCUMENT_ID |
 | tunes/client/src/components/new-header.tsx | STRAPI_REFERENCE |
 | tunes/client/src/components/search-songs.tsx | STRAPI_REFERENCE |
 | tunes/client/src/hooks/use-auth-compat.tsx | STRAPI_REFERENCE |
@@ -626,6 +635,10 @@ These require reachability classification in the architecture report; declaratio
 | tunes/client/src/stores/authStore.ts | DOCUMENT_ID |
 | tunes/client/src/types/env.d.ts | STRAPI_REFERENCE |
 | tunes/server/app.ts | STRAPI_REFERENCE |
+| tunes/server/application/accountLifecycleMaintenance.ts | STRAPI_REFERENCE |
+| tunes/server/application/bookCoverImport.ts | UPLOAD |
+| tunes/server/application/discovery.ts | DOCUMENT_ID |
+| tunes/server/application/guides.ts | STRAPI_REFERENCE |
 | tunes/server/auth.ts | STRAPI_REFERENCE |
 | tunes/server/config/local-public-profile-gateway.ts | STRAPI_REFERENCE |
 | tunes/server/config/music-environment.ts | STRAPI_REFERENCE |
@@ -634,16 +647,32 @@ These require reachability classification in the architecture report; declaratio
 | tunes/server/config/music-reconciliation-config.ts | STRAPI_REFERENCE |
 | tunes/server/jwt-auth-middleware.ts | STRAPI_REFERENCE |
 | tunes/server/middleware/musicPrincipal.ts | STRAPI_REFERENCE |
+| tunes/server/music/accountMusicRepository.ts | STRAPI_REFERENCE |
 | tunes/server/policies/musicRetirementPolicy.ts | STRAPI_REFERENCE |
 | tunes/server/policies/musicSurfacePolicy.ts | STRAPI_REFERENCE |
+| tunes/server/publicProfile/postgresPublicProfileGateway.ts | DOCUMENT_ID |
+| tunes/server/publicProfile/publicAppsProjection.ts | DOCUMENT_ID |
+| tunes/server/publicProfile/publicBooksProjection.ts | DOCUMENT_ID |
+| tunes/server/publicProfile/publicGuidesProjection.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| tunes/server/publicProfile/publicMoviesProjection.ts | DOCUMENT_ID |
+| tunes/server/publicProfile/publicPeopleProjection.ts | DOCUMENT_ID |
+| tunes/server/publicProfile/publicPlacesProjection.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| tunes/server/publicProfile/publicProductsProjection.ts | DOCUMENT_ID |
 | tunes/server/publicProfile/publicProfileContract.ts | STRAPI_REFERENCE |
+| tunes/server/publicProfile/publicProfileService.ts | DOCUMENT_ID |
 | tunes/server/publicProfile/strapiPublicProfileGateway.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| tunes/server/repositories/explorersAnalyticsEventRepository.ts | STRAPI_REFERENCE |
+| tunes/server/repositories/guideRepository.ts | STRAPI_REFERENCE |
 | tunes/server/repositories/musicDomainRepository.ts | STRAPI_REFERENCE |
 | tunes/server/repositories/musicIdentityRepository.ts | STRAPI_REFERENCE |
 | tunes/server/repositories/reconciliationRepository.ts | STRAPI_REFERENCE |
+| tunes/server/routes/explorersAnalyticsRoutes.ts | DOCUMENT_ID |
+| tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| tunes/server/routes/explorersMusicIdentityRoutes.ts | STRAPI_REFERENCE |
 | tunes/server/routes/index.ts | STRAPI_REFERENCE |
 | tunes/server/routes/musicFixtureProbe.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | tunes/server/routes/musicIdentityRoutes.ts | STRAPI_REFERENCE |
+| tunes/server/routes/musicOpenApiRoutes.ts | STRAPI_REFERENCE |
 | tunes/server/routes/musicSurfaceRoutes.ts | STRAPI_REFERENCE, DOCUMENT_ID |
 | tunes/server/routes/reactivationRoutes.ts | STRAPI_REFERENCE |
 | tunes/server/routes/strapiRoutes.ts | STRAPI_REFERENCE |
@@ -665,5 +694,7 @@ These require reachability classification in the architecture report; declaratio
 | tunes/server/services/youtubeReadService.ts | STRAPI_REFERENCE |
 | tunes/server/startup/explorers-analytics-migration.ts | STRAPI_REFERENCE |
 | tunes/server/storage.ts | STRAPI_REFERENCE |
+| tunes/shared/explorersGuideContract.ts | STRAPI_REFERENCE, DOCUMENT_ID |
+| tunes/shared/explorersPlaceLinkContract.ts | DOCUMENT_ID |
 | tunes/shared/musicError.ts | STRAPI_REFERENCE |
 | tunes/shared/schema.ts | STRAPI_REFERENCE |

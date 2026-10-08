@@ -491,9 +491,72 @@ remain D1's, and the chat-assistant work has its own central `ai_usage` meter pl
 
 ## Phase C — prove it, then retire
 
-### 10. Classify the server-side Strapi references — [8.1a](tickets/ticket-8-1.md)
-- Walk the 55 files and label each: live consumer, retirement-policy/absence-proof (stays), or dead. 8.1 is oversized and splits into 8.1a (classify, remove coupling) and 8.1b (delete).
-- Make `strapiOrigin` optional, then absent.
+### 10. Classify the server-side Strapi references — [8.1a](tickets/ticket-8-1.md) — **classification DONE 2026-10-08**
+
+Full result: [the server-side Strapi classification](strapi-server-classification.md). Headline:
+**no reachable canonical path touches Strapi, and canonical startup requires no `STRAPI_*`
+variable** — confirmed at source, with the inventory regenerated at the acceptance SHA as the
+ticket requires.
+
+The "55 files" is not the acceptance denominator and counting it as one is what makes this
+ticket look ten times its size. Measured: **210** non-test modules under `tunes/server` +
+`tunes/shared`, **56** mention Strapi, **7** only in comments, **49** have a code reference.
+Crossed against the canonical import closure (**118** modules from
+`server/auth/canonicalStartup.ts`, zero unresolved specifiers), **18** of those 49 are inside
+it and **31** outside.
+
+And most of the volume is not a dependency at all. The largest single file,
+`repositories/musicIdentityRepository.ts` at **221** references, is almost entirely the
+columns `strapi_user_id` / `strapi_user_document_id` / `strapi_account_document_id` — the
+stored mapping from a canonical account to the legacy identity it came from. That is **data
+about a retired system, not a call into one**; it survives retirement untouched and renaming
+it is 8.3's optional mechanical job.
+
+- `strapiOrigin` **needs no loosening**: its only uses are `app.ts:179` and
+  `routes/index.ts:85,182`, all on the legacy-music path. `resolveCanonicalMusicTokenConfiguration`
+  (`config/music-identity-config.ts:108`) requires `MUSIC_MODE` and the token config only; it
+  is `resolveMusicIdentityRuntimeConfig` at `:123` that calls
+  `parseOrigin(environment.STRAPI_URL, "STRAPI_URL")`, and that is the legacy resolver. This
+  closes out the earlier `app.ts:179` correction: there is nothing to make optional, only a
+  legacy server to delete in step 12.
+- **Delivered:** `scripts/check-retired-dependencies.mjs`, the named 8.1a static scan, wired
+  into `tunes.yml`'s `build-test-scan-push`. A ratchet over the canonical closure with five
+  reasoned allowlist entries, which also fails on a *stale* entry. Three mutations confirm it
+  fails for each reason it tests.
+- **The scan earned its keep immediately:** this doc's first draft claimed the canonical
+  server "constructs no Strapi client". It constructs two, in the dead legacy analytics
+  factory. Manual enumeration missed them; the mechanical check found them within minutes of
+  existing.
+
+**Found while measuring, and bigger than the retirement note — a live ticket 3.4 defect.**
+The one runtime Strapi call reachable in the canonical closure is the historical analytics
+owner read (`GET /api/explorers/analytics/events` → `authorizeOwner` → `historical()` →
+`fetch(${strapiUrl}/api/users/me)`). It is **dead**: its client requires an auth-store token,
+and the canonical `acceptVerified` path sets `token: null` explicitly (`store/store.ts:76`)
+while the only action that sets one, `login(data)` at `:119`, has **no caller outside tests**.
+Two consequences:
+
+1. The analytics events panel is **permanently empty and silent** — the `!token` branch at
+   `AnalyticsDashboard.tsx:190-203` clears loading, clears error and empties both arrays, so a
+   creator sees an empty panel with nothing to suggest it is broken. The charts migrated in
+   step 7 do work, which makes it easier to miss.
+2. **The canonical replacement already exists and is unused.**
+   `GET /api/explorers/analytics/summary` is registered behind `requireActor`
+   (`routes/explorersCanonicalAnalyticsRoutes.ts:30`) — no Strapi, no bearer — and a search of
+   `explorers-earth/src` for it returns nothing.
+
+Not fixed here: repointing the dashboard changes what numbers a creator sees, so it wants its
+own package and acceptance. It is what makes this Strapi call *deletable* rather than merely
+unreachable.
+
+**Remaining for 8.1a, and three of the four are owner items** — the compose
+`${VAR:?… is required}` declarations across all three compose files plus `tunes.yml:103`
+(the application does not need them; the *deployment* still refuses to start without them, and
+one of them is what makes the deletion absence-proof fail closed), disabling
+`music-reconcile.yml`'s hourly cron **and recording that** before the file is deleted, and an
+executed boot receipt with outbound Strapi denied. The fourth is small: move
+`fingerprintStrapiProof` and the two `Response`-body helpers out of
+`services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.
 
 ### 11. Parity and milestone evidence — [7.1](tickets/ticket-7-1.md), [7.3](tickets/ticket-7-3.md), [1.2](tickets/ticket-1-2.md)
 - 7.1: all nine public categories (3 of 9 at audit), privacy and public media, pins, cold-entry positives; commit the navigation slice that currently exists only as an uncommitted overlay.
