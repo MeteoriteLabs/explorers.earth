@@ -53,7 +53,6 @@ const SYNTHETIC_ENV = {
   VITE_API_URL: 'http://127.0.0.1:9/graphql',
   VITE_REST_API_URL: 'http://127.0.0.1:9/api',
   VITE_PAYMENT_API_URL: 'http://127.0.0.1:9',
-  VITE_GEMINI_API_URL: 'http://127.0.0.1:9',
   VITE_INSTAGRAM_API_URL: 'http://127.0.0.1:9',
   VITE_PUBLIC_PROFILE_GATEWAY_URL: 'http://127.0.0.1:9',
   VITE_LOCAL_TUNES_API_URL: 'https://music.invalid',

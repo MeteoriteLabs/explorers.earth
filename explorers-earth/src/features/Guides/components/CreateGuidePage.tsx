@@ -8,18 +8,16 @@ import CreateGuideStep2 from "./CreateGuideStep2";
 import CreateGuideStep3 from "./CreateGuideStep3";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
 import { GuidesClient } from "../api/guidesClient";
-import { createGuide, guideSectionDraft } from "../api/guideCreation";
+import { createGuide } from "../api/guideCreation";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
 import {
   blocksToHtml,
 } from "../../../utils/strapiBlocksConverter";
-import type { AIGeneratedGuide } from "../../../services/geminiService";
 import {
   fetchSingleCityLocationImage,
   fetchMultiCityLocationImage,
   type LocationImageResult
 } from "../services/locationImageService";
-import { enrichAIPlaces, extractLocationContext } from "../services/placeEnrichmentService";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -112,11 +110,6 @@ const CreateGuidePage = ({
     }
   }, [defaultTitle]);
 
-  // AI-generated guide sections data
-  const [aiGeneratedSections, setAiGeneratedSections] = useState<AIGeneratedGuide["sections"] | null>(null);
-  // AI-generated guide-level tips and tags
-  const [aiGeneratedTipsNotes, setAiGeneratedTipsNotes] = useState<any>(null);
-  const [aiGeneratedGuideTags, setAiGeneratedGuideTags] = useState<string[] | null>(null);
 
   // Location image pre-fill state
 
@@ -443,33 +436,6 @@ const CreateGuidePage = ({
     setCurrentStep(3);
   };
 
-  /**
-   * Handle AI-generated guide data
-   */
-  const handleAIGeneration = (aiGuideData: AIGeneratedGuide) => {
-    // Store AI-generated sections for creating after guide is created
-    setAiGeneratedSections(aiGuideData.sections);
-
-    // Store AI-generated guide-level tips and tags
-    setAiGeneratedTipsNotes(aiGuideData.tipsNotes || null);
-    setAiGeneratedGuideTags(aiGuideData.guideTags || null);
-
-    // Pre-populate title, description AND Step 2 data from AI generation
-    setFormData((prev) => ({
-      ...prev,
-      title: aiGuideData.title,
-      description: aiGuideData.description,
-      // Preserve Step 2 data that was used for AI generation
-      numberOfDays: aiGuideData.numberOfDays || prev.numberOfDays,
-      categories: aiGuideData.categories || prev.categories,
-      bestTimeToVisit: aiGuideData.bestTimeToVisit || prev.bestTimeToVisit,
-      budgetType: aiGuideData.budgetType || prev.budgetType,
-    }));
-
-    // Move to Step 3
-    setCurrentStep(3);
-  };
-
   // Handle Step 2 back (from Itinerary details)
   const handleStep2Back = () => {
     setCurrentStep(1);
@@ -536,8 +502,8 @@ const CreateGuidePage = ({
         budgetType: null,
         bestTimeToVisit: formData.bestTimeToVisit ?? [],
         categories: formData.categories ?? [],
-        tags: aiGeneratedGuideTags ?? [],
-        tipsNotes: aiGeneratedTipsNotes ?? null,
+        tags: [],
+        tipsNotes: null,
         place: placeSnapshot,
         locationEntityId: null,
       } as never;
@@ -579,7 +545,7 @@ const CreateGuidePage = ({
           title: data.title,
           description: plainDescription,
           details,
-          sections: await buildAISectionDrafts(),
+          sections: [],
           cover: data.guideMedia ?? null,
         });
         resultDocumentId = created.collectionId;
@@ -615,80 +581,6 @@ const CreateGuidePage = ({
       setIsSubmitting(false);
     }
   };
-
-  /**
-   * Create guide sections from AI-generated data
-   * Called after guide is successfully created
-   * Enriches AI place names with Google Places data before saving
-   */
-  /**
-   * Turns the AI's suggested days into section drafts, with their photos already uploaded.
-   *
-   * This used to run AFTER the guide was created: create the section, then fetch and
-   * upload each place's photos, then update the section with them. That order existed
-   * because Strapi's upload path was composed from the section id. Photos are now ordinary
-   * owned media with server-chosen keys, so they can be uploaded first and referenced in
-   * the blocks the section is created with - one write per section instead of two, and no
-   * window where a section exists with its photos missing.
-   *
-   * It also keeps `source` and `verified`. The old code stripped both as "enrichment
-   * metadata" before saving, which meant a place the AI invented and Google never
-   * confirmed was stored indistinguishable from one the creator had verified. The contract
-   * requires them, and that is the right requirement.
-   */
-  const buildAISectionDrafts = async () => {
-    if (!aiGeneratedSections || aiGeneratedSections.length === 0) return [];
-
-    const locationContext = extractLocationContext({
-      locationMode: formData.locationMode,
-      locationDisplayValue: formData.locationDisplayValue,
-      toLocationDisplayValue: formData.toLocationDisplayValue,
-    });
-
-    const { fetchGooglePlacePhotos } = await import("../utils/googlePhotosService");
-    const { uploadActivityPhotos } = await import("../services/activityPhotoService");
-
-    const drafts = [];
-    for (const section of aiGeneratedSections) {
-      const timeline: any = { morning: [], afternoon: [], evening: [] };
-      const activities: any[] = [];
-
-      if (section.places && section.places.length > 0) {
-        const enrichedPlaces = await enrichAIPlaces(section.places, locationContext);
-
-        for (const [index, place] of enrichedPlaces.entries()) {
-          let photos: any[] = [];
-          if (place.place_id) {
-            try {
-              const fetched = await fetchGooglePlacePhotos(place.place_id, 6);
-              if (fetched.length > 0) photos = await uploadActivityPhotos(fetched);
-            } catch (error) {
-              // A place with no photos is still a place worth keeping.
-              console.error(`Error fetching photos for place ${place.place_id}:`, error);
-            }
-          }
-          const withPhotos = { ...place, photos };
-          const slot = section.places?.[index]?.timeSlot;
-          timeline[slot === "afternoon" || slot === "evening" ? slot : "morning"].push(withPhotos);
-          activities.push(withPhotos);
-        }
-      }
-
-      const hasTimeline = timeline.morning.length > 0 || timeline.afternoon.length > 0 || timeline.evening.length > 0;
-      drafts.push(guideSectionDraft({
-        title: section.title,
-        description: section.description || null,
-        Timeline: hasTimeline ? timeline : null,
-        Recommendation_Activity: activities.length > 0 ? { activities } : null,
-        // For a multi-city guide the location says which city the day belongs to.
-        Map_Details: formData.locationMode === "multi" && section.location
-          ? { center: null, zoom: null }
-          : null,
-      }));
-    }
-    return drafts;
-  };
-
 
   // Handle cancel
   const handleCancel = () => {
@@ -760,15 +652,8 @@ const CreateGuidePage = ({
             initialCategories={formData.categories}
             initialBestTimeToVisit={formData.bestTimeToVisit}
             initialBudgetType={formData.budgetType}
-            guideType={formData.guideType}
-            locationName={formData.locationDisplayValue}
-            locationType={formData.locationMode}
-            fromLocation={formData.fromLocation?.name || formData.fromLocationDisplayValue}
-            toLocation={formData.toLocation?.name || formData.toLocationDisplayValue}
-            intermediateCities={formData.intermediateCities.map((city) => city.place?.name || city.displayValue)}
             onBack={handleStep2Back}
             onNext={handleStep2Next}
-            onAIGenerate={type === "create" ? handleAIGeneration : undefined}
           />
         ) : (
           <CreateGuideStep3
@@ -776,7 +661,6 @@ const CreateGuidePage = ({
             initialDescription={formData.description}
             initialMedia={formData.guideMedia}
             initialMediaPreview={previewUrl}
-            isAIGenerated={aiGeneratedSections !== null}
 
             isFetchingLocationImage={isFetchingLocationImage}
             onBack={handleStep3Back}

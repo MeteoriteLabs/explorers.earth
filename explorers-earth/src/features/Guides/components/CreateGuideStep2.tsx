@@ -1,10 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
-import { generateGuideWithAI, type GenerateGuideOptions, type AIGeneratedGuide } from "../../../services/geminiService";
-import { useAIGuideQuota } from "../../../hooks/useAIGuideQuota";
 
 // Stable identities for the array defaults. A default parameter creates a fresh array on
 // every render, and the sync effect below lists these in its dependencies - so with the
@@ -18,13 +14,6 @@ interface CreateGuideStep2Props {
   initialCategories?: string[];
   initialBestTimeToVisit?: string[];
   initialBudgetType?: string | null;
-  // Location context for AI generation
-  guideType?: string;
-  locationName?: string;
-  locationType?: "single" | "multi";
-  fromLocation?: string;
-  toLocation?: string;
-  intermediateCities?: string[];
   onBack: () => void;
   onNext: (data: {
     numberOfDays: number | null;
@@ -32,8 +21,6 @@ interface CreateGuideStep2Props {
     bestTimeToVisit: string[];
     budgetType: string | null;
   }) => void;
-  // Callback for AI generation
-  onAIGenerate?: (aiGuideData: AIGeneratedGuide) => void;
 }
 
 const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
@@ -41,15 +28,8 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
   initialCategories = NO_CATEGORIES,
   initialBestTimeToVisit = NO_MONTHS,
   initialBudgetType = null,
-  guideType = "Itinerary",
-  locationName = "",
-  locationType = "single",
-  fromLocation = "",
-  toLocation = "",
-  intermediateCities = [],
   onBack,
   onNext,
-  onAIGenerate,
 }) => {
   // Number of days state
   const [numberOfDays, setNumberOfDays] = useState<number | null>(initialNumberOfDays);
@@ -73,9 +53,6 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
   const [isBudgetDropdownOpen, setIsBudgetDropdownOpen] = useState(false);
   const budgetDropdownRef = useRef<HTMLDivElement>(null);
 
-  // AI generation state
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
   // Ticket 5.3 / decision D9. The category picker's suggestions.
   //
   // This read a Strapi `guideCategories` collection. The canonical contract already decided
@@ -94,9 +71,6 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
   // that would have made guide creation impossible rather than merely worse.
   const ownedGuides = useGuidesOwner();
   const categoriesLoading = ownedGuides.loading;
-
-  // Check AI guide quota
-  const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
 
   const [error, setError] = useState("");
 
@@ -267,84 +241,6 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
       bestTimeToVisit: selectedMonths,
       budgetType: budgetType,
     });
-  };
-
-  /**
-   * Handle AI generation of guide content
-   */
-  const handleGenerateWithAI = async () => {
-    setError("");
-
-    // Validate form before AI generation
-    let finalNumberOfDays: number | null = null;
-    if (isCustomDays) {
-      const customDaysNum = parseInt(customDays);
-      if (isNaN(customDaysNum) || customDaysNum < 1) {
-        setError("Please enter a valid number of days before generating with AI");
-        return;
-      }
-      finalNumberOfDays = customDaysNum;
-    } else if (!numberOfDays) {
-      setError("Please select the number of days before generating with AI");
-      return;
-    } else {
-      finalNumberOfDays = numberOfDays;
-    }
-
-    if (selectedCategories.length < 4) {
-      setError(`Please select at least 4 categories before generating with AI. You have selected ${selectedCategories.length}.`);
-      return;
-    }
-
-    if (!budgetType) {
-      setError("Please select a budget type before generating with AI");
-      return;
-    }
-
-    if (!locationName && !(fromLocation && toLocation)) {
-      setError("Location information is missing. Please go back and select a location.");
-      return;
-    }
-
-    // Check if quota is reached before proceeding
-    if (shouldDisableGeneration) {
-      setError(disableReason || "AI generation is currently unavailable");
-      toast.error(disableReason || "AI generation is currently unavailable");
-      return;
-    }
-
-    setIsGeneratingAI(true);
-
-    try {
-      const options: GenerateGuideOptions = {
-        locationName: locationName || `${fromLocation} to ${toLocation}`,
-        locationType: locationType,
-        fromLocation: fromLocation,
-        toLocation: toLocation,
-        intermediateCities: intermediateCities,
-        numberOfDays: finalNumberOfDays,
-        categories: selectedCategories,
-        bestTimeToVisit: selectedMonths,
-        budgetType: budgetType,
-        guideType: guideType,
-      };
-
-      const aiGuideData = await generateGuideWithAI(options);
-
-      if (onAIGenerate) {
-        onAIGenerate(aiGuideData);
-      }
-
-      toast.success("✨ Guide generated with AI! Review and customize as needed.");
-      // Refetch quota after successful generation
-      await refetchQuota();
-    } catch (error: any) {
-      const errorMessage = error.message || "Failed to generate guide with AI. Please try again.";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsGeneratingAI(false);
-    }
   };
 
   return (
@@ -777,65 +673,16 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
               variant="ghost"
               btnText="Back"
               onClickHandler={onBack}
-              disabled={isGeneratingAI}
               className="order-3 md:order-1"
             />
 
             <div className="flex flex-col md:flex-row gap-3 order-1 md:order-2">
-              {/* AI Generate Button - Only show if onAIGenerate callback is provided */}
-              {onAIGenerate && (
-                <button
-                  type="button"
-                  onClick={handleGenerateWithAI}
-                  disabled={isGeneratingAI}
-                  style={{
-                    backgroundColor: shouldDisableGeneration ? '#6b7280' : (isGeneratingAI ? '#5b21b6' : '#6d28d9'),
-                    opacity: shouldDisableGeneration ? 0.5 : (isGeneratingAI ? 0.7 : 1),
-                  }}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-poppins font-semibold text-sm text-white cursor-pointer disabled:cursor-not-allowed order-2 md:order-1"
-                  title={shouldDisableGeneration ? disableReason || "Generation disabled" : "Generate guide content with AI"}
-                >
-                  {isGeneratingAI ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      <span>Generating with AI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      <span>Generate with AI</span>
-                    </>
-                  )}
-                </button>
-              )}
-
-
               <Button
                 type="button"
                 variant="primary"
                 btnText="Next"
                 onClickHandler={handleNext}
-                disabled={isGeneratingAI}
-                className="order-1 md:order-2"
+                  className="order-1 md:order-2"
               />
             </div>
           </div>
