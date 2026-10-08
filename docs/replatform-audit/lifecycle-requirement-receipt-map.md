@@ -252,13 +252,20 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
      of those remain covered by the simulated suite, which 2.4 treats as separate evidence —
      this receipt does not replace it.
    - Hosted execution. This ran on a developer machine; obligation 5 is still open.
-4. **Music socket revocation — OPEN, owned by 6.1, not by this map. Re-verified 2026-10-09 and this obligation is correct as written; a plausible argument that it was already satisfied does not survive checking.**
+4. **Music socket revocation — DISCHARGED 2026-10-09 in `e809d57b`.** It was open, and the record of why is kept below because the argument for it being *already* satisfied was wrong in an instructive way, and the fix was the thing that argument assumed away.
 
    The argument, recorded because it is persuasive for three of its four steps: the socket's per-event recheck calls `resolveSubject`/`resolveCanonical`, which refuse a tombstoned, suspended or pending-deletion venue **and** a `sessionVersion` mismatch, and `musicSocketServer.ts:188-205` disconnects on refusal, with tests covering it. All true.
 
    Where it fails: **nothing bumps the venue's `session_version` on logout.** That column is moved only by Music revocation operations - suspend, block, delete, recovery. There is no canonical logout handler and nothing revoking the Music credential on sign-out; `useLogout` calls `closeLocalMusicSession()` and `authClient.signOut()`, both **client side**. A cooperative client close is not revocation: a crashed tab, a modified client or a socket open elsewhere keeps receiving owner events after sign-out, while HTTP is correctly denied because owner routes require a live web-session Actor.
 
-   So **suspension and deletion revoke both transports; logout revokes only HTTP.** That is the residual, and it is exactly what this obligation's wording asks for. The review-focus item
+   So suspension and deletion revoked both transports; **logout revoked only HTTP**. That was the residual, and it was exactly what this obligation's wording asks for.
+
+   **Closed by binding a canonical Music credential to the session that minted it**, and rechecking that session with the same predicate `authorizeOperation` applies to HTTP - the `auth_session` row exists, belongs to this user, and has not expired. The handshake ticket inherits the binding, so an open socket is rechecked against the same session as owner HTTP and the two transports revoke together.
+
+   Receipt: the measured before/after is in `e809d57b`'s message. Proof is
+   `canonical-music-identity.integration.test.ts` - "revokes both transports on logout, not just HTTP", which asserts HTTP still 401s, that the venue's `session_version` is deliberately unchanged (the reason the old recheck passed), and that the credential and the open socket's recheck both now refuse. Mutation-checked: removing the recheck fails exactly that case. Four unit cases in `music-principal.test.ts` carry the branch coverage the 100% Music gate requires, including that an unbound credential consults no session, so a credential minted before the claim existed keeps working until it expires.
+
+   Two claims were needed rather than one: `auth_session.session_version` is the canonical session's counter while a Music credential's `sessionVersion` is the venue's, so they cannot be compared. A partial binding is refused at mint and at verification, since a session id with no user cannot be looked up and would silently skip the check. The review-focus item
    "a logged-out or suspended owner must lose socket authority as well as HTTP access" has
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
    credentials belong to 6.1. L3 above covers HTTP and tab revocation only, and must not be
@@ -287,13 +294,13 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
 ## What this map does not license
 
 - It does not retire any existing coverage. 2.4 is explicit that old workflow coverage must
-  not be retired against a partial map, and this map is partial — two open obligations remain
-  (4 and 5); obligation 3 was discharged on 2026-10-09 by an executed run.
-- It does not give a percentage. All 22 behaviour rows now have receipts, but reporting
-  "22/22" would be misleading while obligations 4 and 5 are open: those are an ownership
-  boundary (Music socket revocation, 6.1) and an attestation gap (hosted execution) that no
-  behaviour row can discharge. The third — the real Google callback, which 2.4 says a
-  fixture cannot satisfy — is now discharged by an executed, observed run rather than by
-  simulation.
+  not be retired against a partial map, and this map is partial — **one open obligation
+  remains (5, hosted attestation)**. Obligation 3 was discharged on 2026-10-09 by an
+  executed run and obligation 4 on the same day in `e809d57b`.
+- It does not give a percentage. All 22 behaviour rows have receipts, and obligations 3 and
+  4 are now discharged — the real Google callback by an executed, observed run rather than
+  by simulation, and Music socket revocation by closing the logout gap. Reporting "22/22"
+  would still be misleading while **obligation 5** is open: hosted execution is an
+  attestation gap that no behaviour row can discharge.
 - It does not substitute for the original enumeration, which remains lost. See the first
   section.
