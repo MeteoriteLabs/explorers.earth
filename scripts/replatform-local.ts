@@ -217,12 +217,28 @@ const COMPOSE = join(ROOT, "docker-compose.replatform.yml");
 const DOCKER = process.platform === "win32" ? "docker.exe" : "docker";
 const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
 type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
-  | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check";
+  | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check"
+  /*
+   * Ingress verification, which used to report as "receipt-check" because the phase was set
+   * before `check()` and never advanced. One label covered "the authority receipt is bad"
+   * and "a route answered the wrong thing" - unrelated failures with unrelated remedies,
+   * and `platform-fixture` has flapped on the second while the handoff explained only the
+   * first.
+   */
+  | "ingress-check";
 type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-resolution" | "compose-option"
   | "local-fixture-pull-denied" | "upstream-registry-auth" | "mixed-registry-auth"
   | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
+/**
+  * Why an ingress probe refused, as a closed set. Carries no path, status, body or host:
+  * the probe messages do name a path, and they are never printed - only the category is.
+  */
+export type PlatformIngressFailure = "canonical-route-absent" | "canonical-handler-mismatch"
+  | "fixture-route-mismatch" | "fixture-handler-mismatch" | "fixture-identity-boundary"
+  | "ingress-unreachable" | "unclassified";
+
 let failurePhase: PlatformPhase = "docker-endpoint";
-let failureCause: PlatformBuildFailure | undefined;
+let failureCause: PlatformBuildFailure | PlatformIngressFailure | undefined;
 type PlatformBuildStage = "base-image-pull" | "npm-build-command" | "build-command" | "unknown";
 let failureStage: PlatformBuildStage | undefined;
 
@@ -268,7 +284,23 @@ export function classifyPlatformBuildFailure(output: string): PlatformBuildFailu
   return "unclassified";
 }
 
-export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure, stage?: PlatformBuildStage): string {
+export function classifyPlatformIngressFailure(error: unknown): PlatformIngressFailure {
+  const message = error instanceof Error ? error.message : "";
+  // Matched on the fixed prefixes `replatform-route-parity.ts` produces, never echoed.
+  if (message.startsWith("canonical route absent")) return "canonical-route-absent";
+  if (message.startsWith("canonical handler mismatch")) return "canonical-handler-mismatch";
+  if (message.startsWith("fixture ingress mismatch")) return "fixture-route-mismatch";
+  if (message.startsWith("fixture handler mismatch")) return "fixture-handler-mismatch";
+  if (message.startsWith("fixture Strapi boundary mismatch")) return "fixture-identity-boundary";
+  // A transport failure: nothing listening, or a probe timed out. Distinct from every
+  // mismatch above because the remedy is the fixture's state, not a route.
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|aborted|timed? ?out|TimeoutError/i.test(message)) {
+    return "ingress-unreachable";
+  }
+  return "unclassified";
+}
+
+export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure | PlatformIngressFailure, stage?: PlatformBuildStage): string {
   return `Replatform local command refused or failed; phase=${phase}${cause ? `; cause=${cause}` : ""}${stage ? `; build-stage=${stage}` : ""}; authority details redacted.\n`;
 }
 
@@ -590,7 +622,14 @@ async function main(args: string[]): Promise<void> {
     const host = localDockerHost();
     failurePhase = "receipt-check";
     check(host, readReceipt());
-    const checked = await verifyPlatformIngress("http://127.0.0.1:51474");
+    failurePhase = "ingress-check";
+    let checked: number;
+    try {
+      checked = await verifyPlatformIngress("http://127.0.0.1:51474");
+    } catch (error) {
+      failureCause = classifyPlatformIngressFailure(error);
+      throw error;
+    }
     process.stdout.write(`${JSON.stringify({ ingressHandlersChecked: checked })}\n`);
     return;
   }

@@ -22,6 +22,7 @@ import {
   validatePlatformComposeModel,
   formatPlatformFailure,
   classifyPlatformBuildFailure,
+  classifyPlatformIngressFailure,
   buildAndStartPlatformServices,
 } from "../../../../scripts/replatform-local";
 
@@ -175,6 +176,43 @@ describe("replatform local authority", () => {
     expect(formatPlatformFailure("service-build", cause)).toBe(
       `Replatform local command refused or failed; phase=service-build; cause=${expected}; authority details redacted.\n`,
     );
+  });
+
+  /*
+   * Ingress verification reports under its own phase and its own closed set of causes.
+   *
+   * It used to report `phase=receipt-check` with no cause, because the phase was set before
+   * the receipt check and never advanced - so a route answering wrongly was indistinguishable
+   * from a bad authority receipt. `platform-fixture` has flapped on exactly this, and the
+   * handoff documented a registry rate limit, which is a different failure with a different
+   * remedy.
+   *
+   * The probe messages name a path and are still never printed; only the category is.
+   */
+  it.each([
+    ["canonical route absent from the fixture route graph: /api/explorers/v1/me (expected 200, received 404).", "canonical-route-absent"],
+    ["canonical handler mismatch: /api/explorers/v1/me is mounted but reason was not explorers-owner.", "canonical-handler-mismatch"],
+    ["fixture ingress mismatch: /api/legacy/thing", "fixture-route-mismatch"],
+    ["fixture handler mismatch: /api/legacy/thing", "fixture-handler-mismatch"],
+    ["fixture Strapi boundary mismatch", "fixture-identity-boundary"],
+    ["fetch failed", "ingress-unreachable"],
+    ["The operation was aborted due to timeout", "ingress-unreachable"],
+    ["something nobody anticipated", "unclassified"],
+  ])("classifies an ingress refusal without printing the probe (%#)", (raw, expected) => {
+    const cause = classifyPlatformIngressFailure(new Error(`${raw} credential=synthetic-secret-value`));
+    expect(cause).toBe(expected);
+    const message = formatPlatformFailure("ingress-check", cause);
+    expect(message).toBe(
+      `Replatform local command refused or failed; phase=ingress-check; cause=${expected}; authority details redacted.
+`,
+    );
+    expect(message).not.toContain("synthetic-secret-value");
+    expect(message).not.toContain("/api/");
+  });
+
+  it("does not mistake a non-Error rejection for a known ingress cause", () => {
+    expect(classifyPlatformIngressFailure("canonical route absent")).toBe("unclassified");
+    expect(classifyPlatformIngressFailure(undefined)).toBe("unclassified");
   });
 
   it("accepts only the declared local and acceptance seed commands", () => {
