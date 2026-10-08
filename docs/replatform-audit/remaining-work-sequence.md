@@ -138,8 +138,10 @@ signing up is Google-only and there is no password to reset. Needs decision **D1
 - `hooks/useLogout` and `hooks/useUsernameValidation` hold no live Apollo call — retired
   `gql` definitions awaiting step 12's deletion.
 
-### 5. Auth UX and lifecycle — [2.4](tickets/ticket-2-4.md)
-- Write the frozen 18+3 behaviour map first; the ticket names it as a blocking prerequisite.
+### 5. Auth UX and lifecycle — [2.4](tickets/ticket-2-4.md) — **prerequisite discharged 2026-10-08**
+- The blocking prerequisite is done: [the frozen requirement-to-receipt map](lifecycle-requirement-receipt-map.md). Writer dispatch is no longer gated on it.
+- Three findings from writing it. The stated "18+3" enumeration **does not exist in the repo** - only the figure does - so the map's denominator is derived from the actual contract surface and says so. It comes to **19 + 3**; my first draft came to 18 + 3 only because I had omitted the held-completion fence the ticket names. And the ticket's own C1 and C4 are partly stale: the two held-feedback case names are committed but **unexecuted** (10 of 12 declared), and the legacy spec's retired `auth-storage`/`mock-jwt-token-xyz` assertions are already gone with the canonical lane registered in `frontend-e2e-qualification.yml:122`.
+- 21 of 22 behaviour rows have receipts. What is actually left here is the map's six open obligations, of which the substantive ones are the typed terminal/pending/unknown observation union on the **existing** `/recovery/status` route (do not add a second endpoint), the manual-review DTO (`manualReview` has zero hits anywhere), the held-completion fence, and the real Google callback - which the ticket says a fixture cannot satisfy.
 - Four subpackages L0→L3; migrate the unmigrated legacy spec; add the absent held-completion, response-loss and reload cases.
 - Close the "no browser authority from account IDs" violation on *subjects* — it holds for bearers already.
 

@@ -81,7 +81,12 @@ Verified at the review SHA: committed `tunes/scripts/lifecycle-browser-guards.ts
 
 It therefore remains a **blocking prerequisite and is not satisfied**. The practical consequence must be stated plainly: because the denominator was never written down, **"bounded slice" currently has no denominator** — there is no auditable basis for any residual-work estimate, percentage complete, or claim that a given subset of lifecycle behavior is covered. Do not derive a residual figure from the 10 committed cases against an unwritten 21.
 
-- [ ] Produce and freeze the 18+3 requirement-to-receipt map as a real artifact **before any 2.4 writer dispatch**, mapping each of the 18 original lifecycle behaviors and 3 recovery equivalents to its receipt or to an explicit open obligation. Do not retire any existing workflow coverage against a partial map.
+- [x] **Done 2026-10-08: [the frozen requirement-to-receipt map](../lifecycle-requirement-receipt-map.md).** Read its first section before using it. Three things in it change this ticket:
+  - The original enumeration **could not be recovered** - it is referenced across this ticket, epic 2 and the execution packages and appears nowhere in the repository. The map's denominator is derived from the lifecycle contract surface that exists, and is stated as such rather than presented as the lost list.
+  - The derived inventory is **19 + 3, not 18 + 3**. A first draft did total 18 + 3, by omitting the held-completion fence that this ticket names explicitly; the near-miss is recorded in the map because it shows how easily that figure is reached by accident.
+  - C1 below is restated rather than retired: the two held-feedback case **names** are now committed (`tunes/scripts/lifecycle-browser-guards.ts:12-13`) but **no spec executes them**, so the delivered browser count is 10 executed of 12 declared and C1's instruction stands.
+
+  21 of the 22 behaviour rows have receipts. The map carries **six open obligations** (plus one hardening note) - including the typed observation union, the manual-review DTO, the real Google callback and the held-completion fence - so it remains a partial map and retires no existing coverage.
 
 ### C3 — L0's absence claim is overstated; name the existing observation authority
 
