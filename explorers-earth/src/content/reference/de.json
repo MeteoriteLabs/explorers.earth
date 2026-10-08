@@ -5,7 +5,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Allgemeine Geschäftsbedingungen für LocalQR",
+          "text": "Allgemeine Geschäftsbedingungen für explorers.earth",
           "type": "text"
         }
       ]
@@ -41,7 +41,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Bitte lesen Sie diese Allgemeinen Geschäftsbedingungen („Bedingungen“, „AGB“) sorgfältig durch, bevor Sie die LocalQR-Webanwendung nutzen, die unter [your app URL] zugänglich ist (der „Dienst“) und von [Your Company Name] („wir“, „uns“ oder „unser“) betrieben wird.",
+          "text": "Bitte lesen Sie diese Allgemeinen Geschäftsbedingungen („Bedingungen“, „AGB“) sorgfältig durch, bevor Sie die explorers.earth-Webanwendung nutzen, die unter [your app URL] zugänglich ist (der „Dienst“) und von [Your Company Name] („wir“, „uns“ oder „unser“) betrieben wird.",
           "type": "text"
         }
       ]
@@ -86,7 +86,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR bietet personalisierte, standortbasierte Empfehlungen und damit verbundene Funktionen. Sie erklären sich damit einverstanden, den Dienst nur für rechtmäßige Zwecke und in Übereinstimmung mit diesen Bedingungen zu nutzen.",
+          "text": "explorers.earth bietet personalisierte, standortbasierte Empfehlungen und damit verbundene Funktionen. Sie erklären sich damit einverstanden, den Dienst nur für rechtmäßige Zwecke und in Übereinstimmung mit diesen Bedingungen zu nutzen.",
           "type": "text"
         }
       ]
@@ -230,7 +230,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR stützt sich auf Standortdaten, um relevante Empfehlungen bereitzustellen. Durch die Nutzung des Dienstes stimmen Sie unserer Erfassung und Nutzung Ihrer Standortinformationen in Übereinstimmung mit unserer Datenschutzerklärung zu.",
+          "text": "explorers.earth stützt sich auf Standortdaten, um relevante Empfehlungen bereitzustellen. Durch die Nutzung des Dienstes stimmen Sie unserer Erfassung und Nutzung Ihrer Standortinformationen in Übereinstimmung mit unserer Datenschutzerklärung zu.",
           "type": "text"
         }
       ]
@@ -275,7 +275,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Alle Inhalte, Funktionen und Funktionalitäten des Dienstes — einschließlich, aber nicht beschränkt auf Logos, Text, Grafiken, Software und Daten — sind das ausschließliche Eigentum von LocalQR oder seinen Lizenzgebern und sind durch Urheberrechte, Markenrechte und andere anwendbare Gesetze geschützt.",
+          "text": "Alle Inhalte, Funktionen und Funktionalitäten des Dienstes — einschließlich, aber nicht beschränkt auf Logos, Text, Grafiken, Software und Daten — sind das ausschließliche Eigentum von explorers.earth oder seinen Lizenzgebern und sind durch Urheberrechte, Markenrechte und andere anwendbare Gesetze geschützt.",
           "type": "text"
         }
       ]
@@ -320,7 +320,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR kann Links oder Integrationen mit Diensten oder APIs von Drittanbietern enthalten. Wir sind nicht verantwortlich für den Inhalt, die Richtlinien oder die Praktiken dieser Dienste Dritter.",
+          "text": "explorers.earth kann Links oder Integrationen mit Diensten oder APIs von Drittanbietern enthalten. Wir sind nicht verantwortlich für den Inhalt, die Richtlinien oder die Praktiken dieser Dienste Dritter.",
           "type": "text"
         }
       ]
@@ -365,7 +365,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Soweit nach geltendem Recht zulässig, haftet LocalQR nicht für indirekte, zufällige, spezielle, Folgeschäden oder Strafschadenersatz — einschließlich des Verlusts von Gewinnen, Daten oder des Geschäfts- oder Firmenwerts —, die sich aus Ihrer Nutzung oder der Unfähigkeit zur Nutzung des Dienstes ergeben.",
+          "text": "Soweit nach geltendem Recht zulässig, haftet explorers.earth nicht für indirekte, zufällige, spezielle, Folgeschäden oder Strafschadenersatz — einschließlich des Verlusts von Gewinnen, Daten oder des Geschäfts- oder Firmenwerts —, die sich aus Ihrer Nutzung oder der Unfähigkeit zur Nutzung des Dienstes ergeben.",
           "type": "text"
         }
       ]
@@ -681,23 +681,23 @@
   "cookies": [],
   "faqs": [
     {
-      "Question": "Was ist LocalQR?",
-      "Answer": "Mit LocalQR können Sie einfache Reiseführer mithilfe von Links und QR-Codes erstellen und teilen.Fügen Sie Orte, Tipps, Karten und Fotos hinzu – und teilen Sie sie überall.",
+      "Question": "Was ist explorers.earth?",
+      "Answer": "Mit explorers.earth können Sie einfache Reiseführer mithilfe von Links und QR-Codes erstellen und teilen.Fügen Sie Orte, Tipps, Karten und Fotos hinzu – und teilen Sie sie überall.",
       "Sequence": 1
     },
     {
-      "Question": "Wer kann einen Guide auf LocalQR erstellen?",
+      "Question": "Wer kann einen Guide auf explorers.earth erstellen?",
       "Answer": "Jeder – Reisende, Einheimische, Influencer, Gastgeber, Cafés, Hotels oder Unternehmen.",
       "Sequence": 2
     },
     {
-      "Question": "Ist die Nutzung von LocalQR kostenlos?",
-      "Answer": "Ja.LocalQR ist für immer kostenlos.Sie können kostenlos Ihren QR-Code erstellen, unbegrenzte Empfehlungen hinzufügen und grundlegende Analysen verfolgen.Premium-Funktionen für Unternehmen und erweiterte Analysen sind über unsere kostenpflichtigen Pläne verfügbar.",
+      "Question": "Ist die Nutzung von explorers.earth kostenlos?",
+      "Answer": "Ja.explorers.earth ist für immer kostenlos.Sie können kostenlos Ihren QR-Code erstellen, unbegrenzte Empfehlungen hinzufügen und grundlegende Analysen verfolgen.Premium-Funktionen für Unternehmen und erweiterte Analysen sind über unsere kostenpflichtigen Pläne verfügbar.",
       "Sequence": 3
     },
     {
       "Question": "Muss ich eine App herunterladen?",
-      "Answer": "Nein. LocalQR funktioniert vollständig in Ihrem Browser – scannen oder tippen Sie und schon sind Sie dabei.",
+      "Answer": "Nein. explorers.earth funktioniert vollständig in Ihrem Browser – scannen oder tippen Sie und schon sind Sie dabei.",
       "Sequence": 4
     },
     {
@@ -712,12 +712,12 @@
     },
     {
       "Question": "Was sind lokale Tunes?",
-      "Answer": "Local Tunes ist eine Funktion in LocalQR, mit der Sie Spotify-/Apple-/YouTube-Musik-Wiedergabelisten zu Ihren Guides hinzufügen und so Orten ihre eigene Atmosphäre und Stimmung verleihen können.",
+      "Answer": "Local Tunes ist eine Funktion in explorers.earth, mit der Sie Spotify-/Apple-/YouTube-Musik-Wiedergabelisten zu Ihren Guides hinzufügen und so Orten ihre eigene Atmosphäre und Stimmung verleihen können.",
       "Sequence": 7
     },
     {
       "Question": "Benötige ich ein separates Konto für Local Tunes?",
-      "Answer": "Nein. Ihr LocalQR-Konto funktioniert sowohl für LocalQR als auch für LocalTunes.",
+      "Answer": "Nein. Ihr explorers.earth-Konto funktioniert sowohl für explorers.earth als auch für LocalTunes.",
       "Sequence": 8
     },
     {
