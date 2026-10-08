@@ -150,10 +150,18 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   (data about a retired system, not calls into one). `strapiOrigin` needs no loosening — it is
   legacy-path only. What is left of 8.1a is three owner items (compose `${VAR:?}` loosening,
   the `music-reconcile.yml` cron disablement, an executed boot receipt) and one small move.
-- **New live defect found there, owned by 3.4, not by retirement:** the analytics events panel
-  is permanently empty and silent, because its read is gated on an auth-store token canonical
-  auth never sets — while the canonical `GET /api/explorers/analytics/summary` already exists
-  behind `requireActor` and has no caller. Details in the classification doc, section D.
+- **New live defect found there, owned by 3.4, not by retirement** — the analytics events
+  panel is empty for every signed-in owner, because its read is gated on an auth-store token
+  canonical auth never sets. **The false message is fixed** (it said "No Analytics Data" and
+  advised sharing QR codes; it now reports the read as unavailable, says that does not mean
+  no visitors, and reaches no network). **The repoint is scoped, not done:** seven of the
+  twelve charts want a cross-tabulation `AnalyticsSummary` does not carry, and
+  `analyticsQuerySchema` has no `page` or `element` filter, so it needs a contract decision
+  about which breakdowns are worth keeping. Table in the classification doc, section D.
+- **A fixture hid that defect behind a green suite, and the lesson generalises.**
+  `AnalyticsDashboard.test.tsx` seeds `token: 'private-user-token'`, which production never
+  issues, so every existing test ran the path no real owner is on. If another suite seeds a
+  token or credential, check whether canonical auth actually issues it.
 - Steps 11–13 (rest of Phase C) have not started.
 
 ## Owner decisions taken on 2026-10-08
@@ -217,6 +225,32 @@ The security inventory label changed from `single-use-google-bound-recovery-proo
 
 This also means **ticket 2.4's C3 is wrong** where it says a client that lost its response can
 already re-observe through `/recovery/status`: it returned 403.
+
+## A history discrepancy on this branch — read before trusting `git log`
+
+**Commit `2846157e`'s message does not describe its contents.** Its message is only about a
+CI registry rate-limit flake and states "there is no code fix". It actually carries:
+
+- the whole ticket-3.4 analytics honesty fix (`AnalyticsDashboard.tsx`, 48 lines),
+- its new test file `AnalyticsDashboard.unavailable.test.tsx` (148 lines),
+- the two new `emptyState.unavailable*` i18n keys in `en.json` and `hi.json`,
+- and `public/sitemap.xml`, which is **build output** — `npm run build` rewrites it with the
+  current date, and it had been deliberately kept out of the preceding commits.
+
+What happened: **two sessions were working this branch at the same time**, and one ran a
+stage-everything commit while the other had that work uncommitted in the shared worktree. The
+code is correct and was verified — tsc, build, eslint 0 errors, the full suite at 4538/326,
+and three mutations confirming the fix fails when reverted — but none of that reasoning is in
+the commit that carries it, and the message actively denies a code change.
+
+**Not rewritten, deliberately.** `2846157e` is already on `origin` and another session was
+live on the same branch; a rebase or force-push there risks destroying someone else's work.
+The rationale lives in the classification doc's section D and in the entry above instead.
+
+**If you run more than one session against
+`C:/Users/TK/.codex/worktrees/replatform-audit/explorers.earth-main`, serialize them.** They
+share one index and one working tree, so `git add -A` in either one commits whatever the other
+is holding, under the wrong message.
 
 ## Lessons that will cost you time if you skip them
 

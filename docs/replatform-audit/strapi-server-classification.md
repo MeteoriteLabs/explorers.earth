@@ -144,8 +144,55 @@ retirement note:
 
 That is a **ticket 3.4 defect**, not an 8.1a one, and fixing it is the thing that makes this
 Strapi call deletable rather than merely unreachable. Filed here because this is where the
-measurement happened. It is not fixed in this pass: repointing the dashboard changes what
-numbers a creator sees, which wants its own package and its own acceptance.
+measurement happened.
+
+**The false statement is fixed; the repoint is scoped below and not done.** Those are two
+different jobs and only the first was decision-free:
+
+- Fixed 2026-10-08. The panel no longer renders "No Analytics Data" and
+  "No analytics data found for your account" to an owner whose data simply cannot be read,
+  and it no longer offers the "share your QR codes to start seeing analytics" advice, which
+  addresses a problem they do not have. It reports the detailed read as unavailable, says
+  explicitly that this does not mean their pages had no visitors, and reaches no network to
+  say it. It is deliberately **not** an `error`: there is no failure to surface and nothing
+  to retry. `pages/Home.tsx:346` already modelled exactly this as its own `unavailable`
+  state, so this mirrors a pattern already on the branch rather than inventing one.
+- **How this hid in a green suite, which is the part worth carrying forward.**
+  `AnalyticsDashboard.test.tsx`'s `beforeEach` seeds `token: 'private-user-token'` — a
+  credential production never issues. Every existing test therefore exercised the path no
+  real owner is on, and the dashboard could tell every signed-in creator it had no data with
+  4532 tests passing. The new cases live in a separate file,
+  `AnalyticsDashboard.unavailable.test.tsx`, precisely so they cannot inherit that fixture.
+  **If another suite on this branch seeds a token or credential, check whether canonical auth
+  actually issues it.**
+
+### Scoping the repoint — the canonical summary gives marginals, the charts want cross-tabs
+
+Measured so the package does not start by discovering this. Twelve chart components consume
+raw `AnalyticsEvent[]` and each aggregates for itself. What they read, against what
+`AnalyticsSummary` offers (`totals`, `daily`, and marginal `dimensions` over `page`,
+`category`, `country`, `trafficSource`, `element`, `platform`, `collection`,
+`recommendation`):
+
+| Chart | Reads | Canonical source | Fits? |
+|---|---|---|---|
+| `TopCountriesChart` | `country`, `type` | `dimensions.country` | direct |
+| `TrafficSourceChart` | `utmParams`, `timestamp`, `type` | `dimensions.trafficSource` | direct, if no per-day split is wanted |
+| `PageViewsTrendChart` | `page`, `timestamp`, `type` | `daily` | only as a total; **per-page trend is a `daily`×`page` cross-tab** |
+| `LocationEngagementChart` | `Location_Id`, `Stats`, `timestamp`, `type` | `dimensions.collection` | keyed by id; needs an id→name join |
+| `RecommendedPlacesChart` | `Location_Id`, `Recommendation_Id`, `element`, `type` | `dimensions.recommendation` + `collection` | as above |
+| `SocialMediaInteractionChart` | `platform`, `element`, `page`, `type` | `dimensions.platform` | **`platform`×`element` cross-tab** |
+| `WorldMapChart` | `country`, `page`, `type` | `dimensions.country` | **`country`×`page` cross-tab** |
+| `ContentEngagementChart`, `GuidesChart`, `MediaItemChart`, `MediaItemsInListChart`, `MediaListEngagementChart` | `element`, `page`, `type` (+`timestamp`) | `dimensions.element`, `dimensions.page` | **all five need `element`×`page`** |
+
+So **seven of twelve want a cross-tabulation the summary does not carry**, and
+`analyticsQuerySchema` filters on `from`, `to`, `category`, `collectionId` and
+`recommendationId` only — there is **no `page` or `element` filter**, so they cannot be
+obtained by issuing several narrowed queries either. The package therefore needs one of:
+widen `AnalyticsSummary` with the two or three cross-tabs actually displayed; add `page`
+and `element` filters to the query and fan out; or change what these charts show. **That is a
+product decision about which breakdowns are worth keeping, not a rewiring job** — which is
+why it is scoped here and not guessed at.
 
 ### E. Outside the canonical closure — 31 files, step 12's territory
 
