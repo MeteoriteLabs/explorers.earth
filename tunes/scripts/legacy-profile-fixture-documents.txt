@@ -81,3 +81,22 @@ gql`
     }
   }
 `;
+
+/** Retired with the Music page's Strapi eligibility read; the pre-migration Music identity
+ * snapshot still restores through it. */
+export const musicPageEligibility = gql`
+  query MusicPageEligibility($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      provider
+      confirmed
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+        public_music
+      }
+    }
+  }
+`;

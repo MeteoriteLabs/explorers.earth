@@ -604,7 +604,7 @@ describe("deterministic Music fixture services", () => {
   it("binds the runner tuple to the actual loopback fixture process and restores the preference", async () => {
     const token = "contract-process-fixture-token";
     const nonce = randomUUID();
-    const eligibilityQuery = checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility");
+    const eligibilityQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "MusicPageEligibility");
     const child = spawn(process.execPath, [
       "--experimental-strip-types",
       resolve(import.meta.dirname, "../../../scripts/music-fixture-server.ts"),
@@ -789,7 +789,7 @@ describe("deterministic Music fixture services", () => {
     const allowed = fixtureGraphqlResponse({
       authorization: "Bearer fixture-read-only-token",
       method: "POST",
-      query: checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility"),
+      query: checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "MusicPageEligibility"),
       variables: { documentId: "fixture-user-document-id" },
     });
     expect(allowed).toMatchObject({

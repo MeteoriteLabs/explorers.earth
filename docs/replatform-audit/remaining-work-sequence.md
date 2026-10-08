@@ -284,14 +284,26 @@ as live.
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **7** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **6** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.
 - `AuthSyncManager` calls `apollo.clearStore()` on logout. That is Apollo cache plumbing,
   not a Strapi read, and it disappears with Apollo in step 12.
 
-So what is actually left here is **one** read: `musicPageEligibilityQuery` in `pages/Music`.
+That one read is **done 2026-10-08**, and it was five Strapi fields standing in for one
+column. `musicPageEligibilityQuery` inferred "does this Explorer have a usable account"
+from Account_Name, Account_Type and mobile_number all being non-empty, plus `provider` and
+`confirmed`. Canonically that is `onboarding_status`, which `useCanonicalAccount` already
+returns. The provider and confirmation checks are gone for a different reason: the canonical
+profile read refuses a non-Google identity outright (403 unless an `auth_account` row with
+`provider_id='google'` exists), so one never reaches the page to be judged.
+
+`unknown` is kept and still distinct from `incomplete` - it is the answer while the read is
+pending or failed, and collapsing them would tell a creator with a finished account to go
+and finish it whenever the network blinked. The retired document moved to
+`legacy-profile-fixture-documents.txt`, following the precedent already in that file, so the
+pre-migration Music identity snapshot still restores.
 
 The server half is also already done — see the corrected note above: the canonical API
 boots with no Strapi configuration, and `app.ts` is on the `legacy-music` path that step

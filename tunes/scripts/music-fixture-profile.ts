@@ -13,7 +13,8 @@ const MAX_CAPTURED_PROFILE_SNAPSHOTS = 128;
 
 const operationSources = [
   ["tunes/scripts/legacy-profile-fixture-documents.txt", ["MusicIdentityEligibility"]],
-  ["explorers-earth/src/pages/Music.tsx", ["MusicPageEligibility"]],
+  // Retired from the UI in step 8; the pre-migration snapshot still restores through it.
+  ["tunes/scripts/legacy-profile-fixture-documents.txt", ["MusicPageEligibility"]],
   // Retired UI readers remain fixtures for the pre-migration Music identity snapshot.
   ["tunes/scripts/legacy-profile-fixture-documents.txt", ["CheckOnboardingStatus", "SidebarAccount", "user", "UsersPermissionsUser"]],
   ["explorers-earth/src/features/Settings/api/mutation.ts", ["UsersPermissionsUser", "UpdateAccount"]],
