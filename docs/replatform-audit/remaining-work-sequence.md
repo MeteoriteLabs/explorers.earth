@@ -113,7 +113,35 @@ Still to do:
   `/uploads/...` media path. That is not a Strapi API call, it is display-time resolution
   of legacy media, and it stops mattering when the media is migrated - step 12, not here.
 
-### 3. Claim flow — [5.4](tickets/ticket-5-4.md) · 18 MISSING fields
+### 3. Claim flow — [5.4](tickets/ticket-5-4.md) · 18 MISSING fields — **measured 2026-10-08; genuinely D4's**
+Unlike steps 8 and 9, nothing here turns out to be dead, so there is no honest way to
+advance it without the decision. What D4 is actually deciding, precisely:
+
+- **The flow is live and linked.** `/claimaccount` is routed at
+  `routes/AuthRoutes.tsx:29` and linked from `pages/Login.tsx:46` and
+  `pages/Register.tsx:252,276`. A signed-out visitor can reach it today. (One of those two
+  entrances, Register, is itself D10's.)
+- **It has three Strapi dependencies and no canonical target.** Two `useLazyQuery` lookups
+  for a claimable place profile by phone and by address, a `POST` to Strapi `/upload` for
+  the verification document, and `createVerifyClaim`. A search of `tunes/server`,
+  `tunes/shared` and `tunes/migrations` for claim or verify-claim support returns **one
+  comment and no code** - no table, no route, no contract. That is what the 18 MISSING
+  fields are.
+- **The failure mode at retirement is the part worth deciding against.** This is not a flow
+  that stops working at the door: a claimant fills the form, uploads a document, and only
+  then hits a dead backend. Breaking mid-flow after a document upload is materially worse
+  than a closed door, so "decide later" is not neutral here.
+- **Security finding, independent of D4.** The upload sends `Bearer
+  VITE_PUBLIC_ACCESS_TOKEN` when no session token is present
+  (`pages/ClaimAccount.tsx:131-139`). That is a bundled client-side credential authorising
+  writes to the Strapi upload endpoint by any unauthenticated visitor. It is retired along
+  with Strapi, but if the claim flow is rebuilt canonically it must not acquire an
+  equivalent: an unauthenticated document upload needs a server-issued, single-use,
+  purpose-bound grant, the way recovery proofs work.
+
+I did **not** contain this flow the way step 9's was contained. Step 9 applied a decision
+already in force on two of three entrances; closing a live, linked, user-facing flow that
+nothing has closed yet is the product decision itself, and that is D4's to make, not mine.
 - Claim service, repository, routes and migration — none of it exists.
 - Eligibility is the direct canonical query 5.1 already specifies; no second stale directory.
 - Retires `features/Favorites/services/claimablePlaceProfileService.ts`, still in the tree and no longer called.
@@ -174,14 +202,19 @@ Two defects fell out of that, both live on this branch today:
    in the unreachable Strapi branch. So on the canonical path a rename updated the account
    and left every generated link pointing at the old handle until a full reload. Fixed, and
    mutation-checked: removing the write-back fails a test.
-2. **The Music venue name never follows a rename.** `users.venue_name` is written once, at
-   provision, from `display_name || handle`, and nothing in the server updates it after
-   that. `musicApi.refreshIdentity()` looked like the mechanism and is not: the credential
-   it re-mints is `{token, expiresAt}` with no display data, and the ensure endpoint returns
-   early for an account that is already mapped. That call is therefore **not** carried into
-   the canonical path - keeping it would have looked like a fix. **Still open**, and it
-   belongs with the Music work in step 8, not here: deciding that the venue name mirrors the
-   Explorers display name means writing `users` from the account update path.
+2. **The Music venue name never followed a rename — FIXED 2026-10-08.** `users.venue_name`
+   was written once, at provision, from `display_name || handle`, and nothing updated it
+   afterwards, so a creator who renamed their profile kept the old name on the Music surface
+   indefinitely. `musicApi.refreshIdentity()` looked like the mechanism and carried nothing:
+   the credential it re-mints is `{token, expiresAt}` with no display data, and the ensure
+   endpoint returned early for an already-mapped account.
+   `ensureMusicAccount` now converges the name on reuse, which is the one place that
+   already holds the mapping and is reached on every identity refresh - so the Explorers
+   account write does not have to reach into a Music table. That makes the client call
+   meaningful, so it is **restored** in `useUpdateProfile`, best-effort: a Music name one
+   save stale must not fail an Explorers profile save. The name derivation is now one
+   function used by both paths, because two copies of a fallback chain is how they come to
+   disagree about what an unnamed venue is called.
 
 Also found, not fixed: `localTunesvisiblity` is hydrated into the profile form from
 `social_media.localTunes.visibility` in two places and **no component renders it and no
@@ -204,7 +237,7 @@ there is no canonical password to change, for the same reason sign-up is Google-
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **16** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **13** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.
@@ -217,10 +250,28 @@ The server half is also already done — see the corrected note above: the canon
 boots with no Strapi configuration, and `app.ts` is on the `legacy-music` path that step
 12 removes.
 
-### 9. Billing and subscription · 5 calls, 3 files — **blocked on a decision, not on work**
-- `Checkout`, `SubscriptionPlans`, `features/Settings/components/BillingTab.tsx`.
-- `revised-direction.md` defers monetization, but these three files are live Strapi consumers today, so something has to happen to them either way — port, or remove behind the deferral.
-- Carries the `song-limit` request quotas (3 MISSING fields). Needs decision **D1**.
+### 9. Billing and subscription · 5 calls, 3 files — **DONE 2026-10-08, without pre-empting D1**
+Measured rather than assumed, and the "5 live Strapi consumers" was wrong in both directions:
+
+- **3 of the 5 were already unreachable.** `MUSIC_SUBSCRIPTION_FLOWS_ENABLED = false` makes
+  `Checkout` and `SubscriptionPlans` return `MusicSubscriptionUnavailable` before their
+  active subtrees render, so their two mutations and one mutation respectively could not
+  fire. They still imported `@apollo/client`, which is what blocks step 12, so the documents
+  are gone and the call sites now refuse loudly - if that flag is ever flipped without
+  porting the flow, it throws instead of writing to a retired backend.
+- **1 was a dead read.** `BillingTab` fetched username, email and `razorpay_customer_id`
+  from Strapi on every render into `_userData` and **never read it**. The underscore was the
+  only hint. Deleted; there is nothing to port a read to when nothing consumes it.
+- **1 was a live write, and it was the inconsistency worth fixing.** `BillingTab`'s
+  free-plan upgrade set `is_subscribed` through `usersPermissionsUser`. The paid branch
+  beside it navigates into the contained `Checkout`, and the other two entrances are closed
+  - only this one escaped. It now refuses like its siblings.
+
+**This applies the containment already in force; it does not decide D1.** There is no
+canonical subscription state to port to - `updateAccountInputSchema` has no `is_subscribed`
+- so what a subscription means canonically is still the owner's call, and it was never going
+to be answered by continuing to write to Strapi. The `song-limit` quotas (3 MISSING fields)
+remain D1's, and the chat-assistant work has its own central `ai_usage` meter planned.
 
 ## Phase C — prove it, then retire
 

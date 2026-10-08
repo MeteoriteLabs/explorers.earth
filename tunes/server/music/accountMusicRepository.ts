@@ -29,6 +29,17 @@ function internalUsernameFor(accountId: string): string {
   return `explorer-${createHash("sha256").update(accountId).digest("hex").slice(0, 24)}`;
 }
 
+/**
+ * The venue's displayed name, derived from the account rather than stored twice.
+ *
+ * Extracted because it now has two callers - provisioning and convergence - and two inline
+ * copies of a fallback chain is how the two paths come to disagree about what a venue with
+ * no display name is called.
+ */
+function venueNameFor(account: { display_name: string | null; handle: string | null } | undefined): string {
+  return account?.display_name || account?.handle || "Explorers Music";
+}
+
 function readMusicUserId(row: { music_user_id: number } | undefined): number | undefined {
   const musicUserId = row?.music_user_id;
   return Number.isSafeInteger(musicUserId) && Number(musicUserId) > 0 ? Number(musicUserId) : undefined;
@@ -73,7 +84,7 @@ export function createAccountMusicRepository(
         [
           internalUsernameFor(actor.accountId),
           randomBytes(24).toString("base64url"),
-          account.rows[0]?.display_name || account.rows[0]?.handle || "Explorers Music",
+          venueNameFor(account.rows[0]),
           createHash("sha256").update(guestSecret).digest("hex"),
         ]);
       const musicUserId = venue.rows[0]?.id;
@@ -110,6 +121,33 @@ export function createAccountMusicRepository(
     }
   }
 
+  /**
+   * Bring an already-provisioned venue's name back in line with its account.
+   *
+   * venue_name was written once, at provision, and nothing updated it afterwards: a creator
+   * who renamed their profile kept the old name on the Music surface indefinitely. The
+   * provisioning path returns early for a mapped account, which is where the name stopped
+   * following the account.
+   *
+   * Converging here rather than from the account update path is deliberate. This is the one
+   * place that already holds the mapping, and it is reached on every identity refresh -
+   * including the one the profile save triggers - so the explorers account write does not
+   * have to reach into a Music table to keep a display string current.
+   *
+   * `IS DISTINCT FROM` makes the ordinary refresh a no-op rather than a write, and handles
+   * a NULL venue_name without a second branch. A failure is not swallowed: this is a
+   * primary-key update on a row the caller owns, so if it cannot run then neither could the
+   * mapping read above, and a silent catch would turn a database outage into a name that is
+   * quietly wrong.
+   */
+  async function convergeVenueName(accountId: string, musicUserId: number): Promise<void> {
+    const account = await pool.query<{ display_name: string | null; handle: string | null }>(
+      "SELECT display_name,handle FROM creator_accounts WHERE id=$1", [accountId]);
+    if (account.rowCount === 0) return;
+    await pool.query("UPDATE users SET venue_name=$2 WHERE id=$1 AND venue_name IS DISTINCT FROM $2",
+      [musicUserId, venueNameFor(account.rows[0])]);
+  }
+
   return {
     async ensureMusicAccount(actor: Actor): Promise<EnsureMusicAccountResult> {
       await authorizeOperation(pool, actor, "music:owner", actor.accountId);
@@ -120,6 +158,7 @@ export function createAccountMusicRepository(
 
       const existing = await existingMapping(pool, actor.accountId);
       if (existing !== undefined) {
+        await convergeVenueName(actor.accountId, existing);
         return { musicUserId: existing, accountId: actor.accountId, provisioned: false };
       }
 

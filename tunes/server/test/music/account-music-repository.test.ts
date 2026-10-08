@@ -51,13 +51,74 @@ const liveSession: [RegExp, Reply] = [/FROM auth_session/, { rows: [{ valid: tru
 const accountRow: [RegExp, Reply] = [/FROM creator_accounts WHERE id=/, { rows: [{ display_name: "Owner A", handle: "owner-a" }] }];
 
 describe("canonical Music venue provisioning", () => {
-  it("reuses an existing mapping without writing anything", async () => {
-    const { pool, log } = fakePool([membership, liveSession, [/FROM account_music_identity/, { rows: [{ music_user_id: 41 }] }]]);
+  it("reuses an existing mapping without provisioning or opening a transaction", async () => {
+    const { pool, log } = fakePool([membership, liveSession, accountRow,
+      [/FROM account_music_identity/, { rows: [{ music_user_id: 41 }] }]]);
     const result = await createAccountMusicRepository(pool as never).ensureMusicAccount(webSession);
 
     expect(result).toEqual({ musicUserId: 41, accountId: ACCOUNT, provisioned: false });
+    // Renamed from "without writing anything", which this no longer is: reuse converges
+    // the venue name. What must not happen on reuse is provisioning a second venue or
+    // taking a transaction out, and that is what these two now say.
     expect(log.some((entry) => /INSERT INTO/i.test(entry))).toBe(false);
     expect(log.some((entry) => /BEGIN/i.test(entry))).toBe(false);
+  });
+
+  // venue_name was written once, at provision, and nothing updated it afterwards - so a
+  // creator who renamed their profile kept the old name on the Music surface forever. The
+  // profile save already called the client's refreshIdentity, which reaches this path; the
+  // server simply returned early and carried nothing.
+  it("converges the venue name to the account's current display name on reuse", async () => {
+    const { pool, parameters } = fakePool([membership, liveSession,
+      [/FROM creator_accounts WHERE id=/, { rows: [{ display_name: "Renamed Owner", handle: "owner-a" }] }],
+      [/FROM account_music_identity/, { rows: [{ music_user_id: 41 }] }]]);
+    await createAccountMusicRepository(pool as never).ensureMusicAccount(webSession);
+
+    const update = parameters.find((entry) => /UPDATE users SET venue_name/.test(entry.sql));
+    expect(update?.values).toEqual([41, "Renamed Owner"]);
+    // Addressed by the mapped venue id, never by a name or a Strapi key, so it cannot
+    // reach another account's venue row.
+    expect(update?.sql).toMatch(/WHERE id=\$1 AND venue_name IS DISTINCT FROM \$2/);
+  });
+
+  it("derives the reused venue name exactly as provisioning does", async () => {
+    // The fallback chain is display_name || handle || "Explorers Music", and it has to be
+    // the same chain in both paths or a venue with no display name gets two different
+    // names depending on which path last touched it.
+    for (const [account, expected] of [
+      [{ display_name: "Owner A", handle: "owner-a" }, "Owner A"],
+      [{ display_name: null, handle: "owner-a" }, "owner-a"],
+      [{ display_name: "", handle: "owner-a" }, "owner-a"],
+      [{ display_name: null, handle: null }, "Explorers Music"],
+    ] as Array<[Record<string, string | null>, string]>) {
+      const { pool, parameters } = fakePool([membership, liveSession,
+        [/FROM creator_accounts WHERE id=/, { rows: [account] }],
+        [/FROM account_music_identity/, { rows: [{ music_user_id: 41 }] }]]);
+      await createAccountMusicRepository(pool as never).ensureMusicAccount(webSession);
+      expect(parameters.find((entry) => /UPDATE users SET venue_name/.test(entry.sql))?.values)
+        .toEqual([41, expected]);
+
+      const provisioning = fakePool([membership, liveSession,
+        [/FROM creator_accounts WHERE id=/, { rows: [account] }],
+        [/FROM account_music_identity/, { rows: [] }],
+        [/INSERT INTO users/, { rows: [{ id: 77 }] }],
+        [/INSERT INTO account_music_identity/, { rows: [{ account_id: ACCOUNT }] }]]);
+      await createAccountMusicRepository(provisioning.pool as never).ensureMusicAccount(webSession);
+      expect(provisioning.parameters.find((entry) => /INSERT INTO users/.test(entry.sql))?.values)
+        .toContain(expected);
+    }
+  });
+
+  it("does not touch a venue when the account row is gone", async () => {
+    const { pool, log } = fakePool([membership, liveSession,
+      [/FROM creator_accounts WHERE id=/, { rows: [] }],
+      [/FROM account_music_identity/, { rows: [{ music_user_id: 41 }] }]]);
+    const result = await createAccountMusicRepository(pool as never).ensureMusicAccount(webSession);
+
+    expect(result).toMatchObject({ musicUserId: 41, provisioned: false });
+    // No account means no name to converge to. Writing the fallback here would rename a
+    // live venue to "Explorers Music" on the strength of a missing read.
+    expect(log.some((entry) => /UPDATE users SET venue_name/.test(entry))).toBe(false);
   });
 
   it("provisions a venue and its mapping in one transaction, leaving password and both Strapi ids null", async () => {

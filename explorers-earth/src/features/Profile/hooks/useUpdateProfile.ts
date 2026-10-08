@@ -2,6 +2,7 @@ import useAuthStore from "../../../store/store";
 import { readSocialVisibility } from "../config/socialVisibility";
 import type { KeyValuePair } from "../types/profileSave";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
+import { musicApi } from "../../music/musicApi";
 import { toAccountUpdate, toProfileViewModel } from "../api/profileClient";
 
 export interface Visibility {
@@ -172,13 +173,13 @@ export function buildSocialMediaInput(
  * pointing at the old handle until the next full reload. Nothing else in the app writes
  * that field.
  *
- * musicApi.refreshIdentity() is deliberately NOT kept. It clears the music credential and
- * re-mints it against the ensure endpoint, and that endpoint returns early for an account
- * that is already mapped - so it carries no renamed display name to Music. The venue name
- * is written once, at provision, from display_name || handle, and nothing in the server
- * updates it afterwards; re-minting here only discarded a valid credential. That divergence
- * is real and is recorded in the sequence doc rather than papered over with a call that
- * does not fix it.
+ * musicApi.refreshIdentity() is kept, but only because the server side was fixed. It was
+ * inert when this hook was first migrated: it re-mints the credential against the ensure
+ * endpoint, and that endpoint returned early for an already-mapped account, so a renamed
+ * display name never reached Music - users.venue_name was written once, at provision, and
+ * nothing updated it afterwards. ensureMusicAccount now converges the venue name on reuse,
+ * which makes this call carry the rename it always looked like it carried. The call stays
+ * best-effort: a Music name one save stale must not fail an Explorers profile save.
  */
 export const useUpdateProfile = (
   documentId: string | undefined,
@@ -208,6 +209,10 @@ export const useUpdateProfile = (
     // After the account has accepted the handle, never before: a rejected save must not
     // leave the store advertising a username the account does not have.
     if (usernameChanged) useAuthStore.getState().updateUsername(incomingUsername);
+
+    // Best-effort, after the account has accepted the change: this propagates the new
+    // display name to the Music venue and must never turn a saved profile into a failure.
+    void musicApi.refreshIdentity().catch(() => undefined);
 
     await refetch();
     return toProfileViewModel(updated);
