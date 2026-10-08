@@ -1,4 +1,8 @@
-import { z } from "zod";
+// zod/v3, not "zod": explorers-earth carries zod 4 and tunes carries zod 3, and every
+// shared contract the frontend consumes imports the v3 compat subpath so one module
+// resolves from both trees. Importing bare "zod" here failed CI's `tsc -b` with
+// TS2307 from the frontend's resolution root.
+import { z } from "zod/v3";
 
 /**
  * Ticket 2.4, package L0. The typed lifecycle observation.
