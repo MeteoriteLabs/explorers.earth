@@ -47,10 +47,24 @@ If the code and this doc disagree, the code is right and this doc is stale.
 ## Phase A — finish the categories
 
 ### 1. Guides — [5.3](tickets/ticket-5-3.md) · 28 calls, 12 files · 27 MISSING fields
-- New migration for the `guide` + `guide-section` aggregate; Guides is schema-unreachable today.
-- Versioned aggregate with atomic order, archive and media race behaviour.
-- Owner + public reads, adapter, consumer migration (`GuidesPage`, `CreateGuidePage`, `GuideDetailsPage`, the section forms, the six `GuideDetails` modals).
-- `PublicGuideModal` lives in PublicHome but migrates here, with the rest of Guides.
+
+**Backend done (2026-10-08).** Migration 0050 plus the contract, repository, service and
+seven owner routes are on the branch and verified: 29 contract cases, 18 integration cases
+against PostgreSQL 15, role attestation green. Guides is no longer schema-unreachable.
+
+Correction worth carrying: the ticket called for widening 0029's CHECKs on
+`recommendations.category` and `collection_items.category` to admit `'guides'`. That is
+wrong and was not done. A guide section's places are denormalised provider snapshots inside
+the section's blocks, so nothing writes either row for a guide — and those CHECKs are what
+make "a guide is never flattened into ordinary item rows" true in storage.
+
+Still to do:
+- Frontend: a Guides client, view model and adapter, then the 28 call sites across 12 files
+  (`GuidesPage`, `CreateGuidePage` + three steps, `GuideDetailsPage`, `GuideSectionForm`,
+  `GuideSectionFormPage`, the six `GuideDetails` editors).
+- `PublicGuideDetailPage` in PublicHome migrates with it.
+- The public (non-owner) guide read.
+- Guide category vocabulary — blocked on decision **D9**.
 
 ### 2. Dashboard home — `pages/Home.tsx` · 10 calls, 1 file · no ticket
 - Found by measurement, recorded in no epic. Reads books, apps, products, people, places and guides lists straight from Strapi though five of those already have native owner reads.
@@ -158,6 +172,7 @@ Each blocks a step above, and none is an engineering question. Source: coverage 
 | **D6** | Instagram import scope | 7 | Without OAuth token storage, feed import works exactly once — at authorization. In scope with token storage, or dropped. |
 | **D7** | Per-field i18n (19 `account` fields, `faq`, `platform-term`, `recommendation-category`) | 7 | `revised-direction.md:47` instructs preserving language behaviour. That is an instruction to preserve, not authority to drop. Likely out of launch scope, but it needs saying. |
 | **D8** | Residual unaccounted fields (register §7.5) | 7 | `account.profile_place_media_details`, `account.localtunes_public` and others have neither a canonical equivalent nor a drop record. |
+| **D9** | Guide category vocabulary | 1 | Found 2026-10-08 while migrating Guides. `CreateGuideStep2` reads `guideCategories { Category_Name }` from Strapi, so the vocabulary is Strapi content exactly as the Places taxonomy is in **D3** — and 5.1's rule against inventing production values applies the same way. Needs an export of the existing values, or a decision to ship a fixed list. The rest of Guides does not wait on it. |
 
 ## Standing facts worth not rediscovering
 
