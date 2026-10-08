@@ -311,7 +311,7 @@ async function gameMembershipBody(response:Response,generation:number,signal:Abo
   handleExpiredSession(response,generation);if(!response.ok){const error=apiErrorSchema.safeParse(raw);if(!error.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Games error');throw new ExplorersApiError(response.status,error.data.error.code,error.data.error.message);}return raw;
  }finally{if(reader){void reader.cancel().catch(()=>{});try{reader.releaseLock();}catch{/* Best-effort cleanup must not replace the command result or its original error/cancellation. */}}}
 }
-async function contentCommand<T extends {id:string}>(path:string,method:string,input:unknown,key:string,name:string,schema:z.ZodType<T>,signal?:AbortSignal,observed?:CollectionObservation|RecommendationObservation|CompleteMyCategoryContent,expectedId?:string,expectedRevision?:number):Promise<DeepReadonly<T>> {
+async function contentCommand<T extends {id:string}>(path:string,method:string,input:unknown,key:string,name:string,schema:z.ZodType<T,any,any>,signal?:AbortSignal,observed?:CollectionObservation|RecommendationObservation|CompleteMyCategoryContent,expectedId?:string,expectedRevision?:number):Promise<DeepReadonly<T>> {
  commandInput(commandKeySchema,key);
  const state=useAuthStore.getState(),controller=new AbortController(),stop=()=>controller.abort();
  if(!state.isAuthenticated||!state.accountId)throw new ExplorersApiError(401,'UNAUTHENTICATED','Sign in is required');
@@ -600,7 +600,7 @@ export const explorersApiClient = {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
     return (await responseBody<{ account: AccountDto }>(response, generation)).account;
   },
-  async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation" | "collection", signal?: AbortSignal): Promise<MediaDto> {
+  async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation" | "collection" | "guide", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media", { method: "POST", credentials: "include", signal,
       headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": file.name }, body: file });
