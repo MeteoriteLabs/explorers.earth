@@ -113,6 +113,29 @@ Still to do:
   `/uploads/...` media path. That is not a Strapi API call, it is display-time resolution
   of legacy media, and it stops mattering when the media is migrated - step 12, not here.
 
+### 1b. Guide categories — decision **D9** — **DONE 2026-10-08**
+The picker read a Strapi `guideCategories` collection. The canonical contract already decided
+the storage - `guide_collection_details.categories` is an array of free strings - so that
+collection was a suggestion list, never data integrity, and there is no canonical taxonomy
+table to point it at.
+
+What made it urgent rather than cosmetic: the field is **required with "select at least 4"**
+and had no free-text entry, and an empty list rendered "No categories available" with no way
+forward. At retirement guide creation would have become **impossible**, not merely worse.
+
+Suggestions now come from the categories this creator has already used, and the field accepts
+anything typed. That invents no vocabulary - naming the categories is product copy, not an
+engineering choice - keeps the required field satisfiable on a first guide, matches the
+storage exactly, and forecloses nothing: a curated list can be layered on top later without
+changing what is stored.
+
+Writing the test found a **latent** render loop in the same component:
+`initialCategories`/`initialBestTimeToVisit` defaulted to inline `[]`, a fresh identity every
+render, and the prop-sync effect lists them in its dependencies - so any re-render re-ran the
+effect, set state and rendered again. Not live: the single caller passes stable `formData`
+references, so only a caller omitting those props could reach it, which is what the test did.
+The defaults are now module-level constants.
+
 ### 3. Claim flow — [5.4](tickets/ticket-5-4.md) · 18 MISSING fields — **measured 2026-10-08; genuinely D4's**
 Unlike steps 8 and 9, nothing here turns out to be dead, so there is no honest way to
 advance it without the decision. What D4 is actually deciding, precisely:
@@ -313,7 +336,7 @@ as live.
 - `hooks/useTunesDashboard` uses **TanStack** Query, not Apollo. My `useQuery(` grep
   matched it; it never imported `@apollo/client`. The repo-wide call counts in this doc
   are inflated for the same reason — the honest figure is files that genuinely
-  call an Apollo hook outside tests, which was 19 when this was written and is **6** now.
+  call an Apollo hook outside tests, which was 19 when this was written and is **5** now.
 - `MusicPublishProvider` held an Apollo client only to pass it to
   `createMusicPublishAdapter`, which **never used it** — zero references in 76 lines. Both
   the parameter and the provider's `useApolloClient` are now gone.

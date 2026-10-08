@@ -1,11 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@apollo/client";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 import Button from "../../../components/ui/Button";
-import { GET_GUIDE_CATEGORIES_QUERY } from "../api/queries";
+import { useGuidesOwner } from "../hooks/useGuidesOwner";
 import { generateGuideWithAI, type GenerateGuideOptions, type AIGeneratedGuide } from "../../../services/geminiService";
 import { useAIGuideQuota } from "../../../hooks/useAIGuideQuota";
+
+// Stable identities for the array defaults. A default parameter creates a fresh array on
+// every render, and the sync effect below lists these in its dependencies - so with the
+// defaults inline, every render saw "new" deps, re-ran the effect, set state, and rendered
+// again. Mounting survived it; the first interaction did not.
+const NO_CATEGORIES: string[] = [];
+const NO_MONTHS: string[] = [];
 
 interface CreateGuideStep2Props {
   initialNumberOfDays?: number | null;
@@ -32,8 +38,8 @@ interface CreateGuideStep2Props {
 
 const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
   initialNumberOfDays = null,
-  initialCategories = [],
-  initialBestTimeToVisit = [],
+  initialCategories = NO_CATEGORIES,
+  initialBestTimeToVisit = NO_MONTHS,
   initialBudgetType = null,
   guideType = "Itinerary",
   locationName = "",
@@ -70,8 +76,24 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
   // AI generation state
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-  // Fetch guide categories from Strapi
-  const { data: categoriesData, loading: categoriesLoading } = useQuery(GET_GUIDE_CATEGORIES_QUERY);
+  // Ticket 5.3 / decision D9. The category picker's suggestions.
+  //
+  // This read a Strapi `guideCategories` collection. The canonical contract already decided
+  // the storage - `guide_collection_details.categories` is an array of free strings, max 24,
+  // 100 characters each - so that collection was never data integrity, only a list to pick
+  // from. There is no canonical taxonomy table, and inventing a vocabulary of category
+  // names is product copy, not an engineering choice.
+  //
+  // So the suggestions come from what this creator has already used, and the field accepts
+  // anything typed. That invents no vocabulary, keeps "select at least 4" satisfiable on a
+  // first guide, matches the storage exactly, and forecloses nothing - a curated list can be
+  // layered on top later without changing what is stored.
+  //
+  // Why it could not simply be dropped: the field is required and had no free-text entry, so
+  // an empty list rendered "No categories available" with no way to continue. At retirement
+  // that would have made guide creation impossible rather than merely worse.
+  const ownedGuides = useGuidesOwner();
+  const categoriesLoading = ownedGuides.loading;
 
   // Check AI guide quota
   const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
@@ -113,17 +135,15 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
     }
   }, [initialNumberOfDays, initialCategories, initialBestTimeToVisit, initialBudgetType]);
 
-  // Extract all category values from the Guide_Category collection
-  const availableCategories = (() => {
-    if (!categoriesData?.guideCategories || !Array.isArray(categoriesData.guideCategories)) {
-      return [];
-    }
-
-    return categoriesData.guideCategories
-      .map((entry: any) => entry.Category_Name)
-      .filter((name: string) => name && typeof name === "string" && name.trim() !== "")
-      .map((name: string) => name.trim());
-  })();
+  // Every distinct category this creator has used, in a stable order so the list does not
+  // reshuffle between renders.
+  const availableCategories = useMemo(() => {
+    const seen = new Set<string>();
+    for (const guide of ownedGuides.guides ?? [])
+      for (const category of ((guide as {Category?: unknown}).Category as unknown[] ?? []))
+        if (typeof category === "string" && category.trim()) seen.add(category.trim());
+    return [...seen].sort((left, right) => left.localeCompare(right));
+  }, [ownedGuides.guides]);
 
   // Filter categories based on search query and exclude already selected ones
   const filteredCategories = availableCategories.filter((category: string) => {
@@ -618,10 +638,6 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
               <div className="text-dashboard-light text-sm font-poppins py-2">
                 Loading categories...
               </div>
-            ) : availableCategories.length === 0 ? (
-              <div className="text-dashboard-light text-sm font-poppins py-2">
-                No categories available
-              </div>
             ) : (
               <>
                 {selectedCategories.length > 0 && (
@@ -695,11 +711,25 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
                   {/* Dropdown Menu */}
                   {isCategoryDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto scrollbar-hide bg-dashboard-sidebar border border-dashboard rounded-md shadow-dashboard-elevated">
+                      {/* Typing a category that does not exist yet is the primary path for a
+                          first guide, and the only reason the required field is always
+                          satisfiable. It is offered before the suggestions, not after. */}
+                      {categorySearchQuery.trim()
+                        && !selectedCategories.includes(categorySearchQuery.trim())
+                        && !filteredCategories.includes(categorySearchQuery.trim()) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryToggle(categorySearchQuery.trim())}
+                          className="w-full text-left px-4 py-2 text-dashboard hover:bg-dashboard-accent hover:text-white font-poppins text-sm transition-colors cursor-pointer border-b border-dashboard"
+                        >
+                          Add &ldquo;{categorySearchQuery.trim()}&rdquo;
+                        </button>
+                      )}
                       {filteredCategories.length === 0 ? (
                         <div className="px-4 py-3 font-poppins text-sm text-dashboard-light">
                           {categorySearchQuery
-                            ? "No categories found matching your search"
-                            : "All available categories have been selected"}
+                            ? "Type to add this as a new category"
+                            : "Type a category to add it"}
                         </div>
                       ) : (
                         filteredCategories.map((category: string) => (
