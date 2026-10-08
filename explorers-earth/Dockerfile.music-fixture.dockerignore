@@ -860,7 +860,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PublicCategoryThemeContext.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideControlPortal.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideDetailPage.tsx
-!explorers-earth/src/features/PublicHome/components/PublicGuideModal.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/DayDetailModal.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/DayNavigationView.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/GooglePlaceModal.tsx
