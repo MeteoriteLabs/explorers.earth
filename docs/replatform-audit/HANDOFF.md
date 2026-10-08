@@ -57,7 +57,16 @@ Two things that came out of it are worth carrying forward:
   the patch script's `replace()` silently no-opped because the pattern had shifted and I had
   omitted the `assert`. **Always assert the mutation applied**, or a no-op reads as coverage.
 
-### 3. Read the frozen map before touching lifecycle work
+### 3. The legacy retirement map is written — read it before touching the lifecycle lanes
+
+[`lifecycle-legacy-retirement-map.md`](lifecycle-legacy-retirement-map.md) maps each of the
+**11** executing legacy cases to its canonical replacement, which C4 required before
+`account-lifecycle.spec.ts` can be retired. Two rows are clean **gaps** and five are
+**partial**, each with the specific assertion needed. `:219` — "unresolved lifecycle authority
+fails closed before any destructive control", which exists because that regression actually
+happened — has no canonical equivalent at all. Do not retire that one.
+
+### 4. Read the frozen map before touching lifecycle work
 
 [`lifecycle-requirement-receipt-map.md`](lifecycle-requirement-receipt-map.md) is the
 artifact ticket 2.4 names as a hard prerequisite. Its first section matters: the "original 18

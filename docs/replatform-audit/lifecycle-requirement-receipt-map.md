@@ -199,7 +199,11 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
    credentials belong to 6.1. L3 above covers HTTP and tab revocation only, and must not be
    read as covering sockets.
-5. **Hosted attestation of the browser receipts — OPEN, and now precisely stated.** The
+5. **Hosted attestation of the browser receipts — OPEN, with its written prerequisite now
+   done.** The one-to-one retirement map C4 demanded is written:
+   [`lifecycle-legacy-retirement-map.md`](lifecycle-legacy-retirement-map.md). It maps all
+   **11** executing legacy cases, and finds 2 clean gaps and 5 partials - so retirement is
+   blocked on coverage as well as on gating, which was not previously established. The
    canonical lane is registered at
    `.github/workflows/frontend-e2e-qualification.yml:122`, but that workflow runs only on a
    nightly schedule and manual dispatch, so **none of the 12 canonical lifecycle cases gates
