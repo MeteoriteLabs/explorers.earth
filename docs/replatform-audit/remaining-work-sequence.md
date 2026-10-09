@@ -737,7 +737,26 @@ The claim licensing all of this was checked first rather than taken on trust: of
 non-test modules using `useQuery`/`useMutation`, five import `@tanstack/react-query` and
 two match only in prose comments, so **no component executes an Apollo operation**.
 
-**What remains, and why it is not mechanical.** `Books/api/mutation.ts`,
+**Completed 2026-10-09 — the frontend half of 8.1b is done, 1272 lines.** The last three
+modules (`Books/api/mutation.ts`, `Favorites/api/mutation.ts`, `Guides/api/mutations.ts`,
+429 lines) were held alive only by `features/__tests__/recommendationMutationsPublish.test.ts`.
+Rather than trim those categories out of that guard and quietly shrink its reach, the guard
+is **inverted** for them: three cases per retired category assert the modules stay absent,
+that the feature imports no Apollo in shipped code, and that the canonical write methods are
+still called. A reintroduced Strapi document now fails instead of passing unnoticed. Both
+halves are mutation-verified — a stub module fails 2 cases, a vanished canonical write
+fails 1 with a named message.
+
+The replacement was checked per category before deleting: Books and Favorites use
+`createMyRecommendation`/`updateMyRecommendation`/`createMyCollection`/`updateMyCollection`
+(plus `reorderMyCollection`); **Guides uses `addMyGuideSection` and `writeMyGuideSection`**
+— worth knowing, because a `create|update` search finds neither and it briefly looked as
+though guide section writes had no canonical path at all.
+
+The only Strapi REST call sites left in the frontend are `Checkout.tsx` and the two payment
+services, kept on purpose by **D1**.
+
+**Superseded note on why it looked non-mechanical.** `Books/api/mutation.ts`,
 `Favorites/api/mutation.ts` and `Guides/api/mutations.ts` have no non-test consumer, but
 their only importer is `features/__tests__/recommendationMutationsPublish.test.ts` — the
 cross-category guard that every `Recommended*` write carries `status: PUBLISHED`, which is
