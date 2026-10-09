@@ -164,6 +164,12 @@ blob from three canonical columns, used by the public projection, the owner view
 the write path alike, with all three named readers served. No decision was needed; see the
 owner-decisions record.
 
+**CI state as of run `37872412216` (commit `c3c6c896`), the first fully settled run after
+the whole-tree gate:** every job passes except `platform-fixture` and `music-required`,
+the aggregator that gates on it. That includes `contracts` now running all 170 tunes test
+files instead of the 87 it covered that morning, and `browser`. So the by-design red is
+the *only* red, and any new failure is a real one.
+
 **What is not on this list is done or recorded as measured.** The engineering-side items
 closed on 2026-10-09 are 8.1a's module move, 7.1's named acceptance suite (21 cases
 including the visibility matrix, reserved handles and route pins), 5.1's named unit suite,
