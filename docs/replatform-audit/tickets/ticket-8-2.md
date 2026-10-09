@@ -61,7 +61,44 @@ So production does not ship this client. The ticket's framing — remove a dupli
 
 This ordering is a gate, not a suggestion. Any other order either deletes coverage-gated behavior with no replacement, or breaks a required lane:
 
-- [ ] **First**, re-home `client/src/lib/musicCredential.test.ts` and `client/src/lib/musicPublicationClient.test.ts` to retained Explorers equivalents, including their `--coverage.include` targets, and update `tunes/package.json:36` so `test:music-critical-coverage` still names real files at 100% per-file thresholds. A reduced threshold, a removed `--coverage.include` entry or a dropped test file is a weakened gate, not a completed removal.
+- [x] **First**, re-home `client/src/lib/musicCredential.test.ts` and `client/src/lib/musicPublicationClient.test.ts` to retained Explorers equivalents, including their `--coverage.include` targets, and update `tunes/package.json:36` so `test:music-critical-coverage` still names real files at 100% per-file thresholds. A reduced threshold, a removed `--coverage.include` entry or a dropped test file is a weakened gate, not a completed removal.
+
+  **Audited 2026-10-09: the re-homing is already done, and this step needs no new tests.**
+  The ticket assumes the Explorers equivalents must be written. They exist, and so does an
+  equivalent gate.
+
+  `explorers-earth/package.json:27` defines its **own** `test:music-critical-coverage`,
+  and `.github/workflows/test.yml:71` runs it immediately after the tunes one at `:70`.
+  It holds `src/lib/musicCredentialStore.ts`, `src/lib/localTunesApiClient.ts` and
+  `src/features/music/publicMusicClient.ts` at `perFile` 100% on lines, branches,
+  functions and statements - the same shape as the tunes lane. So removing the two client
+  files from the tunes lane does not reduce the number of 100%-gated client modules in CI;
+  it removes a duplicate.
+
+  Behaviour mapping, by the four properties the ticket names:
+
+  | Property | Retained in |
+  |---|---|
+  | Credential expiry, mint de-duplication, fail-closed with no proof, abort on authority change | `src/lib/__tests__/music-critical-client-coverage.test.ts`, `musicCredentialStore.test.ts`, `musicApi.startup.test.ts`, `musicIdentityCoordinator.test.ts` |
+  | Retry | `usePublicMusicResource.ts`'s `loadPublicMusicWithTransientRetry`, covered by `usePublicMusicResource.test.ts` and `publicMusicClient.test.ts` |
+  | Public capability | `publicMusicClient.test.ts` ("keeps an unlisted capability out of the URL and sends no owner credential", "rejects malformed slugs before the network and ignores malformed capabilities") and `PublicMusic.test.tsx` ("retains a scrubbed unlisted capability for a same-tab remount", "applies canonical live refetches and removes revoked content and capability") |
+  | Idempotency | `musicPublicationCommandRegistry.test.ts`, `musicPublishOperationStore.test.ts`, `musicPublishCoordinator.test.ts` |
+
+  **Genuinely retired, to be documented rather than ported - the mechanism changed.** The
+  tunes client acquired a guest capability through an explicit out-of-band *prompt* and a
+  header-only handoff it could rotate and revoke (`guestCapabilityHandoff`,
+  `importGuestMusicCapability`, `acquireGuestMusicCapability`,
+  `GuestCapabilityRequiredError`, and the "hidden prompt" and "cancelled prompt" cases).
+  Explorers has none of those symbols. It takes the capability from the URL fragment,
+  scrubs it, and keeps it in `sessionStorage` under a **per-slug** key
+  (`explorers.music.unlisted-capability.v1:<publicSlug>`, `pages/public/PublicMusic.tsx:20-38`).
+  So "never reuses A's authority on B" is now structural - separate keys - rather than a
+  runtime check, and there is no prompt to cancel. Those cases describe a flow that no
+  longer exists; they are not uncovered behaviour.
+
+  What remains for this step is therefore mechanical and belongs with the deletion: drop
+  the two files from the tunes script's test list and its two `--coverage.include`
+  entries. Nothing needs writing first.
 - [ ] **Then** remove the Vite build path: `tunes/package.json:18` `build`, `tunes/vite.config.ts`, `tunes/server/index.ts:20` `setupVite` and the `serveStatic` branch at `tunes/server/config/music-startup.ts:124` / `tunes/server/runtime.ts:18`. Reconcile `package.json:14` `build:all` in the same change.
 - [ ] **Then** delete `tunes/client/` and regenerate lockfiles reproducibly, with no unrelated dependency upgrades.
 - [ ] Retain `api-only-build.test.ts:119` as the post-removal regression: it must still pass, and must not be relaxed to accommodate the removal.
