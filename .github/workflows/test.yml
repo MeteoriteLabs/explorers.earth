@@ -202,7 +202,21 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
-      - run: npm run test:unit --prefix explorers-earth -- src/features/music src/components/__tests__/MusicDashboard.test.tsx src/pages/__tests__/MusicPage.test.tsx src/pages/__tests__/PublicMusic.test.tsx src/services/__tests__/accountLifecycleService.test.ts
+      # Argument-less, so this is the whole frontend unit suite - the same change made to
+      # `contracts` (whole `server/test` tree) and `database` (48 named files), for the
+      # same reason.
+      #
+      # It previously named five selectors. The whole suite does run argument-less in
+      # `ci.yml` (`npm run test:coverage`), but `ci.yml` is
+      # `pull_request: branches: [main, develop]`, and this workflow is
+      # `pull_request: {}`. So on a pull request to any other base - the entire replatform
+      # branch - roughly 4100 of 4554 frontend tests were not running anywhere.
+      #
+      # Measured at `f2afbd4a` before landing: 325 files, 4554 tests, all passing.
+      # `test:unit` is `run-contained-vitest.cjs run`, which carries no coverage gate, so
+      # this adds reach without adding a threshold that could fail for unrelated reasons.
+      # The critical-coverage gate stays separate, on the `unit-coverage` job.
+      - run: npm run test:unit --prefix explorers-earth
 
   browser:
     runs-on: ubuntu-24.04

@@ -716,3 +716,41 @@ that CI will actually run is the thing to measure: 48 files on a fresh
 failure that is `music-runtime-role` reading `whoami.exe /user` — a `process.platform ===
 "win32"` branch that does not execute on `ubuntu-24.04`, where it is already gated and
 already green.
+
+## The root cause is base-branch targeting, not selector lists — 2026-10-09
+
+Having found the integration gap twice, I measured every test category the same way. The
+pattern is not about selector lists at all. **Every lane with broad reach is restricted to
+`main` or `develop`, and this replatform branch targets neither.**
+
+| Workflow | Trigger | What it runs broadly |
+|---|---|---|
+| `test.yml` | `pull_request: {}` — **every PR, every base** | only what each job names |
+| `ci.yml` | `pull_request: branches: [main, develop]` | `npm run test:coverage`, the whole frontend unit suite, argument-less; plus 5 config-scoped e2e jobs |
+| `tunes.yml` | `pull_request: branches: [main]` + path filter | `npm run test:integration`, every integration file, argument-less |
+| `frontend-e2e-qualification.yml` | `schedule` + `workflow_dispatch` **only** | 13 e2e lanes; never runs on a pull request |
+
+So on a pull request to `codex/unified-replatform`, the only lane that runs is `test.yml`,
+and it runs exactly what it names. Measured reach on this branch:
+
+| Category | On disk | Reached on this branch | Reached on a PR to `main` |
+|---|---|---|---|
+| tunes unit (`server/test`) | 176 | all (tree argument, fixed earlier) | all |
+| tunes integration | 52 | **48** (fixed 2026-10-09; 2 Games by construction) | all |
+| frontend unit | ~325 files / ~4554 tests | the `frontend` job's selectors + the 16-file critical-coverage gate | all, via `ci.yml` |
+| frontend e2e | 36 specs | **3** | 3 + `ci.yml`'s 5 config-scoped jobs |
+
+### What was done about it, and what was not
+
+- **Frontend unit: broadened.** `test.yml`'s `frontend` job now runs the suite
+  argument-less, consistent with what `contracts` and `database` already do. It needs no
+  new service and `test:unit` takes no coverage gate, so the change is contained.
+- **E2E: surfaced, not changed.** Going from 3 to 36 specs on the universal lane is a cost
+  and lane-allocation decision, and several specs need a PostgreSQL container and a built
+  frontend. `scripts/replatform-e2e.mjs` also pins `scopeContents` to a hardcoded lane set,
+  so the lanes are coordinator-allocated rather than freely addable. **Owner decision.**
+- **The base-branch lists themselves: surfaced, not changed.** Adding
+  `codex/unified-replatform` to `ci.yml` and `tunes.yml` would restore full coverage for
+  this branch in two lines, and it is the cleanest fix. It also changes two workflows this
+  replatform does not own and multiplies CI cost for every PR to the branch. **Owner
+  decision**, and the better one of the two if the branch is going to be long-lived.
