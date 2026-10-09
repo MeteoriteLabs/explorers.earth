@@ -419,6 +419,39 @@ body".
 which needs the probe's path in the output. That is the redaction change described below
 and it is still not made.
 
+### What static reading established, and the contradiction it leaves
+
+Port **51474 is the explorers Nginx container**, not the tunes Express app
+(`docker-compose.replatform.yml:178` publishes `127.0.0.1:51474:80`;
+`explorers-earth/Dockerfile.music-fixture:49` installs
+`explorers-earth/nginx.music-fixture.conf`). That config proxies exactly six things, and
+against the ten probe paths in `scripts/replatform-route-parity.ts` **only
+`/api/music-fixture/readiness` is proxied to tunes.** Everything else - `/api/check`,
+`/api/csrf-token`, `/api/user/reactivate`, `/api/explorers/analytics/events`,
+`/health/live` and all five canonical probes - falls through to
+`location / { try_files $uri $uri/ /index.html; }`.
+
+**But that cannot be the whole story, and the next person should know why before
+trusting it.** Two facts contradict it:
+
+1. `platform-fixture` **passed** on `69e0d47f` with this same probe list
+   (`b4975654`, which added `CANONICAL_ROUTES`, is an ancestor of it) and with a
+   byte-identical workflow - `git show 69e0d47f:.github/workflows/test.yml` matches the
+   current file at lines 302-310. So the job demonstrably can pass.
+2. The observed cause is `ingress-malformed-body`, which means the **first failing probe
+   matched its expected status** and then failed to parse. The first probe is
+   `/api/check`, expecting **401**. Nginx serving the SPA would answer 200, which is a
+   status mismatch (`fixture-route-mismatch`), not a parse failure.
+
+So either something proxies these paths that is not in the committed Nginx config, or the
+probes do not run against the Nginx container at all. Resolving that needs the fixture
+running - `npm run platform:local -- provision`, then `curl -i http://127.0.0.1:51474/api/check`
+- which is one command for whoever has Docker and the receipt, and is why this is written
+down rather than guessed at further.
+
+**Do not conclude "the Nginx config is missing locations, add them"** on the strength of
+the first paragraph alone. That is the shape of the evidence, not a verified cause.
+
 What is still not done, and is the part that wants the owner: letting any probe *detail*
 through - the path, the expected and received status. That is a redaction change in
 authority-sensitive code.
