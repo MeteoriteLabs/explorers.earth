@@ -146,7 +146,7 @@ concluding that something was merely left undone.
 
 | Blocker | Step / ticket | What it needs, exactly |
 |---|---|---|
-| **`platform-fixture` is red by design — but see 2026-10-09: it now fails EARLIER, at `postgres-start`, so the invariant is not being reached** | 1.2 | Nothing on a feature branch. The fixture must run the canonical composition instead of `EXPLORERS_API_MODE: legacy-music`. Until then the red is correct and must not be silenced — see the by-design section below. A merge needs you to accept a known-failing required check. |
+| **`platform-fixture` is red by design** (once, transiently, it failed earlier at `postgres-start` — see 2026-10-09) | 1.2 | Nothing on a feature branch. The fixture must run the canonical composition instead of `EXPLORERS_API_MODE: legacy-music`. Until then the red is correct and must not be silenced — see the by-design section below. A merge needs you to accept a known-failing required check. |
 | **Browser lanes are coordinator-reserved** | 6.3, 7.1's `public-parity.spec.ts`, 7.3, step 15's place specs | A Docker fixture runner plus `suite-manifest.json` identities. Both are allocated by the coordinator, not writable from a ticket. |
 | **Hosted QA environment and live providers** | 7.3, 2.4, 3.3's re-attestation, 4.1's live TMDB smoke | Real credentials and a hosted run at a named commit. A fixture cannot substitute, and each of those tickets says so itself. |
 | **`TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement** | 3.4 | Yours to give. Hand-adding the lane would falsify an attestation. |
@@ -494,28 +494,33 @@ If you write a scanner here, normalise line endings before anything else.
   It will show up in `git status` as a change you did not make; drop it rather than committing
   it.
 
-## `platform-fixture` is red BY DESIGN — but NOT where this section says, as of 2026-10-09
+## `platform-fixture` is red BY DESIGN — with one transient exception, 2026-10-09
 
-> **Read this box first.** Everything below describes a failure at
-> `phase=ingress-check; cause=ingress-malformed-body`. **That is no longer what CI does.**
-> Run `37878456429` fails at `phase=postgres-start`, 1.3 seconds into provision, which
-> means PostgreSQL is not starting and **the route-graph invariant is never reached**.
+> **The steady state is what this section describes:** `phase=ingress-check;
+> cause=ingress-malformed-body`, confirmed again on run `37879996276`.
 >
-> So the by-design red below is currently *masked* by a different, earlier failure, and
-> the two must not be conflated: the invariant is an owner sequencing decision, while a
-> fixture that cannot start a container is an ordinary defect.
+> **Once, on run `37878456429`, it failed earlier instead** — at `phase=postgres-start`,
+> 1.3 seconds into provision, meaning PostgreSQL did not start and the route-graph
+> invariant was never reached. The next run was back to the ingress cause with no fix in
+> between, so that was **transient and its cause is unknown**. Recorded because a single
+> observation is a single observation: I first wrote this box claiming the by-design red
+> had been replaced, which was reading one run as a new state.
 >
-> It reported no cause at all, because `run` classified only
+> That occurrence reported **no cause at all**, because `run` classified only
 > `failurePhase === "service-build"`. `postgres-start` is now classified with the same
-> closed set, plus `port-unavailable` and `compose-config-invalid` for the two things a
-> service start can hit that a build cannot (`07b0d14d`, `7fff1041`). **The next run will
-> name which of the seven it is — read that before doing anything else here.**
+> closed set, plus `port-unavailable` and `compose-config-invalid`, so **a recurrence will
+> name itself** (`07b0d14d`, `7fff1041`, `5db136a9`). Four cheap explanations were
+> eliminated while it was thought to be persistent, and they need not be re-checked: the
+> three `:?` interpolations are set unconditionally by `childEnvironment`;
+> `compose config --services` resolves and lists `postgres`; the pinned `public.ecr.aws`
+> postgres digest pulls; and a probe run of the service's own compose definition brought up
+> the network, volume, container and secret bind mount successfully.
 >
-> Not reproducible locally on the Windows host: 51434 and 51474 are WinNAT-reserved, so
-> `provision` cannot run. The output that would name it is redacted on purpose
-> ("never print it"), which is why the category is the only thing that can speak.
+> Not reproducible on the Windows host: 51434 and 51474 are WinNAT-reserved, so `provision`
+> cannot bind. The output that would name a cause is redacted on purpose ("never print
+> it"), which is why the category is the only thing that can speak.
 
-**The rest of this section remains correct about the invariant itself. It is not flaky,
+**The rest of this section is correct about the invariant itself. It is not flaky,
 not a regression, and not caused by
 any branch. It is ticket 1.2's route-graph invariant doing exactly what it was built to
 do**, and the repository already said so at

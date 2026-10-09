@@ -202,6 +202,14 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
+      # Required once this job runs the WHOLE suite rather than five selectors, and found
+      # the hard way: `src/test/__tests__/category-discovery.test.ts` spawns Playwright's
+      # Node loader (`@playwright/test/cli.js --list`), which loads shared runtime schemas
+      # owned by `tunes`. Without this, three tests fail here while passing everywhere
+      # else. `ci.yml`'s unit-tests job has carried the same step, with the same reason in
+      # a comment, since before this job existed - broadening the selector without
+      # bringing the prerequisite along is what broke it.
+      - run: npm ci --prefix tunes --legacy-peer-deps
       # Argument-less, so this is the whole frontend unit suite - the same change made to
       # `contracts` (whole `server/test` tree) and `database` (48 named files), for the
       # same reason.
