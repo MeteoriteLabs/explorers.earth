@@ -934,3 +934,36 @@ enumerating the content-scanning fixtures (grep for `requires one checked-in`, r
 builders over source text, and the browser baselines), then deleting per document with the
 e2e lanes actually running. That is a reasonable next task and it needs the e2e lane
 decision above to be useful, since otherwise nothing would catch a mistake.
+
+### The server half of 8.1b is NOT entirely cutover-gated — 378 lines deleted 2026-10-09
+
+`check-retired-dependencies.mjs` ends with "This does NOT mean Strapi is retired: the
+legacy-music server still depends on it until step 12", and that line was read here (by me,
+repeatedly) as *all* server-side Strapi work being gated behind the `EXPLORERS_API_MODE`
+cutover. It is not. The line is true of modules the legacy runtime imports, and says
+nothing about modules **neither** runtime imports.
+
+**Method.** Walk the import closure from every real entrypoint — `server/auth/canonicalStartup.ts`,
+`server/config/music-startup.ts`, `server/index.ts`, `server/api.ts` — reusing that script's
+own `resolveImport` rules so the closure semantics match the gate rather than approximating
+it. The union covers **172 of 189** server modules. Eight Strapi-touching files sit outside
+it; three were dead.
+
+| Outside the closure | Verdict |
+|---|---|
+| `reconcileMusicIdentities.ts`, `musicReconciler.ts`, `reconciliationRepository.ts`, `music-reconciliation-config.ts` | **Live.** The reconciliation command *is* its own entrypoint, with `music-reconcile.yml` and gated integration tests. "Outside the closure" meant the entrypoint list was short. |
+| `config/local-public-profile-gateway.ts` | **Live.** Four importers. |
+| `jwt-auth-middleware.ts`, `routes/strapiRoutes.ts`, `services/strapi-service.ts` | **Dead.** No importer anywhere in the repository; every other mention is documentation or an audit inventory. Deleted, 378 lines. |
+
+**The trap to avoid repeating: a closure walk proves nothing until the entrypoint list is
+complete.** Four live files looked dead because a CLI command and the three deployment
+entries were missing from the first sweep. Enumerate entrypoints from `package.json`'s
+`build`/`build:api`/`start` scripts, the Dockerfile `CMD`, and the workflows, before
+believing any "unreachable" verdict.
+
+**And run the verification from PowerShell.** The same `server/test` tree reports 168/170
+files and 3,237 tests passing from PowerShell, and **84 failures** from Git Bash — 81 of
+them `music-deploy-executable` hitting MSYS `whoami`. Both remaining exceptions are
+environmental: `music-cli-contract` needs the gitignored `.env.music.test`, and
+`music-docker-release-authority` reads the git index, so it fails if you stage anything
+mid-run and passes on a static tree.
