@@ -839,3 +839,38 @@ Each blocks a step above, and none is an engineering question. Source: coverage 
 - Protected browser lanes are coordinator-allocated throughout: each needs a Docker fixture runner plus `suite-manifest.json` identities.
 - The Games integration suite needs its own disposable Postgres container on a port other than 55432, which is reserved.
 - eslint carries 1647 warnings against a 0-error gate. The burn-down is ongoing and deliberately not sequenced here.
+
+### The 60 remaining documents inside live modules are NOT deletable by reference analysis
+
+Attempted and reverted 2026-10-09. Worth recording so the next attempt starts from the
+right criterion rather than repeating it.
+
+Thirteen Apollo modules survive because they export the canonical hooks
+(`useGamesCommands`, `usePeopleCallerCustody`, …) *alongside* retired `gql` documents.
+Inside them, **60 exported documents have no symbol reference anywhere in `src/`, not even
+from a test** — e.g. `Games/api/query.ts` has 8 documents of which 7 are unreferenced,
+`PublicHome/api/query.ts` 11 of 15, `Settings/api/mutation.ts` 7 of 10. Removing all 60 is
+1,955 lines and **passes `tsc -p tsconfig.app.json` cleanly**.
+
+It is still wrong, because **some consumers match these documents by content, not by name**:
+
+- `PublicHome/components/__tests__/PublicProfile.gallery-contract.test.tsx` builds a fixture
+  GraphQL registry by scanning source for a `UsersPermissionsUser` document and throws
+  unless it finds **exactly one**.
+- `e2e/music-public-contract.spec.ts:476` — "Music live fixture requires one checked-in
+  Settings UpdateAccount document", which is `Settings/api/mutation.ts`'s
+  `updateAccountMutation`.
+
+Two were found by running the suite; **there is no reason to believe they are the only
+two**, and the places that would reveal more are the ones this branch does not run — 33 of
+36 e2e specs, plus the `scripts/browser-baselines/*.json` source inventories.
+
+Note also that `tsconfig.app.json` excludes tests, so a typecheck cannot see even the
+name-based breakage; the suite is the floor, and the e2e lanes are above it.
+
+**So the criterion for deleting a document is not "nothing imports it" — it is "nothing
+imports it AND no fixture scans for its shape".** Doing this properly means first
+enumerating the content-scanning fixtures (grep for `requires one checked-in`, registry
+builders over source text, and the browser baselines), then deleting per document with the
+e2e lanes actually running. That is a reasonable next task and it needs the e2e lane
+decision above to be useful, since otherwise nothing would catch a mistake.
