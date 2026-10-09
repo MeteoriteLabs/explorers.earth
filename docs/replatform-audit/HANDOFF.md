@@ -492,7 +492,21 @@ fresh worktree has no root `node_modules`, so `npm run platform:local` resolves 
 `platform:local -- stop` will not remove (no valid receipt) — delete it by
 `label=com.docker.compose.project=explorers-replatform-local`.
 
-## `platform-fixture` ALSO flaps on an external registry rate limit — do not chase that one
+## `platform-fixture` had an EARLIER, different red: an external registry rate limit
+
+**Dating matters here, so read the by-design section above first.** These failures are from
+**before `b4975654`** (2026-10-08 14:44), the commit after which the job fails for the
+route-invariant reason instead. The last success of that workflow was `91b6c99b` at 13:56,
+so this section describes the window before it. A `cause=registry-rate-limit` seen *today*
+would be a second, separate problem sitting on top of the intended red - and the phase
+distinguishes them: `service-build` here, `ingress-check` there.
+
+One caveat on this section's evidence, which I would not have spotted before making the
+same mistake myself: "the same job passed on `5253fcb2` and failed on `c23614db`" was
+established by comparing runs per commit, and `gh run list --commit` returns runs from
+**several different workflows**. The conclusion is plausible for its window - the timestamps
+precede the invariant commit, and `cause=registry-rate-limit` is a genuine distinct
+classification - but if it ever needs re-checking, pass `--workflow`.
 
 `platform-fixture` (and `music-required`, the aggregate gating on it) failed three times on
 2026-10-08 with:
