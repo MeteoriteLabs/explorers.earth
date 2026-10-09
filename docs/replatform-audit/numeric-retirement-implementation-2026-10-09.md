@@ -14,4 +14,6 @@ Schema markers, image migration inventory, table/role manifests, restore trigger
 - Database regressions are authored for terminal ledger retention, exact/wrong retries, runtime canonical/legacy explicit reuse, sequence reset, primary-key UPDATE, immutable permissions, concurrent retirement/insertion and rollback. Runtime cases set `music_runtime` and assert non-superuser authority. Timeouts and cleanup bound concurrency tests.
 - No database or browser fixture was allocated or executed locally. Full6.4 acceptance remains pending database, browser and release qualification. The prior head's hosted database pass cannot qualify0052.
 
+**Subsequent hosted qualification:** [run37943365187](https://github.com/tandavkrishna27/explorers.earth/actions/runs/37943365187) at `1f4ce7bf` passes43 database files/659 tests, with5 files/7 tests skipped. All28 lifecycle tests pass after source-test cleanup repair. The0052 behavioral regressions now have hosted PostgreSQL execution evidence; canonical browser/hosted milestone acceptance still remains. See [CI follow-up](ci-followup-2026-10-09.md).
+
 See [the integrated preflight](lifecycle-preflight-3e5113c0.md) for the remaining canonical browser replacement cases and the fixture runner's explicit disposable-PG acknowledgement requirement.

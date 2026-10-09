@@ -391,3 +391,25 @@ describe("Settings moved profile data placement", async () => {
     expect(screen.queryByTestId("moved-account")).not.toBeInTheDocument();
   });
 });
+
+it.each([/Public Visibility/i, /Language Preference/i])("ignores detached panel delayed scrolling for %s", async (panel) => {
+  const view = await render(<Settings />);
+  const pending: Array<() => void> = [];
+  const originalTimeout = window.setTimeout.bind(window);
+  const timer = vi.spyOn(window, "setTimeout").mockImplementation(((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+    if (delay === 100 && typeof handler === "function") {
+      pending.push(() => handler(...args));
+      return 0;
+    }
+    return originalTimeout(handler, delay, ...args);
+  }) as typeof window.setTimeout);
+  const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+  const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: 0, bottom: 2000, left: 0, right: 300, height: 2000, width: 300, x: 0, y: 0, toJSON: () => ({}) });
+  try {
+    fireEvent.click(screen.getByRole("button", { name: panel }));
+    expect(pending).toHaveLength(1);
+    view.unmount();
+    act(() => { pending.forEach(callback => callback()); });
+    expect(scrollBy).not.toHaveBeenCalled();
+  } finally { timer.mockRestore(); scrollBy.mockRestore(); rect.mockRestore(); }
+});

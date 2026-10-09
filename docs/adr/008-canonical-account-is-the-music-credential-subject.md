@@ -81,8 +81,8 @@ to be driven to full coverage.
    advisory locking before finalization, both-identity INSERT nonreuse and immutable numeric
    keys on UPDATE. Runtime cannot update, delete or truncate retirement history. This does
    not manufacture Strapi IDs or backfill unrecorded historical releases. Source/static
-   review is complete; database behavioral and browser execution remain required before
-   claiming ticket6.4 acceptance. See [the B1 implementation record](../replatform-audit/numeric-retirement-implementation-2026-10-09.md) and
+   review and exact-head hosted PostgreSQL regressions pass at1f4ce7bf; browser and release
+   qualification remain required before claiming ticket6.4 acceptance. See [the B1 implementation record](../replatform-audit/numeric-retirement-implementation-2026-10-09.md) and
    [the integrated lifecycle preflight](../replatform-audit/lifecycle-preflight-3e5113c0.md).
 
 6. **The canonical API app issues Music credentials.** The canonical session and the

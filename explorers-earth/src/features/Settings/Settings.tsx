@@ -552,6 +552,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                             if (el && !el.dataset.scrolled) {
                               el.dataset.scrolled = 'true';
                               setTimeout(() => {
+                                if (!el.isConnected) return;
                                 const rect = el.getBoundingClientRect();
                                 const isMobile = window.innerWidth < 768;
                                 const bottomOffset = isMobile ? 80 : 20;
@@ -599,6 +600,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                             if (el && !el.dataset.scrolled) {
                               el.dataset.scrolled = 'true';
                               setTimeout(() => {
+                                if (!el.isConnected) return;
                                 const rect = el.getBoundingClientRect();
                                 const isMobile = window.innerWidth < 768;
                                 const bottomOffset = isMobile ? 80 : 20;

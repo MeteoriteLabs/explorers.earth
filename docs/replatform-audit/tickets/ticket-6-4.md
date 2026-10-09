@@ -1,6 +1,6 @@
 # Ticket 6.4: Canonical Music owner deletion saga
 
-> **Implementation update2026-10-09:** Canonical finalization is delivered by0042. Append-only0052 now implements separate canonical numeric retirement, insertion nonreuse and immutable numeric keys; see [the B1 record](../numeric-retirement-implementation-2026-10-09.md). Source/static review does not establish database/browser acceptance, which remains pending. ADR008 decision5 records the implementation without fake Strapi tombstones or historical backfill. Historical representability preflights below are superseded; execution requirements remain binding.
+> **Implementation update2026-10-09:** Canonical finalization is delivered by0042. Append-only0052 now implements separate canonical numeric retirement, insertion nonreuse and immutable numeric keys; see [the B1 record](../numeric-retirement-implementation-2026-10-09.md). Source/static review and exact-head hosted database regressions pass at1f4ce7bf; browser/release acceptance remains pending. ADR008 decision5 records the implementation without fake Strapi tombstones or historical backfill. Historical representability preflights below are superseded; execution requirements remain binding.
 
 > **Current status and dispatch (2026-10-09):** Read [the two-tree reconciliation](../reconciliation-2026-10-09.md) and [the reconciled sequence](../../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). Earlier verdicts/execution cards below are historical; requirements and checkboxes remain binding and do not record completed runs.
 
