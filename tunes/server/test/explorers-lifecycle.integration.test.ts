@@ -69,6 +69,16 @@ async function numericRuntimeQuery(sql: string, parameters: unknown[] = []) {
   } finally { client.release(); }
 }
 
+// Numeric deletion probes share this suite's worker queue. Finish their account
+// operations so later batch-size-one tests claim only their own fresh fixture.
+async function finalizeNumericTestAccount(accountId: string, operationId: string) {
+  await runAccountLifecycleMaintenance(pool, new LocalObjectStorage());
+  expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [accountId])).rows[0].status)
+    .toBe("deleted");
+  expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operationId])).rows[0].state)
+    .toBe("succeeded");
+}
+
 async function webActor(owner: Awaited<ReturnType<typeof identity>>) {
   const session = await pool.query<{ id: string; session_version: string }>(
     "SELECT id,session_version::text FROM auth_session WHERE user_id=$1 LIMIT 1", [owner.userId]);
@@ -635,7 +645,10 @@ describe("canonical account lifecycle", () => {
         if (result) await within(result, 11000);
         await inserting.query("RESET statement_timeout");
         await inserting.query("RESET ROLE");
-      } finally { deleting.release(); inserting.release(); }
+      } finally {
+        deleting.release(); inserting.release();
+        await finalizeNumericTestAccount(owner.accountId, operationId);
+      }
     }
   }, 20000);
 
@@ -648,9 +661,15 @@ describe("canonical account lifecycle", () => {
       await client.query("BEGIN");
       await client.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3)", [venue.musicUserId, operationId, "rollback"]);
       await client.query("ROLLBACK");
-    } finally { client.release(); }
-    expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [venue.musicUserId])).rows[0].count).toBe(1);
-    expect((await pool.query("SELECT count(*)::int AS count FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [venue.musicUserId])).rows[0].count).toBe(0);
+      expect((await client.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [venue.musicUserId])).rows[0].count).toBe(1);
+      expect((await client.query("SELECT count(*)::int AS count FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [venue.musicUserId])).rows[0].count).toBe(0);
+    } finally {
+      try { await client.query("ROLLBACK"); }
+      finally {
+        client.release();
+        await finalizeNumericTestAccount(owner.accountId, operationId);
+      }
+    }
   });
 
   it("refuses a canonical release that no pending account deletion owns", async () => {
@@ -748,21 +767,29 @@ describe("canonical account lifecycle", () => {
       get: (objectKey: string) => backing.get(objectKey),
       delete: async () => { throw new Error("failed compensation"); } };
     const attempt = new MediaService(pool, storage).createMedia(actor, upload, { requestId: randomUUID() });
-    await reached;
-    const operation = await pendingDeletion(owner);
-    expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
-    expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
-      [operation])).rows[0]).toMatchObject({ state: "running", failure_code: "FINALIZATION_RETRY" });
-    release();
-    await expect(attempt).rejects.toThrow("Storage unavailable");
-    expect((await pool.query("SELECT status FROM media_assets WHERE account_id=$1", [owner.accountId])).rows[0].status)
-      .toBe("pending_delete");
-    await pool.query("UPDATE account_lifecycle_operations SET updated_at=clock_timestamp()-interval '11 minutes' WHERE id=$1",
-      [operation]);
-    expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
-    expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
-      .toBe("succeeded");
-    await expect(backing.get(key)).rejects.toThrow();
+    // Attach settlement immediately; finally releases the held put even if a
+    // worker assertion fails, then waits for createMedia to release its resources.
+    const settled = attempt.then(() => undefined, () => undefined);
+    try {
+      await reached;
+      const operation = await pendingDeletion(owner);
+      expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
+      expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
+        [operation])).rows[0]).toMatchObject({ state: "running", failure_code: "FINALIZATION_RETRY" });
+      release();
+      await expect(attempt).rejects.toThrow("Storage unavailable");
+      expect((await pool.query("SELECT status FROM media_assets WHERE account_id=$1", [owner.accountId])).rows[0].status)
+        .toBe("pending_delete");
+      await pool.query("UPDATE account_lifecycle_operations SET updated_at=clock_timestamp()-interval '11 minutes' WHERE id=$1",
+        [operation]);
+      expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
+      expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+        .toBe("succeeded");
+      await expect(backing.get(key)).rejects.toThrow();
+    } finally {
+      release();
+      await within(settled);
+    }
   });
 
   it("reaps a crashed upload reservation and its late object before terminal success", async () => {

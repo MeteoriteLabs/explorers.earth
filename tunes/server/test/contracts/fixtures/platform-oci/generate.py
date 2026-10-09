@@ -5,12 +5,13 @@ OUT=pathlib.Path(__file__).parent
 # SCHEMA_FLOOR, which is derived from EXPECTED_MUSIC_MIGRATION_ID, so it moves with every
 # migration. It was left at 42 while the committed fixtures moved to 49, which meant this
 # generator no longer reproduced its own committed output; 5.3 brought it back in step and
-# the D1/D2 launch-control migration moves it to 51.
+# the D1/D2 launch-control migration moves it to 51. Canonical numeric retirement
+# moves it to 52.
 # Note that the committed cases.json/receipt.json are pretty-printed with a one-space
 # indent while enc() writes them compact, so re-running this reformats both. The content
 # is identical either way - only the floor and each release's manifestDigest change when
 # the floor moves.
-SCHEMA_VERSION=51
+SCHEMA_VERSION=52
 INDEX='application/vnd.oci.image.index.v1+json'
 MANIFEST='application/vnd.oci.image.manifest.v1+json'
 CONFIG='application/vnd.oci.image.config.v1+json'
