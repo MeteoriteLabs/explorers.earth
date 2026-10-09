@@ -197,6 +197,8 @@ describe("replatform local authority", () => {
     ["fixture Strapi boundary mismatch", "fixture-identity-boundary"],
     ["fetch failed", "ingress-unreachable"],
     ["The operation was aborted due to timeout", "ingress-unreachable"],
+    ["Unexpected token < in JSON at position 0", "ingress-malformed-body"],
+    ["Unexpected end of JSON input", "ingress-malformed-body"],
     ["something nobody anticipated", "unclassified"],
   ])("classifies an ingress refusal without printing the probe (%#)", (raw, expected) => {
     const cause = classifyPlatformIngressFailure(new Error(`${raw} credential=synthetic-secret-value`));
@@ -208,6 +210,13 @@ describe("replatform local authority", () => {
     );
     expect(message).not.toContain("synthetic-secret-value");
     expect(message).not.toContain("/api/");
+  });
+
+  it("classifies a thrown SyntaxError as a malformed body whatever its message", () => {
+    // `response.json()` rejects with a SyntaxError whose wording is engine-specific, so
+    // the type is checked as well as the message.
+    expect(classifyPlatformIngressFailure(new SyntaxError("engine specific wording")))
+      .toBe("ingress-malformed-body");
   });
 
   it("does not mistake a non-Error rejection for a known ingress cause", () => {

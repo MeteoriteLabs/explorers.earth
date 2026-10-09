@@ -235,7 +235,7 @@ type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-res
   */
 export type PlatformIngressFailure = "canonical-route-absent" | "canonical-handler-mismatch"
   | "fixture-route-mismatch" | "fixture-handler-mismatch" | "fixture-identity-boundary"
-  | "ingress-unreachable" | "unclassified";
+  | "ingress-unreachable" | "ingress-malformed-body" | "unclassified";
 
 let failurePhase: PlatformPhase = "docker-endpoint";
 let failureCause: PlatformBuildFailure | PlatformIngressFailure | undefined;
@@ -297,6 +297,15 @@ export function classifyPlatformIngressFailure(error: unknown): PlatformIngressF
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|aborted|timed? ?out|TimeoutError/i.test(message)) {
     return "ingress-unreachable";
   }
+  /*
+   * The route answered with the expected status and then `response.json()` threw, so the
+   * body is not JSON - an HTML error page from something in front of the app, or an empty
+   * body. Separated from `unclassified` because the first observed failure of this gate in
+   * CI (`phase=ingress-check; cause=unclassified`) was neither a mismatch nor a transport
+   * error, and this is the remaining way `verifyPlatformIngress` can throw.
+   */
+  if (error instanceof SyntaxError
+      || /JSON|Unexpected token|Unexpected end of/i.test(message)) return "ingress-malformed-body";
   return "unclassified";
 }
 
