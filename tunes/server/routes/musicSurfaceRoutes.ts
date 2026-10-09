@@ -349,6 +349,10 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         subject: principal.subject,
         sessionVersion: principal.sessionVersion,
         ...(principal.subjectKind ? { subjectKind: principal.subjectKind } : {}),
+        // Inherited, not re-derived: the handshake must be revocable by the same logout
+        // that revokes the credential it was minted from.
+        ...(principal.sessionId && principal.userId
+          ? { sessionId: principal.sessionId, userId: principal.userId } : {}),
       });
       res.status(200).json({ version: "music-socket-ticket/v1", ticket });
     } catch (error) { next(error); }

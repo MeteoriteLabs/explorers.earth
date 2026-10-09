@@ -17,6 +17,19 @@ describe('Games token/native transport',()=>{
  it.each([{...validToken,expires_in:0},{...validToken,token_type:'basic'},{...validToken,access_token:'a'.repeat(4097)},{...validToken,extra:'credential'}])('rejects malformed token without catalog start',async(token)=>{const f=fixture({connect:vi.fn(()=>operation(response(token)))});const op=createGameProviderTransport(f.options).catalog('q',new AbortController().signal);await expect(op.outcome).rejects.toMatchObject({status:502});await op.settled;expect(f.c.snapshot().memory).toBe(0);});
  it('preserves first body-limit failure through stalled settlement',async()=>{let done!:()=>void;const closure=new Promise<void>(r=>done=r);const f=fixture({phaseMs:30,connect:()=>({outcome:Promise.resolve({status:200,rawHeaders:['Content-Type','application/json'],body:(async function*(){yield Buffer.alloc(65537);})(),complete:()=>true}),settled:closure,cancel:()=>{}})});const op=createGameProviderTransport(f.options).catalog('q',new AbortController().signal);await expect(op.outcome).rejects.toMatchObject({code:'PROVIDER_INVALID_RESPONSE'});expect(f.c.snapshot().memory).toBeGreaterThan(0);done();await op.settled;expect(f.c.snapshot().memory).toBe(0);});
  it('401 invalidates token and only explicit next call refreshes;429 is not empty success',async()=>{let calls=0;const f=fixture({connect:(t:NativeTarget)=>operation(response(t.url.hostname==='id.twitch.tv'?validToken:[],t.url.hostname==='id.twitch.tv'?200:++calls===1?401:429,['Retry-After','2']))});const t=createGameProviderTransport(f.options);const one=t.catalog('q',new AbortController().signal);await expect(one.outcome).rejects.toMatchObject({status:503});await one.settled;f.clock(1000);const two=t.catalog('q',new AbortController().signal);await expect(two.outcome).rejects.toMatchObject({status:429,retryAfterSeconds:2});await two.settled;expect(calls).toBe(2);});
+ /*
+  * Ticket 4.2:42's `provider_429_is_recoverable`, verbatim so a grep finds an assertion
+  * rather than documentation. The case above covers the *classification* half - a 429 is
+  * reported with its Retry-After instead of being swallowed as an empty success. This is
+  * the recovery half, which nothing drove end to end.
+  *
+  * The assertion that carries it is the last one: a 429 must **not** invalidate the cached
+  * token, so only one token flight happens across both calls. That is what separates a
+  * recoverable rate limit from a 401, which the case above shows *does* invalidate. Without
+  * it a rate-limited caller would burn a token refresh on every retry and convert a
+  * transient 429 into sustained credential traffic.
+  */
+ it('provider_429_is_recoverable',async()=>{let catalogCalls=0,tokenCalls=0;const f=fixture({connect:(t:NativeTarget)=>t.url.hostname==='id.twitch.tv'?(++tokenCalls,operation(response(validToken))):++catalogCalls===1?operation(response([],429,['Retry-After','2'])):operation(response([{id:42,name:'Game',total_rating:0,first_release_date:0}]))});const t=createGameProviderTransport(f.options);const first=t.catalog('q',new AbortController().signal);await expect(first.outcome).rejects.toMatchObject({status:429,retryAfterSeconds:2});await first.settled;f.clock(3000);const second=t.catalog('q',new AbortController().signal);const rows=await second.outcome;await second.settled;expect(rows).toHaveLength(1);expect(catalogCalls).toBe(2);expect(tokenCalls).toBe(1);});
 });
 
 // Additional bounded authority/cancellation regressions use the same private fixture constructors above.

@@ -50,3 +50,20 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 **Still unproven, and therefore still required:** the `**Done:**` clause at `:36` — "no Books flow requires Strapi" — is **not attested at an exact SHA**. The real-backend Books spec runs against a **local owned fixture only**: `books.playwright.config.ts:2` hard-requires `BOOKS_E2E_FIXTURE_PATH` and a `http://127.0.0.1:` base URL, and the lane appears in no workflow, so it has never been re-attested hosted at a named commit. `books.spec.ts:21` does install a request monitor that treats `localhost:1337`, `https://legacy-rest.invalid` and the named legacy GraphQL operations as forbidden — that is real evidence of a *fixture-local* Strapi-free run, and it is not evidence of an exact-SHA hosted one.
 
 - [ ] Re-attest the Books lane at an exact committed SHA before any claim that no Books flow requires Strapi. A local fixture pass is not that attestation.
+
+  **The static half is discharged 2026-10-09** by
+  `explorers-earth/src/features/Books/__tests__/booksStrapiBoundary.test.ts`, which walks
+  the import graph from `features/Books/index.ts` and asserts the closure executes no
+  GraphQL operation, holds no `gql` document, imports no Apollo, reads neither
+  `VITE_REST_API_URL` nor `VITE_API_URL`, and contains no Strapi REST shape. It runs on
+  every commit, so it is exact-SHA by construction, and it cannot go stale as the feature
+  grows the way a hand-listed file set does.
+
+  **This does not satisfy the obligation above**, and the test says so in its own header.
+  A closure walk proves no source path *can* reach Strapi; it proves nothing about a
+  hosted runtime, which is what a re-attestation is. What remains is narrower than it
+  was: the runtime half only.
+
+  One residue recorded rather than hidden: the closure still contains the erased
+  TypeScript interface `StrapiMedia` in two type files. A type cannot reach a server, so
+  it is 8.3's rename, and the test pins it to those two files by name.

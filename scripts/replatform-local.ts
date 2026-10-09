@@ -216,13 +216,47 @@ const RESET_INTENT = join(STATE, "reset-intent.json");
 const COMPOSE = join(ROOT, "docker-compose.replatform.yml");
 const DOCKER = process.platform === "win32" ? "docker.exe" : "docker";
 const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
-type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
-  | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check";
+export type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
+  | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check"
+  /*
+   * Ingress verification, which used to report as "receipt-check" because the phase was set
+   * before `check()` and never advanced. One label covered "the authority receipt is bad"
+   * and "a route answered the wrong thing" - unrelated failures with unrelated remedies,
+   * and `platform-fixture` has flapped on the second while the handoff explained only the
+   * first.
+   */
+  | "ingress-check";
 type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-resolution" | "compose-option"
   | "local-fixture-pull-denied" | "upstream-registry-auth" | "mixed-registry-auth"
-  | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
+  | "resource-exhaustion" | "service-health" | "build-command"
+  | "port-unavailable" | "compose-config-invalid" | "unclassified";
+/**
+  * Why an ingress probe refused, as a closed set. Carries no path, status, body or host:
+  * the probe messages do name a path, and they are never printed - only the category is.
+  */
+export type PlatformIngressFailure = "canonical-route-absent" | "canonical-handler-mismatch"
+  | "fixture-route-mismatch" | "fixture-handler-mismatch" | "fixture-identity-boundary"
+  | "ingress-unreachable" | "ingress-malformed-body" | "ingress-html-shell" | "unclassified";
+
+/**
+ * Which phases classify child output into a closed cause set, and which report bare.
+ *
+ * A named seam rather than an inline condition, because the condition is the whole
+ * behaviour: `postgres-start` failed in CI with no cause for want of being listed here,
+ * and a test asserting the classifier directly cannot see that - mutation-testing proved
+ * it, leaving seven cause cases green while the wiring was reverted. Pinned per phase.
+ */
+export function classifiesChildOutput(phase: PlatformPhase): boolean {
+  return phase === "service-build" || phase === "postgres-start";
+}
+
+/** Only a real build emits BuildKit step lines, so only a build can carry a stage. */
+export function carriesBuildStage(phase: PlatformPhase): boolean {
+  return phase === "service-build";
+}
+
 let failurePhase: PlatformPhase = "docker-endpoint";
-let failureCause: PlatformBuildFailure | undefined;
+let failureCause: PlatformBuildFailure | PlatformIngressFailure | undefined;
 type PlatformBuildStage = "base-image-pull" | "npm-build-command" | "build-command" | "unknown";
 let failureStage: PlatformBuildStage | undefined;
 
@@ -263,12 +297,67 @@ export function classifyPlatformBuildFailure(output: string): PlatformBuildFailu
   if (/manifest unknown|failed to resolve source metadata|pull access denied|not found:.*image/i.test(output)) return "image-resolution";
   if (/unknown flag|unknown shorthand flag|unsupported option/i.test(output)) return "compose-option";
   if (/no space left|out of memory|\bENOBUFS\b|cannot allocate memory/i.test(output)) return "resource-exhaustion";
+  /*
+   * Two categories a service start can hit that a build cannot, added when
+   * `phase=postgres-start` first appeared in CI with no cause at all. Both are remedied by
+   * the environment rather than by the compose file or the image, so they are worth
+   * separating from `unclassified` - that is the same reason `ingress-malformed-body`
+   * exists.
+   */
+  /*
+   * The alternatives are not stylistic. A real failure was captured by running this
+   * service's own compose definition against a host where its port is unavailable, and the
+   * daemon said:
+   *
+   *   ports are not available: exposing port TCP 127.0.0.1:51434 -> 127.0.0.1:0:
+   *   listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a socket in a way
+   *   forbidden by its access permissions.
+   *
+   * which contains none of "port is already allocated", "address already in use" or
+   * "bind for ... failed" - the three forms this arm was first written with. It would have
+   * reported `unclassified`, which is the bug this whole closed set exists to avoid, so
+   * the daemon's own prefix and the bare `bind:` form are matched too.
+   */
+  if (/ports are not available|port is already allocated|address already in use|bind for [^\s]+ failed|:\s*bind:\s/i.test(output)) return "port-unavailable";
+  if (/no such service|services\.\S+ (?:must be|Additional property)|yaml: |is invalid because|validating \S+\.yml/i.test(output)) return "compose-config-invalid";
   if (/unhealthy|dependency failed to start|timed out waiting for/i.test(output)) return "service-health";
   if (/failed to solve|did not complete successfully|npm (?:ERR!|error)/i.test(output)) return "build-command";
   return "unclassified";
 }
 
-export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure, stage?: PlatformBuildStage): string {
+export function classifyPlatformIngressFailure(error: unknown): PlatformIngressFailure {
+  const message = error instanceof Error ? error.message : "";
+  // Matched on the fixed prefixes `replatform-route-parity.ts` produces, never echoed.
+  if (message.startsWith("canonical route absent")) return "canonical-route-absent";
+  if (message.startsWith("canonical handler mismatch")) return "canonical-handler-mismatch";
+  if (message.startsWith("fixture ingress mismatch")) return "fixture-route-mismatch";
+  if (message.startsWith("fixture handler mismatch")) return "fixture-handler-mismatch";
+  if (message.startsWith("fixture Strapi boundary mismatch")) return "fixture-identity-boundary";
+  // A transport failure: nothing listening, or a probe timed out. Distinct from every
+  // mismatch above because the remedy is the fixture's state, not a route.
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|aborted|timed? ?out|TimeoutError/i.test(message)) {
+    return "ingress-unreachable";
+  }
+  /*
+   * The route answered with the expected status and then `response.json()` threw, so the
+   * body is not JSON - an HTML error page from something in front of the app, or an empty
+   * body. Separated from `unclassified` because the first observed failure of this gate in
+   * CI (`phase=ingress-check; cause=unclassified`) was neither a mismatch nor a transport
+   * error, and this is the remaining way `verifyPlatformIngress` can throw.
+   */
+  /*
+   * The SPA shell, which is the specific case `ingress-malformed-body` turned out to be
+   * hiding. A route absent from the fixture falls through to the catch-all and is answered
+   * 200 with `index.html`, so the status assertion passes and only the body gives it away.
+   * Named separately because the remedy is to mount the route.
+   */
+  if (message.startsWith("ingress served the application shell")) return "ingress-html-shell";
+  if (error instanceof SyntaxError
+      || /JSON|Unexpected token|Unexpected end of/i.test(message)) return "ingress-malformed-body";
+  return "unclassified";
+}
+
+export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure | PlatformIngressFailure, stage?: PlatformBuildStage): string {
   return `Replatform local command refused or failed; phase=${phase}${cause ? `; cause=${cause}` : ""}${stage ? `; build-stage=${stage}` : ""}; authority details redacted.\n`;
 }
 
@@ -331,10 +420,17 @@ function run(file: string, args: string[], environment = childEnvironment(), tim
     shell: false, timeout, maxBuffer: 8 * 1024 * 1024, input,
   });
   if (result.error || result.status !== 0) {
-    if (failurePhase === "service-build") {
+    /*
+     * `postgres-start` is classified with the same closed set as `service-build`. It was
+     * omitted here, so when CI started failing at `phase=postgres-start` the log carried
+     * no cause and the failure could not be told apart from a dozen others - and the
+     * details are redacted by design, so the category is the only thing that can speak.
+     * The build *stage* is deliberately not set: there is no BuildKit output to parse.
+     */
+    if (classifiesChildOutput(failurePhase)) {
       const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`;
       failureCause = classifyPlatformBuildFailure(output);
-      failureStage = classifyPlatformBuildStage(output);
+      if (carriesBuildStage(failurePhase)) failureStage = classifyPlatformBuildStage(output);
     }
     throw new Error("local subprocess failed");
   }
@@ -590,7 +686,14 @@ async function main(args: string[]): Promise<void> {
     const host = localDockerHost();
     failurePhase = "receipt-check";
     check(host, readReceipt());
-    const checked = await verifyPlatformIngress("http://127.0.0.1:51474");
+    failurePhase = "ingress-check";
+    let checked: number;
+    try {
+      checked = await verifyPlatformIngress("http://127.0.0.1:51474");
+    } catch (error) {
+      failureCause = classifyPlatformIngressFailure(error);
+      throw error;
+    }
     process.stdout.write(`${JSON.stringify({ ingressHandlersChecked: checked })}\n`);
     return;
   }

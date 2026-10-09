@@ -1,3 +1,4 @@
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // Book Utilities — slug, format helpers, rich text
 // ============================================================
@@ -173,7 +174,15 @@ export function buildCoverUrl(coverUrl: string | null | undefined): string {
   if (!coverUrl) return "";
   // If it's already an absolute URL (S3 or Google Books), use as-is
   if (coverUrl.startsWith("http")) return coverUrl;
-  // Canonical media URLs are same-origin and carry server byte authority.
-  if (coverUrl.startsWith("/api/explorers/v1/media/")) return coverUrl;
+  /*
+   * Canonical media URLs are same-origin and carry server byte authority. Matched
+   * exactly via `src/lib/canonicalMedia.ts` rather than by prefix: the prefix form also
+   * accepted a non-uuid id and anything appended after `/content`.
+   *
+   * Note for anyone comparing this with its four siblings: this helper has **no**
+   * Strapi-origin fallback - an unrecognised relative path becomes "" rather than being
+   * concatenated onto another host. That is the stricter design and is deliberate.
+   */
+  if (isCanonicalMediaPath(coverUrl)) return coverUrl;
   return "";
 }

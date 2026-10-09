@@ -120,6 +120,24 @@ export async function verifyPlatformIngress(origin: string, fetchImpl: typeof fe
         ? canonicalAbsent(probe.path, probe.status, response.status)
         : `fixture ingress mismatch: ${probe.path}`);
     }
+    /*
+     * Classify an HTML body before parsing it.
+     *
+     * CI's `platform-fixture` fails here with `cause=ingress-malformed-body`: a probe got
+     * the status it expected and then `response.json()` threw. The likeliest shape by far
+     * is the SPA shell - a route that is absent from the fixture falls through to the
+     * catch-all, which answers 200 with `index.html`, so the status check above passes and
+     * the body is HTML. That is precisely the masking ticket 1.2's route invariant exists
+     * to catch, and it is worth naming distinctly from a truncated or empty body because
+     * the remedy is different: mount the route, rather than look at what wrote the body.
+     *
+     * The thrown message still carries no path - `classifyPlatformIngressFailure` maps it
+     * to a fixed category and nothing else is printed.
+     */
+    const contentType = response.headers.get("content-type") ?? "";
+    if (/^\s*text\/html/i.test(contentType)) {
+      throw new Error("ingress served the application shell where JSON was expected");
+    }
     const body = await response.json() as Record<string, unknown>;
     const field = readField(body, probe.field);
     if (probe.value === "nonempty" ? typeof field !== "string" || !field.length : field !== probe.value) {

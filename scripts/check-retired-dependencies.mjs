@@ -41,7 +41,7 @@ const ENV_READ_ALLOWLIST = [
     file: "server/security-containment.ts",
     variable: "STRAPI_JWT_SECRET",
     reason:
-      "Read inside verifyStrapiToken's body, so it cannot fail startup. Its callers are the legacy jwt-auth-middleware (outside the closure) and security-containment's own legacy bearer path.",
+      "Read inside verifyStrapiToken's body, so it cannot fail startup. Its only caller is now security-containment's own legacy bearer path: the legacy jwt-auth-middleware was deleted on 2026-10-09, being unreachable from every entrypoint.",
     disposition: "Deleted with the legacy-music path in step 12 (8.1b/8.2).",
   },
   {
@@ -60,15 +60,19 @@ const ENV_READ_ALLOWLIST = [
   },
 ];
 
-/** Strapi-named modules permitted inside the canonical closure. */
-const MODULE_ALLOWLIST = [
-  {
-    file: "server/services/strapiIdentityGateway.ts",
-    reason:
-      "Filename only. The canonical closure imports fingerprintStrapiProof (a bare sha256) and cancelResponseBody/readBoundedResponseBody (generic Response-body helpers, also used by youtubeReadService). The StrapiIdentityGateway class is constructed only in routes/index.ts, which is outside the closure.",
-    disposition: "Move those pure helpers to a neutral module (8.1b/8.3).",
-  },
-];
+/**
+ * Strapi-named modules permitted inside the canonical closure.
+ *
+ * Empty since 2026-10-09, and that is the point of ticket 8.1a's last engineering item.
+ * The single entry was `server/services/strapiIdentityGateway.ts`, allowlisted on filename
+ * alone: the closure imported `fingerprintStrapiProof` (a bare sha256) and
+ * `cancelResponseBody`/`readBoundedResponseBody` (generic Response-body helpers also used
+ * by youtubeReadService), while the gateway class itself is constructed only in
+ * routes/index.ts, outside the closure. Those four symbols now live in
+ * `proofFingerprint.ts` and `upstreamResponseBody.ts`, so no Strapi-named module is in the
+ * closure at all and the entry would now be stale - which this scan fails on.
+ */
+const MODULE_ALLOWLIST = [];
 
 /** Constructions that would mean a canonical request can reach Strapi. */
 const CLIENT_CONSTRUCTION = /new\s+(Strapi[A-Za-z]*)\s*\(/;
@@ -116,9 +120,29 @@ function resolveImport(fromFile, specifier) {
   return null;
 }
 
-/** Blank out comments so a mention in prose is never read as code. */
+/**
+ * Blank out comments so a mention in prose is never read as code.
+ *
+ * The CRLF normalisation on the first line is load-bearing, not tidiness. Every file in
+ * this repository is CRLF, and splitting on a newline leaves a trailing carriage return
+ * on each line. In a JavaScript regex a carriage return is a line terminator, so `.` does
+ * not match it and `$` without the `m` flag anchors only at the very end of the string -
+ * which made the line-comment strip below match nothing at all. Line comments were
+ * therefore never stripped, and this function's own contract did not hold: a STRAPI_*
+ * mention inside a line comment in the canonical closure failed the scan as though it
+ * were a real read.
+ *
+ * Demonstrated by probe rather than argued: a line comment naming process.env.STRAPI_URL
+ * added to a closure module passes with this normalisation and reports a violation
+ * without it.
+ *
+ * That direction is over-strict rather than unsafe, so no violation was missed by it. It
+ * did cost real time twice, both times diagnosed as "the assertion trips on my own
+ * comment" rather than as this.
+ */
 function codeOnly(text) {
   return text
+    .replace(/\r\n/g, "\n")
     .replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, " "))
     .split("\n")
     .map((line) => line.replace(/\/\/.*$/, ""))

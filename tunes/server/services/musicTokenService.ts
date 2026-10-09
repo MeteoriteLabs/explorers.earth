@@ -43,6 +43,20 @@ export interface MusicTokenClaims {
    * value was ten minutes of full owner access.
    */
   purpose?: typeof SOCKET_TICKET_PURPOSE;
+  /**
+   * Ticket 6.1, step 5 obligation 4. The canonical session this credential was minted
+   * from, and its owner. Present only on a canonical subject.
+   *
+   * Why both: `auth_session.session_version` is the canonical session's counter while
+   * `sessionVersion` above is the *venue's*, so they cannot be compared. The check these
+   * enable is therefore "this session still exists for this user", which is precisely
+   * what logout changes - it deletes the row.
+   *
+   * Optional, so a legacy Strapi subject and any canonical credential minted before this
+   * claim existed still verify until it expires.
+   */
+  sid?: string;
+  uid?: string;
 }
 
 /** Ticket 6.3. A verified token's claims and the key ID that vouched for them. */
@@ -70,7 +84,7 @@ interface MusicTokenDependencies {
 
 const HEADER_KEYS = ["alg", "kid"] as const;
 const CLAIM_KEYS = ["aud", "exp", "iat", "iss", "jti", "sessionVersion", "sub"] as const;
-const OPTIONAL_CLAIM_KEYS = ["subjectKind", "purpose"] as const;
+const OPTIONAL_CLAIM_KEYS = ["subjectKind", "purpose", "sid", "uid"] as const;
 export const CANONICAL_SUBJECT_KIND = "canonical-account";
 export const SOCKET_TICKET_PURPOSE = "music-socket";
 /**
@@ -79,6 +93,12 @@ export const SOCKET_TICKET_PURPOSE = "music-socket";
  * ticket must be far shorter without weakening that invariant.
  */
 export const SOCKET_TICKET_LIFETIME_SECONDS = 60;
+/**
+ * Better Auth ids for `auth_session.id` and `auth_user.id`, both `text`. Bounded and
+ * restricted to URL-safe characters so a claim cannot carry a SQL fragment or an
+ * unbounded string into the session lookup.
+ */
+const SESSION_BINDING_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 const CANONICAL_SUBJECT_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const KID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/;
@@ -112,15 +132,24 @@ export class MusicTokenService {
    * venue row. Additive: it does not widen MusicIdentityProjection, so the legacy
    * path and its call sites keep their guarantees.
    */
-  mintCanonical(input: { accountId: string; musicUserId: number; sessionVersion: number }): MintedMusicToken {
+  mintCanonical(input: {
+    accountId: string; musicUserId: number; sessionVersion: number;
+    sessionId?: string; userId?: string;
+  }): MintedMusicToken {
     if (!CANONICAL_SUBJECT_PATTERN.test(input.accountId)
         || !Number.isSafeInteger(input.musicUserId)
         || input.musicUserId < 1
         || !Number.isSafeInteger(input.sessionVersion)
-        || input.sessionVersion < 1) {
+        || input.sessionVersion < 1
+        || (input.sessionId !== undefined && !SESSION_BINDING_PATTERN.test(input.sessionId))
+        || (input.userId !== undefined && !SESSION_BINDING_PATTERN.test(input.userId))
+        // Neither half is useful alone: the session cannot be checked without the user it
+        // must belong to, so refuse a partial binding rather than mint an uncheckable one.
+        || (input.sessionId === undefined) !== (input.userId === undefined)) {
       throw new MusicTokenError("TOKEN_INVALID", "Music credential cannot be minted for this identity.");
     }
-    return this.issue(input.accountId, input.sessionVersion, CANONICAL_SUBJECT_KIND);
+    return this.issue(input.accountId, input.sessionVersion, CANONICAL_SUBJECT_KIND, undefined,
+      input.sessionId, input.userId);
   }
 
   /**
@@ -128,14 +157,23 @@ export class MusicTokenService {
    * the subject and session version so revocation still applies, and nothing else: it is
    * not accepted by any HTTP surface, so it cannot stand in for a credential.
    */
-  mintSocketTicket(input: { subject: string; sessionVersion: number; subjectKind?: typeof CANONICAL_SUBJECT_KIND }): MintedMusicToken {
+  mintSocketTicket(input: {
+    subject: string; sessionVersion: number; subjectKind?: typeof CANONICAL_SUBJECT_KIND;
+    sessionId?: string; userId?: string;
+  }): MintedMusicToken {
     const canonical = input.subjectKind === CANONICAL_SUBJECT_KIND;
     if (!(canonical ? CANONICAL_SUBJECT_PATTERN : SUBJECT_PATTERN).test(input.subject)
         || !Number.isSafeInteger(input.sessionVersion)
-        || input.sessionVersion < 1) {
+        || input.sessionVersion < 1
+        || (input.sessionId !== undefined && !SESSION_BINDING_PATTERN.test(input.sessionId))
+        || (input.userId !== undefined && !SESSION_BINDING_PATTERN.test(input.userId))
+        || (input.sessionId === undefined) !== (input.userId === undefined)) {
       throw new MusicTokenError("TOKEN_INVALID", "Music socket ticket cannot be minted for this identity.");
     }
-    return this.issue(input.subject, input.sessionVersion, input.subjectKind, SOCKET_TICKET_PURPOSE);
+    // The handshake inherits the credential's session binding, so an open socket is
+    // rechecked against the same session owner HTTP is.
+    return this.issue(input.subject, input.sessionVersion, input.subjectKind, SOCKET_TICKET_PURPOSE,
+      input.sessionId, input.userId);
   }
 
   private issue(
@@ -143,6 +181,8 @@ export class MusicTokenService {
     sessionVersion: number,
     subjectKind?: typeof CANONICAL_SUBJECT_KIND,
     purpose?: typeof SOCKET_TICKET_PURPOSE,
+    sid?: string,
+    uid?: string,
   ): MintedMusicToken {
     const iat = Math.floor(this.now() / 1_000);
     const exp = iat + (purpose ? SOCKET_TICKET_LIFETIME_SECONDS : this.configuration.tokenLifetimeSeconds);
@@ -157,6 +197,7 @@ export class MusicTokenService {
       sessionVersion,
       ...(subjectKind ? { subjectKind } : {}),
       ...(purpose ? { purpose } : {}),
+      ...(sid && uid ? { sid, uid } : {}),
     };
     const unsigned = `${encodeJson(header)}.${encodeJson(claims)}`;
     return {
@@ -284,7 +325,13 @@ function validateClaims(
       || (claims.sessionVersion ?? 0) < 1
       || (claims.subjectKind !== undefined && claims.subjectKind !== CANONICAL_SUBJECT_KIND)
       || (claims.subjectKind === CANONICAL_SUBJECT_KIND && !CANONICAL_SUBJECT_PATTERN.test(claims.sub))
-      || (claims.purpose !== undefined && claims.purpose !== SOCKET_TICKET_PURPOSE)) return invalid();
+      || (claims.purpose !== undefined && claims.purpose !== SOCKET_TICKET_PURPOSE)
+      || (claims.sid !== undefined && (typeof claims.sid !== "string" || !SESSION_BINDING_PATTERN.test(claims.sid)))
+      || (claims.uid !== undefined && (typeof claims.uid !== "string" || !SESSION_BINDING_PATTERN.test(claims.uid)))
+      // A half-bound token is uncheckable, so it is invalid rather than treated as unbound.
+      || ((claims.sid === undefined) !== (claims.uid === undefined))
+      // Only a canonical subject carries a session binding.
+      || (claims.sid !== undefined && claims.subjectKind !== CANONICAL_SUBJECT_KIND)) return invalid();
   const iat = claims.iat as number;
   const exp = claims.exp as number;
   const lifetime = exp - iat;

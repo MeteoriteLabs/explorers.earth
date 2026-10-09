@@ -14,6 +14,14 @@ export interface MusicPrincipal {
    * re-derived; absent means a legacy Strapi subject.
    */
   subjectKind?: typeof CANONICAL_SUBJECT_KIND;
+  /**
+   * Ticket 6.1, step 5 obligation 4. The canonical session this authority derives from.
+   * Carried so a socket ticket minted from this principal inherits the binding, and so an
+   * open socket can be rechecked against the same session owner HTTP is. Absent on a
+   * legacy subject and on a canonical credential minted before the claim existed.
+   */
+  sessionId?: string;
+  userId?: string;
 }
 
 export interface MusicCredentialSubjectState {
@@ -30,6 +38,12 @@ export interface MusicCredentialSubjectRepository {
   resolveCredentialSubject(subject: string): Promise<MusicCredentialSubjectState>;
   /** ADR-008. Resolves a canonical account subject through account_music_identity. */
   resolveCanonicalCredentialSubject(accountId: string): Promise<CanonicalMusicCredentialSubjectState>;
+  /**
+   * Ticket 6.1. Whether the canonical session a credential was minted from is still live
+   * for that user. Deliberately the same question `authorizeOperation` asks of HTTP, so
+   * the two transports cannot disagree about whether somebody is logged in.
+   */
+  isCanonicalSessionLive(sessionId: string, userId: string): Promise<boolean>;
 }
 
 export type MusicPrincipalErrorCode =
@@ -61,6 +75,9 @@ export interface MusicPrincipalSubject {
   readonly sub: string;
   readonly sessionVersion: number;
   readonly subjectKind?: string;
+  /** Ticket 6.1. The session binding, retained so each recheck re-verifies it. */
+  readonly sid?: string;
+  readonly uid?: string;
   /** The key ID that vouched for the credential this subject was resolved from. */
   readonly signingKeyId: string;
 }
@@ -92,6 +109,10 @@ export class MusicPrincipalService {
         sessionVersion: verified.sessionVersion,
         signingKeyId: verified.signingKeyId,
         ...(verified.subjectKind ? { subjectKind: verified.subjectKind } : {}),
+        // Retained deliberately, unlike expiry/audience/purpose above: this is the one
+        // claim an open connection must keep re-checking, because it is the only thing
+        // logout changes.
+        ...(verified.sid && verified.uid ? { sid: verified.sid, uid: verified.uid } : {}),
       },
       principal,
     };
@@ -127,7 +148,9 @@ export class MusicPrincipalService {
     if (!this.tokens.acceptsSigningKey(claims.signingKeyId)) {
       throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
     }
-    if (claims.subjectKind === CANONICAL_SUBJECT_KIND) return this.resolveCanonical(claims.sub, claims.sessionVersion);
+    if (claims.subjectKind === CANONICAL_SUBJECT_KIND) {
+      return this.resolveCanonical(claims.sub, claims.sessionVersion, claims.sid, claims.uid);
+    }
     const state = await this.repository.resolveCredentialSubject(claims.sub);
     const identity = state.identity;
     if (!identity || state.tombstoned || identity.strapiUserDocumentId !== claims.sub) {
@@ -158,7 +181,12 @@ export class MusicPrincipalService {
    * sessionVersion is the venue's users.session_version, not the canonical web
    * session's, because that is the counter Music credential revocation bumps.
    */
-  private async resolveCanonical(accountId: string, claimedSessionVersion: number): Promise<MusicPrincipal> {
+  private async resolveCanonical(
+    accountId: string,
+    claimedSessionVersion: number,
+    sessionId?: string,
+    userId?: string,
+  ): Promise<MusicPrincipal> {
     const state = await this.repository.resolveCanonicalCredentialSubject(accountId);
     const venue = state.venue;
     if (!venue || state.tombstoned) {
@@ -173,10 +201,29 @@ export class MusicPrincipalService {
     if (venue.sessionVersion !== claimedSessionVersion) {
       throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
     }
+    /*
+     * Ticket 6.1, step 5 obligation 4: a logged-out owner must lose socket authority as
+     * well as HTTP access.
+     *
+     * Everything above this point reads the *venue*, and logout does not touch the venue -
+     * `users.session_version` moves only on suspend, block, delete and recovery. So before
+     * this check an open socket outlived its session: HTTP answered 401 because
+     * `authorizeOperation` looks for the `auth_session` row that logout deletes, while the
+     * socket's per-event recheck still matched and kept delivering owner events.
+     *
+     * This is the same question that path asks, so the two transports now revoke together.
+     * It runs on the credential resolve AND on every socket recheck, because the recheck is
+     * the only thing standing between a logged-out tab and the next owner event.
+     */
+    if (sessionId !== undefined && userId !== undefined
+        && !(await this.repository.isCanonicalSessionLive(sessionId, userId))) {
+      throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+    }
     return {
       subjectKind: CANONICAL_SUBJECT_KIND,
       musicUserId: venue.musicUserId,
       subject: accountId,
+      ...(sessionId && userId ? { sessionId, userId } : {}),
       // Opaque stable per-account identifier, used for feature allowlists and cohort
       // hashing. The canonical account id is the right value; note it buckets
       // differently from a legacy Strapi subject, so percentage rollouts re-bucket an

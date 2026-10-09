@@ -57,9 +57,11 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 
 **NOT-STARTED, confirmed by negative evidence** against source at `225d83e5`:
 
-- `tunes/server/explorers/categories/guides.ts` does not exist (`tunes/server/explorers/categories/` holds only `movies.ts`, `movieGenreSeeds.ts`).
+- `tunes/server/explorers/categories/guides.ts` does not exist (`tunes/server/explorers/categories/` holds only `movies.ts`, `movieGenreSeeds.ts`). **True as written, and misleading as a work item — re-measured 2026-10-09:** the Guides module exists at `tunes/server/application/guides.ts` (197 lines). The capability landed in the application layer rather than at the path this ticket named, which is why the sequence records Guides' backend as done while this line reads as an absence. Only the path differs.
 - `explorers-earth/src/features/Guides/api/explorersAdapter.ts` does not exist.
-- `tunes/server/test/explorers/guides.test.ts`, `guides.integration.test.ts` and `explorers-earth/e2e/replatform/guides.spec.ts` do not exist.
+- ~~`tunes/server/test/explorers/guides.test.ts`, `guides.integration.test.ts` and `explorers-earth/e2e/replatform/guides.spec.ts` do not exist.~~ **Stale — re-measured 2026-10-09: two of the three exist.** `guides.test.ts` is 254 lines and **29 cases**; `guides.integration.test.ts` is 553 lines and **33 cases**. Only the `e2e/replatform/guides.spec.ts` lane is genuinely absent, and `explorers-earth/e2e/guides.spec.ts` exists outside the replatform manifest — the same distinction 6.3 needed: browser coverage exists, milestone-manifest evidence does not, and the manifest is coordinator-allocated.
+
+  Worth separating from "exists": **`guides.integration.test.ts` was in no workflow at all**, so its 33 cases had never run in CI. `guides.test.ts` is covered from 2026-10-09 by the `contracts` job's `server/test` tree argument, but an integration file is excluded from that config by `vitest.config.ts:24` and must be named on the `database` job instead.
 - No Guide or guide-section aggregate exists anywhere in `tunes/shared`.
 
 ### Guides is schema-unreachable, not merely unimplemented

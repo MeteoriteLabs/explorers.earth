@@ -179,13 +179,13 @@ describe("PlaceOverview public theme surface", () => {
       media_details: { imageDetails: [] },
       Place_Details: {
         ...place.Place_Details,
-        Photos: ["https://saved-media.s3.amazonaws.com/place-photo.jpg"],
+        Photos: ["/api/explorers/v1/media/55555555-5555-4555-8555-555555555555/content"],
       },
     } });
 
     expect(screen.getByAltText("Place")).toHaveAttribute(
       "src",
-      "https://saved-media.s3.amazonaws.com/place-photo.jpg",
+      "/api/explorers/v1/media/55555555-5555-4555-8555-555555555555/content",
     );
   });
 
@@ -198,14 +198,14 @@ describe("PlaceOverview public theme surface", () => {
       },
       Place_Details: {
         ...place.Place_Details,
-        Photos: ["https://saved-media.s3.amazonaws.com/seo-photo.jpg"],
+        Photos: ["/api/explorers/v1/media/66666666-6666-4666-8666-666666666666/content"],
       },
     } });
 
     await waitFor(() => {
       expect(document.head.querySelector('meta[property="og:image"]')).toHaveAttribute(
         "content",
-        "https://saved-media.s3.amazonaws.com/seo-photo.jpg",
+        "/api/explorers/v1/media/66666666-6666-4666-8666-666666666666/content",
       );
     });
   });

@@ -191,12 +191,83 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
    travel in the payload. The UI contract is the `review` state in `ReactivateConfirm.tsx`,
    which shows the reference and deliberately offers **no action**, since re-entering a
    stuck flow is how one stuck account becomes a loop.
-3. **The real Google callback acceptance — OPEN and not satisfiable by a fixture.** The
-   provider-adapter boundary is well covered
+3. **The real Google callback acceptance — DISCHARGED 2026-10-09, executed and observed.**
+   The provider-adapter boundary was already well covered
    (`server/test/explorers-recovery-callback.integration.test.ts`, 8 cases), but every one
-   of those drives a simulated callback. 2.4's grooming focus states a fixture cannot stand
-   in for the live callback, and C6 keeps it mandatory.
-4. **Music socket revocation — OPEN, owned by 6.1, not by this map.** The review-focus item
+   of those drives a *simulated* callback. 2.4's grooming focus states a fixture cannot
+   stand in for the live callback, and C6 kept it mandatory. So it was run for real.
+
+   **Run.** `tunes/scripts/live-google-local.ts --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15`
+   at commit `f16b6202` on a clean tree, 2026-10-08T21:30Z. The harness starts a disposable
+   PostgreSQL 15, migrates it, composes `createCanonicalApp` with a freshly generated
+   `EXPLORERS_AUTH_SECRET` and the Google client from `tunes/.env.oauth.local`, and serves
+   the real Vite app at `http://localhost:5175`. Configured callback:
+   `http://localhost:5175/api/auth/callback/google`. Database
+   `music_uat_fa41c9b9aed1194cff0e2e1c69711226`, at floor
+   **`0051_explorers_launch_controls`** — so this also exercised the new schema floor.
+
+   **This is the canonical Better Auth callback, not the legacy one.** Worth stating because
+   the live product's Google flow goes to `https://api.localqr.earth/api/connect/google`
+   (Strapi), and a receipt against that would attest to the wrong thing. The harness passes
+   only `EXPLORERS_PUBLIC_ORIGIN`, `EXPLORERS_AUTH_SECRET` and the Google client into
+   `createCanonicalApp`; no `STRAPI_*` variable reaches it, and the run log contains no
+   Strapi contact.
+
+   **Who did what.** TK completed Google consent in a browser with their own account. The
+   before and after state was read directly out of the disposable database. No credential
+   was handled by the writer of this receipt.
+
+   **Before — captured empty, which is what makes the after evidence:**
+
+       auth_user=0  auth_account=0  auth_session=0  creator_accounts=0
+
+   **After:**
+
+   | Observation | Value |
+   |---|---|
+   | `auth_user` | 1 |
+   | `auth_account` | 1, `provider_id='google'`, provider subject 21 chars, access and id tokens both present |
+   | `auth_session` | 1, expires in 168h, `ip_address` present, token 32 chars |
+   | `creator_accounts` | 1, `handle` **NULL**, `onboarding_status='incomplete'`, `status='active'`, `locale='en'`, `public_profile=true`, `revision=1` |
+   | `initial_account_bindings` | one row binding user `uQ3Ak2…` to account `75341800-ddb1-4b4a-bfff-d9129bc98b49` |
+   | `account_music_identity` | **0** |
+
+   **What that demonstrates.** An inactive-to-active first login through the real provider
+   completes; a normal session is issued with the ordinary 7-day lifetime; exactly one
+   canonical account is provisioned, keyed by a **UUID** rather than a Strapi document id;
+   the account-to-identity binding is recorded once; and the owner is routed to onboarding
+   because `onboarding_status` is `incomplete` with no handle yet — which is the lifecycle
+   screen 2.4's line 48 asks to see working, and is what TK observed in the browser.
+
+   `account_music_identity` staying at 0 is correct, not a gap: `AuthSyncManager` provisions
+   the Music identity only after verified authentication **and completed onboarding**, so a
+   first login that stops at onboarding must not create one.
+
+   **What this receipt does NOT cover**, so it is not read wider than it is:
+
+   - Completing onboarding, and the transition to `onboarding_status='complete'`.
+   - "A deleted account must not be automatically recreated with the old content merely by
+     repeating Google login" (2.4's lifecycle boundary). That needs a prior deletion in the
+     same database and a second consent; it is covered by simulation in
+     `explorers-recovery-callback.integration.test.ts` and not by this run.
+   - Cancelled consent, wrong identity, ambiguous binding and issuance failure. All eight
+     of those remain covered by the simulated suite, which 2.4 treats as separate evidence —
+     this receipt does not replace it.
+   - Hosted execution. This ran on a developer machine; obligation 5 is still open.
+4. **Music socket revocation — DISCHARGED 2026-10-09 in `e809d57b`.** It was open, and the record of why is kept below because the argument for it being *already* satisfied was wrong in an instructive way, and the fix was the thing that argument assumed away.
+
+   The argument, recorded because it is persuasive for three of its four steps: the socket's per-event recheck calls `resolveSubject`/`resolveCanonical`, which refuse a tombstoned, suspended or pending-deletion venue **and** a `sessionVersion` mismatch, and `musicSocketServer.ts:188-205` disconnects on refusal, with tests covering it. All true.
+
+   Where it fails: **nothing bumps the venue's `session_version` on logout.** That column is moved only by Music revocation operations - suspend, block, delete, recovery. There is no canonical logout handler and nothing revoking the Music credential on sign-out; `useLogout` calls `closeLocalMusicSession()` and `authClient.signOut()`, both **client side**. A cooperative client close is not revocation: a crashed tab, a modified client or a socket open elsewhere keeps receiving owner events after sign-out, while HTTP is correctly denied because owner routes require a live web-session Actor.
+
+   So suspension and deletion revoked both transports; **logout revoked only HTTP**. That was the residual, and it was exactly what this obligation's wording asks for.
+
+   **Closed by binding a canonical Music credential to the session that minted it**, and rechecking that session with the same predicate `authorizeOperation` applies to HTTP - the `auth_session` row exists, belongs to this user, and has not expired. The handshake ticket inherits the binding, so an open socket is rechecked against the same session as owner HTTP and the two transports revoke together.
+
+   Receipt: the measured before/after is in `e809d57b`'s message. Proof is
+   `canonical-music-identity.integration.test.ts` - "revokes both transports on logout, not just HTTP", which asserts HTTP still 401s, that the venue's `session_version` is deliberately unchanged (the reason the old recheck passed), and that the credential and the open socket's recheck both now refuse. Mutation-checked: removing the recheck fails exactly that case. Four unit cases in `music-principal.test.ts` carry the branch coverage the 100% Music gate requires, including that an unbound credential consults no session, so a credential minted before the claim existed keeps working until it expires.
+
+   Two claims were needed rather than one: `auth_session.session_version` is the canonical session's counter while a Music credential's `sessionVersion` is the venue's, so they cannot be compared. A partial binding is refused at mint and at verification, since a session id with no user cannot be looked up and would silently skip the check. The review-focus item
    "a logged-out or suspended owner must lose socket authority as well as HTTP access" has
    no receipt here. `tunes/server/music/canonicalMusicPrincipal.ts:8` documents that socket
    credentials belong to 6.1. L3 above covers HTTP and tab revocation only, and must not be
@@ -225,10 +296,13 @@ outside the behaviour set. Nothing here is counted as covered anywhere in this m
 ## What this map does not license
 
 - It does not retire any existing coverage. 2.4 is explicit that old workflow coverage must
-  not be retired against a partial map, and this map is partial — three open obligations remain.
-- It does not give a percentage. All 22 behaviour rows now have receipts, but reporting
-  "22/22" would be misleading while obligations 3, 4 and 5 are open:
-  those are contract and attestation gaps that no behaviour row can discharge, and one of
-  them — the real Google callback — is a prerequisite 2.4 says a fixture cannot satisfy.
+  not be retired against a partial map, and this map is partial — **one open obligation
+  remains (5, hosted attestation)**. Obligation 3 was discharged on 2026-10-09 by an
+  executed run and obligation 4 on the same day in `e809d57b`.
+- It does not give a percentage. All 22 behaviour rows have receipts, and obligations 3 and
+  4 are now discharged — the real Google callback by an executed, observed run rather than
+  by simulation, and Music socket revocation by closing the logout gap. Reporting "22/22"
+  would still be misleading while **obligation 5** is open: hosted execution is an
+  attestation gap that no behaviour row can discharge.
 - It does not substitute for the original enumeration, which remains lost. See the first
   section.

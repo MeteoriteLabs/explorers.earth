@@ -7,6 +7,26 @@ describe('retained canonical Movies presentation',()=>{
   const d={id:'rec',entityId:'entity',entity:{provenance:null},displayTitle:null,effectiveMovieDetails:facts,movieContext:{region:'US',selectedProviderIds:null},movieTerms:[],providerMedia:{poster:{url:'/owned/poster'},backdrop:null,cast:[{slot:{kind:'cast',ordinal:1,personId:1,creditId:'same'},media:{url:'/owned/cast'}}]},note:{html:'<p>Note</p>'},userRating:0,mediaIds:['snapshot']};
   const movie=movieViewModel(d as never,{collectionId:'list',recommendationId:'rec',displayOrder:3} as never);
   expect(movie.tmdb_id).toBe('');expect(movie.title).toBe('Untitled movie');expect(movie.runtime).toBe(0);expect(movie.tmdb_rating).toBe(0);expect(movie.user_rating).toBe(0);expect(movie.poster_path).toBe('/owned/poster');expect(movie.cast_details).toHaveLength(10);expect(movie.cast_details?.[0].profile_url).toBeNull();expect(movie.cast_details?.[1].profile_url).toBe('/owned/cast');expect(movie.Media).toEqual([{documentId:'snapshot',url:'/api/explorers/v1/media/snapshot/content'}]);
+  /*
+   * Ticket 4.1:45 "no fabricated year", which was the one of its three named field
+   * assertions this case did not already make. `runtime` 0 above covers "runtime zero
+   * versus null" and the cast/provider ordering covers "arrays preserved"; nothing
+   * asserted the year.
+   *
+   * The distinction the requirement is after: an unknown year must stay absent, not
+   * become "" or 0 or a guess. `yearText` is nullable in the contract and the view model
+   * passes it straight through, so this pins that it is never defaulted - and the typeof
+   * check is what stops a later `?? ''` from satisfying `toBeNull`'s looser cousins.
+   */
+  expect(movie.year).toBeNull();
+  expect(typeof movie.year).not.toBe('string');
+  expect(typeof movie.year).not.toBe('number');
+  // The same rule for every other nullable provider fact: :40 requires them explicit
+  // rather than defaulted, and a zero here would be indistinguishable from a real zero.
+  expect(movie.original_title).toBeNull();
+  expect(movie.director).toBeNull();
+  expect(movie.overview).toBeNull();
+  expect(movie.season_count).toBeNull();
  });
  it('keeps first provider occurrence before stable priority sorting and selected order',()=>{
   const p=(providerId:number,name:string,priority:number)=>({providerId,name,priority,logoUrl:null});

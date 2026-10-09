@@ -57,7 +57,7 @@ Qualification package PLACES-CORE selects only Places core owned scenarios. It m
 
 - `tunes/server/explorers/categories/places.ts` does not exist. `tunes/server/explorers/categories/` contains only `movies.ts` and `movieGenreSeeds.ts`.
 - `explorers-earth/src/features/Favorites/api/explorersAdapter.ts` does not exist. The only `explorersAdapter.ts` files in the repository are under `src/features/Games/api/` and `src/features/Movies/api/`.
-- `tunes/server/test/explorers/places.test.ts`, `places.integration.test.ts` and `explorers-earth/e2e/replatform/places.spec.ts` do not exist.
+- ~~`tunes/server/test/explorers/places.test.ts`~~ **delivered 2026-10-09**; `places.integration.test.ts` was already delivered (15 cases). `explorers-earth/e2e/replatform/places.spec.ts` still does not exist and is coordinator-reserved.
 
 The `:29`–`:45` implementation and acceptance requirements are unchanged by this note; none is satisfied.
 
@@ -80,7 +80,7 @@ two owner decisions recorded below.
 | `tunes/server/test/explorers/places.integration.test.ts` | delivered (15 cases) |
 | `tunes/server/explorers/categories/places.ts` | **not created** — same reasoning as the other categories; Places' seeded taxonomy is the one thing that would justify it, and that is blocked (below) |
 | `explorers-earth/src/features/Favorites/api/explorersAdapter.ts` | **not started** — blocked |
-| `tunes/server/test/explorers/places.test.ts` | **not written** |
+| `tunes/server/test/explorers/places.test.ts` | **delivered 2026-10-09 (11 cases)** — migrations 0046-0048 declarations plus the contract schemas; `publicPlaceContact` is covered by the integration suite instead of twice |
 | `explorers-earth/e2e/replatform/places.spec.ts` | **not started** — needs a fixture runner and protected-manifest identities |
 
 What the storage proves, each assertion checked by breaking it:
@@ -122,7 +122,7 @@ deferred to its own ticket. The consumer half proceeded on those answers.
 | `pages/Favorites.tsx` (not in the original list) | migrated |
 | `features/PublicHome/components/PublicPlaceCard.tsx` | reads the public projection, which this ticket delivered; no change needed |
 | `tunes/server/explorers/categories/places.ts` | not created, as recorded above |
-| `tunes/server/test/explorers/places.test.ts` | not written |
+| `tunes/server/test/explorers/places.test.ts` | delivered 2026-10-09 (11 cases) |
 | `explorers-earth/e2e/replatform/places.spec.ts` | not started - needs a fixture runner and protected-manifest identities |
 
 ### Places has no category-wide top picks (found by the contained navigation lane, 2026-10-08)

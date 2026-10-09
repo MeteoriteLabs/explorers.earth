@@ -1,3 +1,4 @@
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // Game Utilities — slug, format helpers, rich text
 // ============================================================
@@ -143,9 +144,16 @@ export function deduplicateGames<T extends { documentId: string; igdb_id?: numbe
 // ─────────────────────────────────────────────────────────────
 export function buildCoverUrl(coverUrl: string | null | undefined): string {
   if (!coverUrl) return "";
-  if (coverUrl.startsWith("/api/explorers/v1/media/")) return coverUrl;
   // If it's already an absolute URL (S3, IGDB), use as-is
   if (coverUrl.startsWith("http")) return coverUrl;
+  /*
+   * Ticket 7.1. This builder already handled the canonical route, so unlike its four
+   * siblings it was not broken - but it matched by prefix
+   * (`startsWith("/api/explorers/v1/media/")`), which also accepts a non-uuid id and
+   * anything appended after `/content`. Replaced with the exact shared match so all five
+   * agree, and so nothing else under that prefix can be returned as media.
+   */
+  if (isCanonicalMediaPath(coverUrl)) return coverUrl;
   // If it's a Strapi relative path, prefix with the REST API URL
   if (coverUrl.startsWith("/")) {
     const base =

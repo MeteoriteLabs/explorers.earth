@@ -96,3 +96,36 @@ Two clauses had no real-stack proof, and both are now in `music-socket-handshake
 - **`:33` revocation while connected.** `MusicLifecycleService` revokes through `MusicOwnerSocketRegistry`, so the test connects a live owner socket, revokes through that registry and asserts the socket actually drops. This is the epic's `:54` obligation that a suspended owner loses socket authority and not only HTTP access, which no HTTP-only test can show.
 
 **Not claimed.** `:33`'s "two browser contexts" is covered in browser form by the fixture lanes above and at real-stack level by the socket cases here, not by a single two-context real-stack browser lane. `e2e/replatform/music-public.spec.ts` and `music-public-revision-contract.test.ts` are named in this ticket and remain absent; their behaviour is covered under other names, listed above. The reason a single lane was not built is the two-origin topology recorded in [ticket 6.2](ticket-6-2.md).
+
+### Re-measured 2026-10-09: both "absent" artifacts, and the reconnect obligation
+
+The "Not claimed" note above says `e2e/replatform/music-public.spec.ts` and
+`music-public-revision-contract.test.ts` "remain absent", and that the reconnect case is
+what is left. Measured, two of those three statements need qualifying.
+
+**`music-public-revision-contract.test.ts` exists — under a transposed name.** It is
+`tunes/server/test/public-music-revision-contract.test.ts` (`public-music`, not
+`music-public`), with two cases: *"advances and transactionally publishes the exact
+low-cardinality invalidation"* and *"keeps one explicit mutation-to-kind-to-transaction-to-
+revision oracle"*. Recorded as absent, it invites someone to write a duplicate.
+
+It was, however, **in no workflow at all** until 2026-10-09 — it sits in the `server/test`
+root, which was part of the 79-of-176 ungated set. The `contracts` job now runs that tree,
+so it executes for the first time. "Exists" and "runs" were two different claims here, and
+only the first was true before today.
+
+**The reconnect case IS covered in a real browser lane, and that lane runs in CI.**
+`e2e/music-harness-contract.spec.ts` holds *"C15 probes the exact Explorer ws path through
+one bounded disconnect and reconnect"*, and `e2e/music-public-contract.spec.ts` holds three
+more reconnect cases including *"reconnect failure metadata is fixed, sanitized, and valid
+only on the failed reconnect terminal"*. Both run under
+`.github/workflows/frontend-e2e-qualification.yml` — the harness spec by name in the
+`remaining-contained-contracts` lane, and the public-contract spec through
+`playwright.music-permissions.config.ts`'s `testMatch`.
+
+**So what is genuinely absent is narrower than "the reconnect case":** a Music spec inside
+`e2e/replatform/`, in the milestone manifest. That is a coordinator-allocated artifact —
+`scripts/replatform-e2e.mjs` pins `scopeContents` to a hardcoded lane set under the
+`delivered-auth-profile-books` scope identifier, so adding a lane changes what the
+milestone means. The *behaviour* is exercised in a browser today; the *milestone evidence*
+is not. Those should not be conflated, and this ticket's remaining line is the second one.

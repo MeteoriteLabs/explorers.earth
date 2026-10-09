@@ -22,7 +22,11 @@ import {
   validatePlatformComposeModel,
   formatPlatformFailure,
   classifyPlatformBuildFailure,
+  classifyPlatformIngressFailure,
   buildAndStartPlatformServices,
+  classifiesChildOutput,
+  carriesBuildStage,
+  type PlatformPhase,
 } from "../../../../scripts/replatform-local";
 
 const receipt = {
@@ -160,6 +164,72 @@ describe("replatform local authority", () => {
     expect(classifyPlatformBuildFailure("sensitive but unknown failure")).toBe("unclassified");
   });
 
+  /*
+   * `phase=postgres-start` appeared in CI on 2026-10-09 carrying no cause, because `run`
+   * classified only `service-build`. These cases pin both the two categories a service
+   * start can hit that a build cannot, and the ordering that makes them reachable: a
+   * "port is already allocated" message also contains "Error", and an invalid-service
+   * message also matches the image-resolution "not found" shape, so an earlier arm could
+   * swallow either.
+   */
+  it.each([
+    ["Error response from daemon: driver failed programming external connectivity: Bind for 127.0.0.1:51434 failed: port is already allocated", "port-unavailable"],
+    ["listen tcp 127.0.0.1:51474: bind: address already in use", "port-unavailable"],
+    /*
+     * Captured verbatim from the daemon by running this service's own compose definition
+     * against a host where 51434 is unavailable. Kept exactly as emitted, because the
+     * first version of the regex matched none of it and would have said `unclassified`.
+     */
+    ["Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:51434 -> 127.0.0.1:0: listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a socket in a way forbidden by its access permissions.", "port-unavailable"],
+    ["no such service: postgres", "compose-config-invalid"],
+    ["validating docker-compose.replatform.yml: services.postgres Additional property healthchek is not allowed", "compose-config-invalid"],
+    ["yaml: line 12: did not find expected key", "compose-config-invalid"],
+    // Still reaches the pre-existing arms, so adding these two narrowed nothing.
+    ["dependency failed to start: container postgres is unhealthy", "service-health"],
+    ["no space left on device", "resource-exhaustion"],
+  ])("classifies a postgres-start refusal into the closed set (%#)", (raw, expected) => {
+    const cause = classifyPlatformBuildFailure(`${raw}\ncredential=synthetic-secret-value`);
+    expect(cause).toBe(expected);
+    const message = formatPlatformFailure("postgres-start", cause);
+    expect(message).toBe(
+      `Replatform local command refused or failed; phase=postgres-start; cause=${expected}; authority details redacted.\n`,
+    );
+    // The whole point of the closed set: the category speaks, the output never does.
+    expect(message).not.toContain("synthetic-secret-value");
+    expect(message).not.toContain("51434");
+    expect(message).not.toContain("51474");
+  });
+
+  it("carries no build stage on a postgres-start refusal, because there is no build output", () => {
+    // A stage would be fabricated here - `classifyPlatformBuildStage` parses BuildKit
+    // step lines, and a service start produces none, so it would always say "unknown".
+    expect(formatPlatformFailure("postgres-start", "port-unavailable")).not.toContain("build-stage=");
+    expect(classifyPlatformBuildStage("no such service: postgres")).toBe("unknown");
+  });
+
+  /*
+   * This is the assertion the cause-set cases above cannot make. Mutation-testing them
+   * found it: reverting the wiring that routes `postgres-start` to the classifier left all
+   * of them green, because they call the classifier themselves. The behaviour under test
+   * is *which phases get classified at all*, so it needs its own seam and its own case.
+   */
+  it("classifies exactly the two phases that produce child output", () => {
+    const classified: PlatformPhase[] = ["service-build", "postgres-start"];
+    const bare: PlatformPhase[] = ["docker-endpoint", "compose-model", "resource-inventory",
+      "secret-inventory", "postgres-attestation", "service-check", "receipt-check", "ingress-check"];
+    for (const phase of classified) expect(classifiesChildOutput(phase)).toBe(true);
+    // `ingress-check` is in this list on purpose: it has its own classifier, driven by the
+    // probe's error rather than by child process output, and must not be routed here.
+    for (const phase of bare) expect(classifiesChildOutput(phase)).toBe(false);
+    // Every phase is accounted for, so a new one cannot be added without a decision here.
+    expect(new Set([...classified, ...bare]).size).toBe(10);
+  });
+
+  it("attaches a build stage to the build phase only", () => {
+    expect(carriesBuildStage("service-build")).toBe(true);
+    expect(carriesBuildStage("postgres-start")).toBe(false);
+  });
+
   it.each([
     ["tunes-migrate Error pull access denied for explorers-replatform-local-tunes, repository does not exist or may require 'docker login'", "local-fixture-pull-denied"],
     ["Error pull access denied for docker.io/library/explorers-replatform-local-tunes:c4, repository does not exist", "local-fixture-pull-denied"],
@@ -175,6 +245,53 @@ describe("replatform local authority", () => {
     expect(formatPlatformFailure("service-build", cause)).toBe(
       `Replatform local command refused or failed; phase=service-build; cause=${expected}; authority details redacted.\n`,
     );
+  });
+
+  /*
+   * Ingress verification reports under its own phase and its own closed set of causes.
+   *
+   * It used to report `phase=receipt-check` with no cause, because the phase was set before
+   * the receipt check and never advanced - so a route answering wrongly was indistinguishable
+   * from a bad authority receipt. `platform-fixture` has flapped on exactly this, and the
+   * handoff documented a registry rate limit, which is a different failure with a different
+   * remedy.
+   *
+   * The probe messages name a path and are still never printed; only the category is.
+   */
+  it.each([
+    ["canonical route absent from the fixture route graph: /api/explorers/v1/me (expected 200, received 404).", "canonical-route-absent"],
+    ["canonical handler mismatch: /api/explorers/v1/me is mounted but reason was not explorers-owner.", "canonical-handler-mismatch"],
+    ["fixture ingress mismatch: /api/legacy/thing", "fixture-route-mismatch"],
+    ["fixture handler mismatch: /api/legacy/thing", "fixture-handler-mismatch"],
+    ["fixture Strapi boundary mismatch", "fixture-identity-boundary"],
+    ["fetch failed", "ingress-unreachable"],
+    ["The operation was aborted due to timeout", "ingress-unreachable"],
+    ["ingress served the application shell where JSON was expected", "ingress-html-shell"],
+    ["Unexpected token < in JSON at position 0", "ingress-malformed-body"],
+    ["Unexpected end of JSON input", "ingress-malformed-body"],
+    ["something nobody anticipated", "unclassified"],
+  ])("classifies an ingress refusal without printing the probe (%#)", (raw, expected) => {
+    const cause = classifyPlatformIngressFailure(new Error(`${raw} credential=synthetic-secret-value`));
+    expect(cause).toBe(expected);
+    const message = formatPlatformFailure("ingress-check", cause);
+    expect(message).toBe(
+      `Replatform local command refused or failed; phase=ingress-check; cause=${expected}; authority details redacted.
+`,
+    );
+    expect(message).not.toContain("synthetic-secret-value");
+    expect(message).not.toContain("/api/");
+  });
+
+  it("classifies a thrown SyntaxError as a malformed body whatever its message", () => {
+    // `response.json()` rejects with a SyntaxError whose wording is engine-specific, so
+    // the type is checked as well as the message.
+    expect(classifyPlatformIngressFailure(new SyntaxError("engine specific wording")))
+      .toBe("ingress-malformed-body");
+  });
+
+  it("does not mistake a non-Error rejection for a known ingress cause", () => {
+    expect(classifyPlatformIngressFailure("canonical route absent")).toBe("unclassified");
+    expect(classifyPlatformIngressFailure(undefined)).toBe("unclassified");
   });
 
   it("accepts only the declared local and acceptance seed commands", () => {

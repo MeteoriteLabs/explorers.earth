@@ -419,6 +419,27 @@ export class MusicIdentityRepository {
    * tombstone recorded against those legacy ids still applies to it. A venue with no
    * legacy ids simply matches nothing, which is accurate rather than assumed.
    */
+  /**
+   * Ticket 6.1, step 5 obligation 4. Whether the canonical session that minted a Music
+   * credential is still live for that user.
+   *
+   * The predicate is deliberately the one `authorizeOperation` already applies to owner
+   * HTTP - the row exists, belongs to this user, and has not expired - so the two
+   * transports cannot disagree about whether somebody is logged in. `session_version` is
+   * NOT compared here: that column is the canonical session's counter, while a Music
+   * credential's `sessionVersion` is the venue's, and comparing the two would reject every
+   * credential.
+   */
+  async isCanonicalSessionLive(sessionId: string, userId: string): Promise<boolean> {
+    const result = await this.pool.query<{ live: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM auth_session
+          WHERE id=$1 AND user_id=$2
+            AND expires_at>(clock_timestamp() AT TIME ZONE 'UTC')
+       ) AS live`, [sessionId, userId]);
+    return result.rows[0]?.live === true;
+  }
+
   async resolveCanonicalCredentialSubject(accountId: string): Promise<{
     venue?: CanonicalMusicVenue;
     tombstoned: boolean;

@@ -5,7 +5,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Términos y Condiciones para LocalQR",
+          "text": "Términos y Condiciones para explorers.earth",
           "type": "text"
         }
       ]
@@ -41,7 +41,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Lea atentamente estos Términos y Condiciones (\"Términos\", \"Términos y Condiciones\") antes de utilizar la aplicación web de LocalQR, accesible en [your app URL] (el \"Servicio\"), operada por [Your Company Name] (\"nosotros\" o \"nuestro\").",
+          "text": "Lea atentamente estos Términos y Condiciones (\"Términos\", \"Términos y Condiciones\") antes de utilizar la aplicación web de explorers.earth, accesible en [your app URL] (el \"Servicio\"), operada por [Your Company Name] (\"nosotros\" o \"nuestro\").",
           "type": "text"
         }
       ]
@@ -86,7 +86,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR proporciona recomendaciones personalizadas basadas en la ubicación y funciones relacionadas. Usted acepta usar el Servicio solo para fines lícitos y de acuerdo con estos Términos.",
+          "text": "explorers.earth proporciona recomendaciones personalizadas basadas en la ubicación y funciones relacionadas. Usted acepta usar el Servicio solo para fines lícitos y de acuerdo con estos Términos.",
           "type": "text"
         }
       ]
@@ -230,7 +230,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR se basa en los datos de ubicación para proporcionar recomendaciones relevantes. Al usar el Servicio, usted da su consentimiento para que recopilemos y usemos su información de ubicación de acuerdo con nuestra Política de Privacidad.",
+          "text": "explorers.earth se basa en los datos de ubicación para proporcionar recomendaciones relevantes. Al usar el Servicio, usted da su consentimiento para que recopilemos y usemos su información de ubicación de acuerdo con nuestra Política de Privacidad.",
           "type": "text"
         }
       ]
@@ -275,7 +275,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "Todo el contenido, las funciones y la funcionalidad del Servicio, incluidos, entre otros, logotipos, texto, gráficos, software y datos, son propiedad exclusiva de LocalQR o sus licenciantes y están protegidos por derechos de autor, marcas registradas y otras leyes aplicables.",
+          "text": "Todo el contenido, las funciones y la funcionalidad del Servicio, incluidos, entre otros, logotipos, texto, gráficos, software y datos, son propiedad exclusiva de explorers.earth o sus licenciantes y están protegidos por derechos de autor, marcas registradas y otras leyes aplicables.",
           "type": "text"
         }
       ]
@@ -320,7 +320,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "LocalQR puede incluir enlaces o integraciones con servicios o API de terceros. No somos responsables del contenido, las políticas o las prácticas de estos servicios de terceros.",
+          "text": "explorers.earth puede incluir enlaces o integraciones con servicios o API de terceros. No somos responsables del contenido, las políticas o las prácticas de estos servicios de terceros.",
           "type": "text"
         }
       ]
@@ -365,7 +365,7 @@
       "type": "paragraph",
       "children": [
         {
-          "text": "En la máxima medida permitida por la ley aplicable, LocalQR no será responsable de ningún daño indirecto, incidental, especial, consecuente o punitivo —incluida la pérdida de ganancias, datos o fondo de comercio— que surja de su uso o incapacidad para usar el Servicio.",
+          "text": "En la máxima medida permitida por la ley aplicable, explorers.earth no será responsable de ningún daño indirecto, incidental, especial, consecuente o punitivo —incluida la pérdida de ganancias, datos o fondo de comercio— que surja de su uso o incapacidad para usar el Servicio.",
           "type": "text"
         }
       ]
@@ -618,23 +618,23 @@
   "cookies": [],
   "faqs": [
     {
-      "Question": "¿Qué es LocalQR?",
-      "Answer": "LocalQR le permite crear y compartir guías de viaje sencillas mediante enlaces y códigos QR.Agrega lugares, sugerencias, mapas y fotografías, y compártelos en cualquier lugar.",
+      "Question": "¿Qué es explorers.earth?",
+      "Answer": "explorers.earth le permite crear y compartir guías de viaje sencillas mediante enlaces y códigos QR.Agrega lugares, sugerencias, mapas y fotografías, y compártelos en cualquier lugar.",
       "Sequence": 1
     },
     {
-      "Question": "¿Quién puede crear una guía en LocalQR?",
+      "Question": "¿Quién puede crear una guía en explorers.earth?",
       "Answer": "Cualquiera: viajeros, locales, personas influyentes, anfitriones, cafeterías, hoteles o empresas.",
       "Sequence": 2
     },
     {
-      "Question": "¿LocalQR es de uso gratuito?",
-      "Answer": "Sí.LocalQR es gratis para siempre.Puede crear su código QR, agregar recomendaciones ilimitadas y realizar un seguimiento de análisis básicos sin costo.Las funciones premium para empresas y análisis avanzados están disponibles a través de nuestros planes pagos.",
+      "Question": "¿explorers.earth es de uso gratuito?",
+      "Answer": "Sí.explorers.earth es gratis para siempre.Puede crear su código QR, agregar recomendaciones ilimitadas y realizar un seguimiento de análisis básicos sin costo.Las funciones premium para empresas y análisis avanzados están disponibles a través de nuestros planes pagos.",
       "Sequence": 3
     },
     {
       "Question": "¿Necesito descargar una aplicación?",
-      "Answer": "No. LocalQR funciona completamente en tu navegador: escanea o toca y listo.",
+      "Answer": "No. explorers.earth funciona completamente en tu navegador: escanea o toca y listo.",
       "Sequence": 4
     },
     {
@@ -649,12 +649,12 @@
     },
     {
       "Question": "¿Qué son las melodías locales?",
-      "Answer": "Local Tunes es una función dentro de LocalQR que te permite agregar listas de reproducción de Spotify/Apple/YouTube Music a tus guías, dándole a los lugares su propia vibra y estado de ánimo.",
+      "Answer": "Local Tunes es una función dentro de explorers.earth que te permite agregar listas de reproducción de Spotify/Apple/YouTube Music a tus guías, dándole a los lugares su propia vibra y estado de ánimo.",
       "Sequence": 7
     },
     {
       "Question": "¿Necesito una cuenta separada para Local Tunes?",
-      "Answer": "No. Su cuenta LocalQR funciona tanto para LocalQR como para LocalTunes.",
+      "Answer": "No. Su cuenta explorers.earth funciona tanto para explorers.earth como para LocalTunes.",
       "Sequence": 8
     },
     {

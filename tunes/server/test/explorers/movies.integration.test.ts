@@ -74,3 +74,148 @@ it('rejects changing a taxonomy parent category beneath its unchanged children',
 it('requires TMDB provenance for nonempty companion genres while retaining manual empty facts',async()=>{const db=await pool.connect();try{await db.query('BEGIN');const id=(await db.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Forged manual genres','manual') RETURNING id")).rows[0].id;await db.query("INSERT INTO movie_entity_details(entity_id,media_type,genres) VALUES($1,'movie',ARRAY['Action'])",[id]);await db.query("INSERT INTO movie_entity_provider_genres(entity_id,position,provider_genre_id,name) VALUES($1,0,28,'Action')",[id]);await expect(db.query('COMMIT')).rejects.toMatchObject({code:'23514'});}finally{await db.query('ROLLBACK');db.release();}const a=await persona(),e=await command(a,'post','/entities/resolve',{kind:'manual',category:'movies',details:{title:'Still manual'}});expect(e.status).toBe(200);expect(e.body.entity).toMatchObject({origin:'manual',provenance:null,details:{genres:[]}});});
 
 it('preserves nonempty TMDB genre provenance when an identity is deleted or reparented',async()=>{const {a,b}=await companionPair();await expect(pool.query("DELETE FROM entity_identifiers WHERE entity_id=$1 AND provider='tmdb'",[a])).rejects.toMatchObject({code:'23514'});await pool.query("DELETE FROM entity_identifiers WHERE entity_id=$1 AND provider='tmdb'",[b]);await expect(pool.query("UPDATE entity_identifiers SET entity_id=$2 WHERE entity_id=$1 AND provider='tmdb'",[a,b])).rejects.toMatchObject({code:'23514'});});
+
+/**
+ * The upstream stub reports provider genre 999999, which is deliberately not one of the 35
+ * reviewed TMDB mappings, so a resolve refuses with MOVIE_GENRE_MAPPING_UNAVAILABLE until
+ * it is mapped. `:46` maps it for `movie` only; the cases below resolve `tv` as well, so
+ * both kinds are mapped here. Idempotent, because the suite shares one database.
+ */
+async function mapFixtureGenre() {
+ for (const kind of ['movie','tv'] as const) {
+  const existing=await pool.query("SELECT 1 FROM movie_provider_genre_terms WHERE external_kind=$1 AND provider_genre_id=999999",[kind]);
+  if (existing.rowCount) continue;
+  const term=(await pool.query("INSERT INTO taxonomy_terms(category,slug) VALUES('movies',$1) RETURNING id",[`fixture-${randomUUID()}`])).rows[0].id;
+  await pool.query("INSERT INTO taxonomy_term_translations(term_id,locale,label) VALUES($1,'en','Deterministic fixture genre')",[term]);
+  await pool.query("INSERT INTO movie_provider_genre_terms(external_kind,provider_genre_id,term_id) VALUES($1,999999,$2) ON CONFLICT(external_kind,provider_genre_id) DO NOTHING",[kind,term]);
+ }
+}
+
+/**
+ * Movies need their own recommendation helper: the shared `recommendation()` above omits
+ * `movieContext`, and the movies write path refuses without it with a 422. The existing
+ * case at `:48` passes it inline for the same reason.
+ */
+async function movieRecommendation(owner:{cookie:string},collection:any,entityId:string) {
+ const result=await command(owner,'post','/recommendations',{category:'movies',entityId,collectionId:collection.id,
+  expectedCollectionRevision:1,userRating:8,movieContext:{region:'US',selectedProviderIds:[1]}});
+ expect(result.status,JSON.stringify(result.body)).toBe(201);return result.body.recommendation;
+}
+
+/*
+ * The two cases ticket 4.1:39 mandates by name. Both were recorded as "does not exist by
+ * that name anywhere in source", so the names are verbatim from the ticket and a grep for
+ * them now finds a real assertion rather than documentation.
+ *
+ * `:43` specifies the shapes: resolve fixture movie ID 42 and TV ID 42 and assert different
+ * canonical IDs with preserved media_type and season count only where supplied; then A
+ * updates title/note/rating while B recommends the same movie, and B's effective values
+ * plus the entity source stay unchanged.
+ */
+it('movie_and_tv_same_id_remain_distinct',async()=>{
+ await mapFixtureGenre();
+ const a=await persona();
+ const base={kind:'provider',category:'movies',provider:'tmdb',externalKind:'movie',externalId:'42'};
+ const movie=await command(a,'post','/entities/resolve',base);expect(movie.status,JSON.stringify(movie.body)).toBe(200);
+ const tv=await command(a,'post','/entities/resolve',{...base,externalKind:'tv'});expect(tv.status,JSON.stringify(tv.body)).toBe(200);
+
+ // Two entities. The provider's id is identical on both, so canonical identity has to be
+ // keyed by kind as well - otherwise one would overwrite the other's facts.
+ expect(tv.body.entity.id).not.toBe(movie.body.entity.id);
+ expect(movie.body.entity.details.mediaType).toBe('movie');
+ expect(tv.body.entity.details.mediaType).toBe('tv');
+ expect(movie.body.entity.provenance?.externalId).toBe('42');
+ expect(tv.body.entity.provenance?.externalId).toBe('42');
+ expect(tv.body.entity.provenance?.externalKind).toBe('tv');
+
+ // Season count only where supplied: the stub reports number_of_seasons for tv only, and
+ // the contract refines `mediaType==='tv' || seasonCount===null`, so a movie must not
+ // acquire a zero.
+ expect(movie.body.entity.details.seasonCount).toBeNull();
+ expect(tv.body.entity.details.seasonCount).toBe(0);
+
+ // Independent collections: each is recommendable into its own list, and neither
+ // membership leaks into the other.
+ const movieList=await list(a),tvList=await list(a);
+ const movieRec=await movieRecommendation(a,movieList,movie.body.entity.id);
+ const tvRec=await movieRecommendation(a,tvList,tv.body.entity.id);
+ expect(movieRec.id).not.toBe(tvRec.id);
+ const members=await pool.query(
+  `SELECT ci.collection_id,r.entity_id FROM collection_items ci
+     JOIN recommendations r ON r.id=ci.recommendation_id
+    WHERE ci.collection_id=ANY($1::uuid[])`,
+  [[movieList.id,tvList.id]]);
+ expect(members.rowCount).toBe(2);
+ expect(new Set(members.rows.map(row=>row.entity_id)).size).toBe(2);
+ const byList=new Map(members.rows.map(row=>[row.collection_id,row.entity_id]));
+ expect(byList.get(movieList.id)).toBe(movie.body.entity.id);
+ expect(byList.get(tvList.id)).toBe(tv.body.entity.id);
+});
+
+it('creator_note_does_not_mutate_catalog_or_other_creator',async()=>{
+ await mapFixtureGenre();
+ const a=await persona(),b=await persona();
+ const base={kind:'provider',category:'movies',provider:'tmdb',externalKind:'movie',externalId:'42'};
+ const resolvedByA=await command(a,'post','/entities/resolve',base);expect(resolvedByA.status).toBe(200);
+ const entityId=resolvedByA.body.entity.id;
+
+ /*
+  * The shared catalog row, joined across both tables that hold it: `entities` carries
+  * title and origin, and the provider facts live in `movie_entity_details`. There is no
+  * `details` column on `entities`.
+  */
+ const catalogSnapshot=async(id:string)=>(await pool.query(
+  `SELECT e.title,e.origin,d.media_type,d.original_title,d.year_text,d.genres,d.director,
+          d.runtime_minutes,d.provider_rating,d.overview,d.season_count,d.watch_providers,d.cast_details
+     FROM entities e LEFT JOIN movie_entity_details d ON d.entity_id=e.id WHERE e.id=$1`,[id])).rows[0];
+ const catalogBefore=await catalogSnapshot(entityId);
+
+ // A recommends it, then edits the three things a creator owns: title (as a display
+ // override), note and rating.
+ const listA=await list(a);const recA=await movieRecommendation(a,listA,entityId);
+ await pool.query(
+  'INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$2,$3)',
+  [recA.id,a.accountId,{originalTitle:"A private retitle"}]);
+ await pool.query(
+  `UPDATE recommendations SET note=$2,user_rating=3 WHERE id=$1`,
+  [recA.id,{version:1,format:'quill-html',html:'<p>A note from A</p>'}]);
+
+ /*
+  * B recommends the same movie. The resolve must hand back the same shared catalog entity:
+  * if it forked a second one, every isolation assertion below would pass for the wrong
+  * reason, so that is asserted rather than assumed.
+  */
+ const resolvedByB=await command(b,'post','/entities/resolve',base);expect(resolvedByB.status).toBe(200);
+ expect(resolvedByB.body.entity.id).toBe(entityId);
+ const listB=await list(b);const recB=await movieRecommendation(b,listB,entityId);
+
+ /*
+  * B's effective values are B's own: no title override, no note, B's own rating. The
+  * override join is scoped by account, which is the thing under test - probed by
+  * unscoping it, which makes B inherit A's override and fails this case.
+  */
+ const effectiveB=(await pool.query(
+  `SELECT r.user_rating,r.note,o.display_values FROM recommendations r
+     LEFT JOIN recommendation_display_overrides o
+            ON o.recommendation_id=r.id AND o.account_id=r.account_id
+    WHERE r.id=$1`,[recB.id])).rows[0];
+ expect(effectiveB.user_rating).toBe(8);
+ expect(effectiveB.note).toBeNull();
+ expect(effectiveB.display_values).toBeNull();
+ expect(JSON.stringify(effectiveB)).not.toContain('private retitle');
+ expect(JSON.stringify(effectiveB)).not.toContain('A note from A');
+
+ // And the shared catalog row is unchanged by A's edits: a creator's note is never allowed
+ // to become provider truth.
+ expect(await catalogSnapshot(entityId)).toEqual(catalogBefore);
+ expect(catalogBefore.origin).toBe('provider');
+
+ // A still sees A's own edits, so the isolation is mutual rather than a dropped write.
+ const effectiveA=(await pool.query(
+  `SELECT r.user_rating,o.display_values FROM recommendations r
+     LEFT JOIN recommendation_display_overrides o
+            ON o.recommendation_id=r.id AND o.account_id=r.account_id
+    WHERE r.id=$1`,[recA.id])).rows[0];
+ expect(effectiveA.user_rating).toBe(3);
+ expect(effectiveA.display_values).toEqual({originalTitle:"A private retitle"});
+});

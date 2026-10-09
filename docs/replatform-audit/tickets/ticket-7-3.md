@@ -34,7 +34,25 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 
 **Existing:** all category E2E specs, dedicated public/theme/Music configs, package scripts and CI jobs qualified by Epic 1. **Create:** `docs/replatform/evidence/milestone-2.md` during execution; the evidence document contains actual run results, not prefilled PASS entries.
 
-- [ ] Run the complete frontend unit suite, backend unit suite and applicable disposable-database integration suite using existing package scripts; preserve required coverage gates or replace obsolete paths with equivalent behavioral coverage in the same change.
+- [x] Run the complete frontend unit suite, backend unit suite and applicable disposable-database integration suite using existing package scripts; preserve required coverage gates or replace obsolete paths with equivalent behavioral coverage in the same change.
+
+  **Run 2026-10-09 at `03cfede6` on a clean tree. Record:**
+  [`docs/replatform/evidence/2026-10-09/local-automated-7-3/record.md`](../../replatform/evidence/2026-10-09/local-automated-7-3/record.md),
+  written in the schema `evidence/README.md` prescribes. Frontend **325 files / 4554
+  tests**; frontend critical-coverage gate **16 files / 441 tests** at `perFile` 100%;
+  tunes critical-coverage gate **24 files / 629 tests** with statements 2010/2010,
+  branches 1939/1939, functions 288/288, lines 1745/1745; disposable-database integration
+  **8 passed / 8 environment-skipped / 0 failed, 122 tests** on a fresh `postgres:15-alpine`.
+  No coverage gate was lowered and no path replaced, so the "or replace" branch did not apply.
+
+  Two things the record states rather than smooths over: the backend unit suite did **not**
+  complete locally - its authoritative result is CI's `contracts` job on run `37872412216`,
+  which runs the whole `server/test` tree on a clean checkout and passed - and one frontend
+  test failed once, then passed three times in isolation and once in a full re-run, with
+  concurrent suite execution as the probable cause.
+
+  **This closes `:35` only.** The browser, QA-provider and owner-UAT obligations at
+  `:36`-`:41` are untouched, and the record's `skippedReason` names what each needs.
 - [ ] Run all new real API scenarios through the reviewed per-category guarded runners for every category that has a landed producer, each entered with its own exact scope token, owned-disposable acknowledgement and fresh owned receipt directory, at desktop and mobile projects; run retained Music full-stack/capability suites through the commands pinned by Epic 6. *(Corrected 2026-10-05: the historical spelling `npm run platform:test:e2e -- --suite all --milestone 2 --project desktop-chromium --environment local` does not exist — see the verification section below. Every behavioral obligation of the original step is retained: all nine categories, both projects, real API, no browser mocks.)*
 - [ ] Run applicable baseline presentation suites, keyboard/accessibility checks and desktop/mobile visual comparisons. Fail on unexpected required scenario skips; record baseline defects separately.
 - [ ] On QA, exercise Google login and each external provider with nonproduction configuration. Record provider quotas/outages as blocked checks, not successful fixture tests.

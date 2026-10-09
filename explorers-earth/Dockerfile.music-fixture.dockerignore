@@ -116,8 +116,6 @@ explorers-earth/src/features/AppsAndTools/hooks/*
 explorers-earth/src/features/AppsAndTools/types/*
 !explorers-earth/src/features/AppsAndTools/utils/
 explorers-earth/src/features/AppsAndTools/utils/*
-!explorers-earth/src/features/Authentication/api/
-explorers-earth/src/features/Authentication/api/*
 !explorers-earth/src/features/Authentication/components/
 explorers-earth/src/features/Authentication/components/*
 !explorers-earth/src/features/Authentication/hooks/
@@ -554,16 +552,12 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/AppsAndTools/index.ts
 !explorers-earth/src/features/AppsAndTools/types/index.ts
 !explorers-earth/src/features/AppsAndTools/utils/appHelpers.ts
-!explorers-earth/src/features/Authentication/api/mutation.ts
-!explorers-earth/src/features/Authentication/api/userQueries.ts
 !explorers-earth/src/features/Authentication/components/AuthForm.tsx
 !explorers-earth/src/features/Authentication/data.ts
 !explorers-earth/src/features/Authentication/hooks/useCurrentUser.ts
 !explorers-earth/src/features/Books/api/booksClient.ts
 !explorers-earth/src/features/Books/api/booksViewModel.ts
-!explorers-earth/src/features/Books/api/mutation.ts
 !explorers-earth/src/features/Books/api/publicBooksContinuation.ts
-!explorers-earth/src/features/Books/api/query.ts
 !explorers-earth/src/features/Books/api/useBookListCommands.ts
 !explorers-earth/src/features/Books/api/useBooksNavigation.ts
 !explorers-earth/src/features/Books/api/useBooksOwnerContent.ts
@@ -584,11 +578,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Books/types/index.ts
 !explorers-earth/src/features/Books/utils/bookHelpers.ts
 !explorers-earth/src/features/Favorites/api/explorersAdapter.ts
-!explorers-earth/src/features/Favorites/api/mutation.ts
 !explorers-earth/src/features/Favorites/api/placesClient.ts
 !explorers-earth/src/features/Favorites/api/placesCommands.ts
 !explorers-earth/src/features/Favorites/api/placesViewModel.ts
-!explorers-earth/src/features/Favorites/api/query.ts
 !explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx
 !explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx
 !explorers-earth/src/features/Favorites/components/AddPlaceOverlay.tsx
@@ -637,8 +629,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/api/guideListWrites.ts
 !explorers-earth/src/features/Guides/api/guidesClient.ts
 !explorers-earth/src/features/Guides/api/guidesViewModel.ts
-!explorers-earth/src/features/Guides/api/mutations.ts
-!explorers-earth/src/features/Guides/api/queries.ts
 !explorers-earth/src/features/Guides/components/ActivityCard.tsx
 !explorers-earth/src/features/Guides/components/BudgetInputModal.tsx
 !explorers-earth/src/features/Guides/components/CreateGuidePage.tsx
@@ -809,7 +799,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Products/index.ts
 !explorers-earth/src/features/Products/types/index.ts
 !explorers-earth/src/features/Products/utils/productHelpers.ts
-!explorers-earth/src/features/Profile/api/UserStatus.ts
 !explorers-earth/src/features/Profile/api/mutation.ts
 !explorers-earth/src/features/Profile/api/profileClient.ts
 !explorers-earth/src/features/Profile/api/query.ts
@@ -1023,6 +1012,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/layouts/publicShellReadiness.ts
 !explorers-earth/src/lib/apolloCache.ts
 !explorers-earth/src/lib/authClient.ts
+!explorers-earth/src/lib/canonicalMedia.ts
 !explorers-earth/src/lib/explorersApiClient.ts
 !explorers-earth/src/lib/localTunesApiClient.ts
 !explorers-earth/src/lib/musicCredentialStore.ts
@@ -1037,7 +1027,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/Contact.tsx
 !explorers-earth/src/pages/Cookies.tsx
 !explorers-earth/src/pages/EmailConfirmed.tsx
-!explorers-earth/src/pages/EmailVerification.tsx
 !explorers-earth/src/pages/Favorites.tsx
 !explorers-earth/src/pages/ForgotPassword.tsx
 !explorers-earth/src/pages/GoogleAuthRedirect.tsx

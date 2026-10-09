@@ -22,7 +22,7 @@ import {
   validateMusicTokenConfiguration,
   type MusicTokenConfiguration,
 } from "../services/musicTokenService";
-import { fingerprintStrapiProof } from "../services/strapiIdentityGateway";
+import { fingerprintStrapiProof } from "../services/proofFingerprint";
 
 const NOW = 1_800_000_000_000;
 const CURRENT_SECRET = Buffer.alloc(32, 0x41).toString("base64url");

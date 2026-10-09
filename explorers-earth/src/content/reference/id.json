@@ -5,23 +5,23 @@
   "cookies": [],
   "faqs": [
     {
-      "Question": "Apa itu LocalQR?",
-      "Answer": "LocalQR memungkinkan Anda membuat dan berbagi panduan perjalanan sederhana menggunakan tautan dan kode QR.Tambahkan tempat, tips, peta, dan foto — dan bagikan di mana saja.",
+      "Question": "Apa itu explorers.earth?",
+      "Answer": "explorers.earth memungkinkan Anda membuat dan berbagi panduan perjalanan sederhana menggunakan tautan dan kode QR.Tambahkan tempat, tips, peta, dan foto — dan bagikan di mana saja.",
       "Sequence": 1
     },
     {
-      "Question": "Siapa yang dapat membuat panduan di LocalQR?",
+      "Question": "Siapa yang dapat membuat panduan di explorers.earth?",
       "Answer": "Siapa saja — wisatawan, lokal, influencer, tuan rumah, kafe, hotel, atau bisnis.",
       "Sequence": 2
     },
     {
-      "Question": "Apakah LocalQR gratis untuk digunakan?",
-      "Answer": "Ya.LocalQR gratis selamanya.Anda dapat membuat kode QR, menambahkan rekomendasi tanpa batas, dan melacak analisis dasar tanpa biaya.Fitur premium untuk bisnis dan analitik tingkat lanjut tersedia melalui paket berbayar kami.",
+      "Question": "Apakah explorers.earth gratis untuk digunakan?",
+      "Answer": "Ya.explorers.earth gratis selamanya.Anda dapat membuat kode QR, menambahkan rekomendasi tanpa batas, dan melacak analisis dasar tanpa biaya.Fitur premium untuk bisnis dan analitik tingkat lanjut tersedia melalui paket berbayar kami.",
       "Sequence": 3
     },
     {
       "Question": "Apakah saya perlu mengunduh aplikasi?",
-      "Answer": "Tidak. LocalQR berfungsi sepenuhnya di browser Anda — pindai atau ketuk dan Anda langsung masuk.",
+      "Answer": "Tidak. explorers.earth berfungsi sepenuhnya di browser Anda — pindai atau ketuk dan Anda langsung masuk.",
       "Sequence": 4
     },
     {
@@ -36,12 +36,12 @@
     },
     {
       "Question": "Apa itu Lagu Lokal?",
-      "Answer": "Lagu Lokal adalah fitur di dalam LocalQR yang memungkinkan Anda menambahkan daftar putar Spotify/Apple/YouTube Music ke panduan Anda — memberikan nuansa dan suasana hati tersendiri pada suatu tempat.",
+      "Answer": "Lagu Lokal adalah fitur di dalam explorers.earth yang memungkinkan Anda menambahkan daftar putar Spotify/Apple/YouTube Music ke panduan Anda — memberikan nuansa dan suasana hati tersendiri pada suatu tempat.",
       "Sequence": 7
     },
     {
       "Question": "Apakah saya memerlukan akun terpisah untuk Lagu Lokal?",
-      "Answer": "Tidak. Akun LocalQR Anda berfungsi untuk LocalQR dan LocalTunes.",
+      "Answer": "Tidak. Akun explorers.earth Anda berfungsi untuk explorers.earth dan LocalTunes.",
       "Sequence": 8
     },
     {

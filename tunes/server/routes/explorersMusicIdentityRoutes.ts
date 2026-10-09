@@ -52,7 +52,17 @@ export function setupExplorersMusicIdentityRoutes(
       if (venue.identityStatus === "pending_deletion") {
         throw new AuthorizationError(403, "FORBIDDEN", "This Music identity is pending deletion");
       }
+      // The session binding travels with the credential so logout revokes it, and so a
+      // socket ticket minted from it inherits the same check. Only a web-session Actor
+      // reaches here; requireActor refuses anything else.
+      // Both halves or neither: mintCanonical refuses a partial binding, because a session
+      // id with no user cannot be checked against auth_session.
+      const sessionBinding = actor.credential.kind === "web-session"
+        && actor.credential.sessionId && actor.userId
+        ? { sessionId: actor.credential.sessionId, userId: actor.userId }
+        : {};
       const credential = await dependencies.mintCanonical({
+        ...sessionBinding,
         accountId: ensured.accountId,
         musicUserId: venue.musicUserId,
         sessionVersion: venue.sessionVersion,

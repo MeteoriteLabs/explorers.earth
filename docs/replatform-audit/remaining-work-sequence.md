@@ -282,11 +282,68 @@ screen is the long-term sign-up page. Neither blocks Strapi retirement.
 - The blocking prerequisite is done: [the frozen requirement-to-receipt map](lifecycle-requirement-receipt-map.md). Writer dispatch is no longer gated on it.
 - Three findings from writing it. The stated "18+3" enumeration **does not exist in the repo** - only the figure does - so the map's denominator is derived from the actual contract surface and says so. It comes to **19 + 3**; my first draft came to 18 + 3 only because I had omitted the held-completion fence the ticket names. And the ticket's own C1 and C4 are partly stale: the two held-feedback case names are committed but **unexecuted** (10 of 12 declared), and the legacy spec's retired `auth-storage`/`mock-jwt-token-xyz` assertions are already gone with the canonical lane registered in `frontend-e2e-qualification.yml:122`.
 - 21 of 22 behaviour rows have receipts. Two of the map's obligations are now **done**: the typed terminal/pending/unknown observation union and the manual-review DTO, both on the existing `/recovery/status` route. Doing them showed C3 is wrong on one point that mattered - a client which lost its response **could not** re-observe, because `requireRecoveryPrincipal` requires an unconsumed proof and a suspended-or-pending account, so the re-read returned 403 and a terminal deletion was unreportable. That needed a **security boundary change** (a separate read-only observation authority), called out in the map for the owner to veto.
-- All 22 behaviour rows now have receipts, the held-completion fence included - it was already covered at `e2e/replatform/lifecycle.spec.ts:202`, where a `for` loop generates both cases, which is why a line-anchored `test(` grep missed it. **Three obligations remain and none is a behaviour gap:** the **real Google callback** which the ticket says a fixture cannot satisfy, **Music socket revocation** owned by 6.1, and **hosted attestation** of the browser receipts.
+- All 22 behaviour rows now have receipts, the held-completion fence included - it was already covered at `e2e/replatform/lifecycle.spec.ts:202`, where a `for` loop generates both cases, which is why a line-anchored `test(` grep missed it. **One obligation remains and it is not a behaviour gap: hosted attestation** of the browser receipts. **Music socket revocation closed 2026-10-09** (`e809d57b`): logout revoked only HTTP because the socket recheck read the venue, which logout does not touch; a canonical credential is now bound to its session and rechecked against it, so both transports revoke together. The third — the **real Google callback**, which the ticket says a fixture cannot satisfy — was executed and observed on 2026-10-09 against the canonical Better Auth callback at schema floor 0051, with the before state captured empty; the receipt and what it deliberately does not cover are in [the frozen map](lifecycle-requirement-receipt-map.md), obligation 3.
 - Four subpackages L0→L3; migrate the unmigrated legacy spec; add the absent held-completion, response-loss and reload cases.
 - Close the "no browser authority from account IDs" violation on *subjects* — it holds for bearers already.
 
 ### 6. Public place and person detail — [5.1](tickets/ticket-5-1.md)/[7.1](tickets/ticket-7-1.md) · 6 calls, 4 files
+
+
+**Verified complete 2026-10-09, by measuring the premise rather than the call list.** There
+is no live Strapi API consumer left in the frontend outside D1's. Every non-test module
+reading `VITE_REST_API_URL` was classified:
+
+- **Asset-origin builders, not API calls** — `Home.tsx` (x2), `ProfileSetupAccordion.tsx`,
+  `ProfileRecommendationsTab.tsx` and the four category `*Helpers.ts`. Each is
+  `.replace("/api", "")` building an image origin. `Register.tsx`'s only occurrence is a
+  comment.
+- **Kept by D1** — `Checkout.tsx`, `paymentService.ts`, `subscriptionService.ts`.
+- **Canonical-first fallbacks** — `Profile.tsx`, `AddRecommendation.tsx`, unreachable on the
+  canonical runtime.
+
+And the asset-origin class, which is the half that once concealed a live defect in both
+runtimes, is **fully guarded**: all seven origin-builders import
+`isCanonicalMediaPath`. Sweeping for the defect's actual shape - a leading-slash test -
+finds three further modules without the guard, and none rewrites a media URL:
+`StaticPageLayout.tsx` and `localTunesApiClient.ts` are open-redirect and path-injection
+guards (both correctly reject `//`), and `getCurrentDomain.ts` builds share URLs.
+
+**Re-measured 2026-10-09: the second fetch is already gone, and the "6 calls" framing is
+wrong for what remains.** Original text kept below.
+
+`PlaceOverview` and `PersonOverview` make no request at all - they take the entity from the
+caller, which already found it in the list it is rendering, and `PersonOverview` says so at
+its own `person?` prop. `PlaceDetails/` holds no fetching code, and `PublicHome.tsx` issues
+no query. So "two sources for one page" is closed for these components.
+
+**The frontend executes no Apollo operation anywhere.** Measured across all non-test source:
+zero `useQuery`/`useMutation`/`useLazyQuery` call sites (the only two `useQuery(` matches are
+TanStack, in `useCanonicalAccount` and `useTunesDashboard`), and zero `.query(`/`.mutate(`.
+The `gql` documents in the twelve `api/query.ts` and `api/mutation.ts` files are **dead
+documents** with no executor, and `categoryNavigationApi.ts` takes an `ApolloClient` whose
+own type comment says "Temporary callsite compatibility only; never queried or mutated".
+
+**What is actually left is REST, not GraphQL**, in 14 non-test files via
+`VITE_REST_API_URL` (which defaults to `http://localhost:1337`). Two different things wear
+that name:
+
+- **Real Strapi REST calls:** `/accounts?filters…` (`Checkout.tsx:171,362`,
+  `Profile.tsx:1685`), `/upload` (`Profile.tsx:1751,1849`), `/upload/files/:id`
+  (`AddRecommendation.tsx:732`), `/send-email-confirmation`
+  (`EmailVerification.tsx:46`), and `paymentService`/`subscriptionService` falling back to
+  it.
+- **Asset-origin concatenation**, which is a different problem with a different fix, and one
+  instance of it was a live defect - see `2861d88d`: canonical cover images were being
+  requested from the Strapi origin, and from TMDB's host on the movie shelf. The rule now
+  lives once, in `explorers-earth/src/lib/canonicalMedia.ts`.
+
+So this step's remaining work is the REST list above plus the public guide read, and it
+belongs with step 12's retirement rather than being an Apollo-repointing package. **Do not
+plan it from a count of `gql` documents** - that count is almost entirely dead code and will
+overstate the work by an order of magnitude.
+
+Original text:
+
 - `PlaceDetails`, `PlaceOverview`, `PersonOverview` and the remaining PublicHome readers still fetch detail through Strapi while the list read next to them is native.
 - Two sources for one page is how "right on the grid, wrong in the modal" happens, and 7.1 cannot prove parity across the split.
 
@@ -551,14 +608,25 @@ Not fixed here: repointing the dashboard changes what numbers a creator sees, so
 own package and acceptance. It is what makes this Strapi call *deletable* rather than merely
 unreachable.
 
-**Remaining for 8.1a, and three of the four are owner items** — the compose
+**Remaining for 8.1a is three owner items; the fourth is DONE 2026-10-09 (`550a5924`).**
+The engineering work on this step is complete — the compose, cron and boot-receipt items below
+are ops authorisation and runner allocation, not code. Original wording follows.
+
+— the compose
 `${VAR:?… is required}` declarations across all three compose files plus `tunes.yml:103`
 (the application does not need them; the *deployment* still refuses to start without them, and
 one of them is what makes the deletion absence-proof fail closed), disabling
 `music-reconcile.yml`'s hourly cron **and recording that** before the file is deleted, and an
-executed boot receipt with outbound Strapi denied. The fourth is small: move
+executed boot receipt with outbound Strapi denied. ~~The fourth is small: move
 `fingerprintStrapiProof` and the two `Response`-body helpers out of
-`services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.
+`services/strapiIdentityGateway.ts` and the closure's last Strapi-named file is gone.~~
+
+**The fourth was not quite that small.** Moving the three helpers left two `import type` edges
+into the gateway, so the `ResolvedStrapiIdentity` DTO and a named `IdentityResolverPort` moved
+out too; both consumers already depended on a shape rather than the class. The module allowlist
+in `scripts/check-retired-dependencies.mjs` is now **empty**, which is the proof — that scan
+fails on a stale entry as well as on a new violation. Closure: 121 -> 120 modules. Details:
+[the server classification](strapi-server-classification.md).
 
 ### 11. Parity and milestone evidence — [7.1](tickets/ticket-7-1.md), [7.3](tickets/ticket-7-3.md), [1.2](tickets/ticket-1-2.md)
 
@@ -641,8 +709,85 @@ Still open in this step:
 - Note `execution-packages.json:21` still describes 1.2's inventory as unextended; it is now stale on that point.
 
 ### 12. Retire Strapi — [8.1b](tickets/ticket-8-1.md), [8.2](tickets/ticket-8-2.md), [8.3](tickets/ticket-8-3.md)
-- Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features.
-- 8.2: remove the duplicate Tunes frontend — still built and served. A CI-gating risk, not a product change.
+
+**"Verify zero active consumers" was done on 2026-10-09, frontend side. Four of the five
+remaining Strapi REST call sites are already not live consumers**, which makes 8.1b a
+deletion exercise rather than a porting one. Traced individually:
+
+| Call site | Reachability |
+|---|---|
+| `EmailVerification.tsx:46` → `/send-email-confirmation` | **Dead code.** The file is imported by nothing, and `AuthRoutes.tsx:28` routes `/email-verification` to `<Navigate to="/login">`. The page cannot render. |
+| `Profile.tsx:1751,1849` → `/upload`, and `:1685` → `/accounts?filters…` | **Fallback only.** Both sit after `if (accountQuery.data) { …canonical…; return; }`, and the canonical path is fully built: `createMedia(file,'profile'\|'background')` then `updateAccount({profileImageId\|backgroundImageId})`. On the canonical runtime the Strapi branch is unreachable. |
+| `AddRecommendation.tsx:732` → `/upload/files/:id` | Same pattern; needs the same per-branch check before deletion. |
+| `Checkout.tsx:171,362` → `/accounts?filters…` | **Live and unconditional**, reached from `BillingTab.tsx:233` and `SubscriptionPlans.tsx:242`. Kept by **D1** ("payments and all we will document and keep"), so this is the one that stays and is documented. |
+| `paymentService.ts:16`, `subscriptionService.ts:3` | Live fallbacks of `VITE_PAYMENT_API_URL` → `VITE_REST_API_URL`. Same D1 bucket. |
+
+So after the payment flows are set aside by D1, the frontend's Strapi REST surface is one
+dead file plus three canonical-first fallbacks.
+
+**Do not confuse that variable's two jobs.** `VITE_REST_API_URL` is also used to build
+*asset origins* in eight more files, which is a different problem with a different fix -
+and it was concealing a live defect in both runtimes, fixed in `2861d88d` and `1b18157e`
+via `explorers-earth/src/lib/canonicalMedia.ts`. Anything that rewrites a relative URL
+must recognise `/api/explorers/v1/media/<uuid>/content` first.
+
+- Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features. **The `gql` documents are dead already — the frontend executes no Apollo operation at all (see step 6), so this part is deletion with no replacement work.**
+- 8.2: remove the duplicate Tunes frontend — still built and served. **"A CI-gating risk,
+  not a product change" is too strong; measured 2026-10-09.** `tunes/vite.config.ts:31`
+  sets `root: tunes/client` and `:33` `outDir: tunes/dist/public`; `npm run build` runs
+  `vite build`; `tunes/server/runtime.ts:24` serves that directory. So it is the Tunes
+  service's *actual* served frontend, and deleting it stops serving the standalone Tunes
+  UI and leaves the vite build without a root. Whether that UI is still wanted once Music
+  is embedded in explorers-earth is a deployment and product call, so this is **not** a
+  deletion an agent should take unprompted.
+
+**8.1b progress, 2026-10-09 — 843 lines of provably dead code deleted.** Done by resolving
+every relative import to its target file, because `./api/query` exists nine times and a
+basename grep collides across features:
+
+| Deleted | Why it was safe |
+|---|---|
+| `pages/EmailVerification.tsx` (105) | Posts to `/send-email-confirmation`; nothing imports it and `AuthRoutes.tsx:28` redirects `/email-verification` to `/login`, so it cannot mount |
+| `Authentication/api/mutation.ts`, `Authentication/api/userQueries.ts`, `Books/api/query.ts`, `Guides/api/queries.ts`, `Profile/api/UserStatus.ts` (527) | No importer at all, test or otherwise, and no barrel re-export |
+| `Favorites/api/query.ts` + its own `__tests__/query.test.ts` (211) | The test's only assertion is an Apollo cache-normalization property of a document nothing executes, so module and test are one orphan |
+
+Verified each time with `tsc -p tsconfig.app.json` (**not** `tsconfig.json`, which checks
+nothing here) and the full suite: 325/4554 unchanged for the first two, then 324/4553,
+which is exactly the one deleted case.
+
+The claim licensing all of this was checked first rather than taken on trust: of seven
+non-test modules using `useQuery`/`useMutation`, five import `@tanstack/react-query` and
+two match only in prose comments, so **no component executes an Apollo operation**.
+
+**Completed 2026-10-09 — the frontend half of 8.1b is done, 1272 lines.** The last three
+modules (`Books/api/mutation.ts`, `Favorites/api/mutation.ts`, `Guides/api/mutations.ts`,
+429 lines) were held alive only by `features/__tests__/recommendationMutationsPublish.test.ts`.
+Rather than trim those categories out of that guard and quietly shrink its reach, the guard
+is **inverted** for them: three cases per retired category assert the modules stay absent,
+that the feature imports no Apollo in shipped code, and that the canonical write methods are
+still called. A reintroduced Strapi document now fails instead of passing unnoticed. Both
+halves are mutation-verified — a stub module fails 2 cases, a vanished canonical write
+fails 1 with a named message.
+
+The replacement was checked per category before deleting: Books and Favorites use
+`createMyRecommendation`/`updateMyRecommendation`/`createMyCollection`/`updateMyCollection`
+(plus `reorderMyCollection`); **Guides uses `addMyGuideSection` and `writeMyGuideSection`**
+— worth knowing, because a `create|update` search finds neither and it briefly looked as
+though guide section writes had no canonical path at all.
+
+The only Strapi REST call sites left in the frontend are `Checkout.tsx` and the two payment
+services, kept on purpose by **D1**.
+
+**Superseded note on why it looked non-mechanical.** `Books/api/mutation.ts`,
+`Favorites/api/mutation.ts` and `Guides/api/mutations.ts` have no non-test consumer, but
+their only importer is `features/__tests__/recommendationMutationsPublish.test.ts` — the
+cross-category guard that every `Recommended*` write carries `status: PUBLISHED`, which is
+a regression that actually shipped once. Five of the eight modules it covers (Games,
+AppsAndTools, People, Products, Movies) are still live, so the guard stays; removing the
+three dead ones means trimming a test whose comment says it covers "all categories", which
+asserts per category that those writes are now canonical. That is migration verification
+and belongs to whoever closes those categories. The other 15 Apollo modules have live
+consumers, and `main.tsx`/`lib/apolloCache.ts` keep Apollo wired up.
 - 8.3: the mechanical backend rename, strictly after 8.1 and 8.2.
 
 ### 13. Topology, deployment, recovery — [3.5](tickets/ticket-3-5.md), [8.4](tickets/ticket-8-4.md), [8.5](tickets/ticket-8-5.md)
@@ -658,11 +803,15 @@ against third-party APIs, so they can ship before or after retirement, in any or
 
 ### 14. Provider search
 - **[4.2](tickets/ticket-4-2.md) Games** — the IGDB provider chain is dead code behind an unconditional 503; four named provider cases absent; 7 MISSING provider-fact fields.
-- **[4.1](tickets/ticket-4-1.md) Movies** — the live TMDB provider is open; two named cases absent by name.
+- **[4.1](tickets/ticket-4-1.md) Movies** — ~~two named cases absent by name~~ **both written 2026-10-09**
+  (`e951e5b8`), and the file they live in was itself ungated until `1b966866`. The three field
+  assertions at `:45` now have a traceability map: two were already covered under a
+  differently-named case and "no fabricated year" was genuinely missing and was added. **The
+  live TMDB provider qualification stays open** - it needs a real-provider smoke, not a fixture.
 - **[3.3](tickets/ticket-3-3.md) Books** — "no Books flow requires Strapi" is unproven at an exact SHA; otherwise 20/20 verified.
 
 ### 15. Owed from the delivered category tickets
-- `tunes/server/test/explorers/places.test.ts` — the unit suite 5.1 names.
+- ~~`tunes/server/test/explorers/places.test.ts` — the unit suite 5.1 names.~~ **DONE 2026-10-09**, 11 cases, three of them mutation-checked. The directories holding it were ungated, so the `contracts` job now takes `server/test/explorers` and `server/test/publicProfile` as directory arguments; see the handoff for the 79-of-176 count behind that.
 - `e2e/replatform/places.spec.ts` and `place-links.spec.ts` — need the Docker fixture runner plus `suite-manifest.json` identities; **reserved to the coordinator**.
 - Places seeded taxonomy and the sector browse — blocked on **D3**.
 - Per-place pinning — blocked on **D5**.
@@ -712,3 +861,112 @@ Each blocks a step above, and none is an engineering question. Source: coverage 
 - Protected browser lanes are coordinator-allocated throughout: each needs a Docker fixture runner plus `suite-manifest.json` identities.
 - The Games integration suite needs its own disposable Postgres container on a port other than 55432, which is reserved.
 - eslint carries 1647 warnings against a 0-error gate. The burn-down is ongoing and deliberately not sequenced here.
+
+### 45 of the 60 documents inside live modules are now deleted — the criterion, and the five scanners
+
+**Resolved 2026-10-09, on the second attempt.** 1,435 lines removed in `db153810`. The
+first attempt removed all 60 and was reverted; the history below is kept because the wrong
+criterion is the instructive part.
+
+**The criterion is: nothing names it anywhere in the repository, AND no source scanner
+requires its operation.** Both halves were necessary.
+
+**The five source scanners**, found by sweeping the whole repo for path references to the 13
+candidate files — not by any import graph, since none of these import the modules:
+
+| Scanner | Requires |
+|---|---|
+| `tunes/scripts/music-fixture-profile.ts:19-21` | Settings `UsersPermissionsUser`+`UpdateAccount`; PublicHome `PublicCategoryListCounts`+`PublicAccountBasic`+`PublicProfileData` — each **exactly once** |
+| `tunes/server/test/contracts/music-fixture-services.test.ts` | the same, via `checkedInGraphqlOperation` |
+| `explorers-earth/e2e/music-harness-contract.spec.ts:6002` | Profile `UsersPermissionsUser`, Settings `UpdateAccount`, PublicHome `PublicProfileData` |
+| `explorers-earth/e2e/contained-auth-session.spec.ts:101,130` | navigation `CategoryNavigationAccount`, asserted `toBeTruthy()` |
+| `explorers-earth/scripts/music-public-prebrowser-qualification.mjs:190` | Settings `UsersPermissionsUser`+`UpdateAccount` |
+
+**And the corpus matters as much as the rule.** The first pass scanned `src/` only, which
+would have deleted `PUBLIC_APP_DATA` (dynamically imported by
+`e2e/public-shell-continuity.spec.ts`) and `GAME_LISTS_BY_ACCOUNT` (named in
+`e2e/games.spec.ts`). Widening to all 2,564 repository files caught both. **Scan the
+repository, not the app** — and note that a runtime GraphQL interceptor keyed by operation
+name (`e2e/analytics.spec.ts`) is *not* a constraint: it simply never fires once the
+operation is no longer sent.
+
+**Nine documents remain, and every one has a concrete reason: four required by a source
+scanner above, five named in an e2e spec** (`PUBLIC_APP_DATA`, `GAME_LISTS_BY_ACCOUNT`,
+`APP_LISTS_BY_ACCOUNT`, `MOVIE_LISTS_BY_ACCOUNT`, `PRODUCT_LISTS_BY_ACCOUNT`). Six more were
+deleted in `edff0514` once re-checked.
+
+**A warning about the analysis, because it nearly caused a bad delete.** The deadness script
+reported the *first* file that named a symbol and stopped, and markdown sorted ahead of
+`e2e/`. So `APP_LISTS_BY_ACCOUNT`, `MOVIE_LISTS_BY_ACCOUNT` and `PRODUCT_LISTS_BY_ACCOUNT`
+were labelled "named in a ticket" while *also* being named in `e2e/apps.spec.ts`,
+`e2e/movies.spec.ts` and `e2e/products.spec.ts`. Keeping all fifteen was the right call for
+a reason that was wrong in three cases. **Report every match, not the first**, and confirm
+each candidate with an unrestricted `grep -r` over the repository before deleting it.
+
+#### Superseded: why the first attempt failed
+
+Attempted and reverted 2026-10-09. Worth recording so the next attempt starts from the
+right criterion rather than repeating it.
+
+Thirteen Apollo modules survive because they export the canonical hooks
+(`useGamesCommands`, `usePeopleCallerCustody`, …) *alongside* retired `gql` documents.
+Inside them, **60 exported documents have no symbol reference anywhere in `src/`, not even
+from a test** — e.g. `Games/api/query.ts` has 8 documents of which 7 are unreferenced,
+`PublicHome/api/query.ts` 11 of 15, `Settings/api/mutation.ts` 7 of 10. Removing all 60 is
+1,955 lines and **passes `tsc -p tsconfig.app.json` cleanly**.
+
+It is still wrong, because **some consumers match these documents by content, not by name**:
+
+- `PublicHome/components/__tests__/PublicProfile.gallery-contract.test.tsx` builds a fixture
+  GraphQL registry by scanning source for a `UsersPermissionsUser` document and throws
+  unless it finds **exactly one**.
+- `e2e/music-public-contract.spec.ts:476` — "Music live fixture requires one checked-in
+  Settings UpdateAccount document", which is `Settings/api/mutation.ts`'s
+  `updateAccountMutation`.
+
+Two were found by running the suite; **there is no reason to believe they are the only
+two**, and the places that would reveal more are the ones this branch does not run — 33 of
+36 e2e specs, plus the `scripts/browser-baselines/*.json` source inventories.
+
+Note also that `tsconfig.app.json` excludes tests, so a typecheck cannot see even the
+name-based breakage; the suite is the floor, and the e2e lanes are above it.
+
+**So the criterion for deleting a document is not "nothing imports it" — it is "nothing
+imports it AND no fixture scans for its shape".** Doing this properly means first
+enumerating the content-scanning fixtures (grep for `requires one checked-in`, registry
+builders over source text, and the browser baselines), then deleting per document with the
+e2e lanes actually running. That is a reasonable next task and it needs the e2e lane
+decision above to be useful, since otherwise nothing would catch a mistake.
+
+### The server half of 8.1b is NOT entirely cutover-gated — 378 lines deleted 2026-10-09
+
+`check-retired-dependencies.mjs` ends with "This does NOT mean Strapi is retired: the
+legacy-music server still depends on it until step 12", and that line was read here (by me,
+repeatedly) as *all* server-side Strapi work being gated behind the `EXPLORERS_API_MODE`
+cutover. It is not. The line is true of modules the legacy runtime imports, and says
+nothing about modules **neither** runtime imports.
+
+**Method.** Walk the import closure from every real entrypoint — `server/auth/canonicalStartup.ts`,
+`server/config/music-startup.ts`, `server/index.ts`, `server/api.ts` — reusing that script's
+own `resolveImport` rules so the closure semantics match the gate rather than approximating
+it. The union covers **172 of 189** server modules. Eight Strapi-touching files sit outside
+it; three were dead.
+
+| Outside the closure | Verdict |
+|---|---|
+| `reconcileMusicIdentities.ts`, `musicReconciler.ts`, `reconciliationRepository.ts`, `music-reconciliation-config.ts` | **Live.** The reconciliation command *is* its own entrypoint, with `music-reconcile.yml` and gated integration tests. "Outside the closure" meant the entrypoint list was short. |
+| `config/local-public-profile-gateway.ts` | **Live.** Four importers. |
+| `jwt-auth-middleware.ts`, `routes/strapiRoutes.ts`, `services/strapi-service.ts` | **Dead.** No importer anywhere in the repository; every other mention is documentation or an audit inventory. Deleted, 378 lines. |
+
+**The trap to avoid repeating: a closure walk proves nothing until the entrypoint list is
+complete.** Four live files looked dead because a CLI command and the three deployment
+entries were missing from the first sweep. Enumerate entrypoints from `package.json`'s
+`build`/`build:api`/`start` scripts, the Dockerfile `CMD`, and the workflows, before
+believing any "unreachable" verdict.
+
+**And run the verification from PowerShell.** The same `server/test` tree reports 168/170
+files and 3,237 tests passing from PowerShell, and **84 failures** from Git Bash — 81 of
+them `music-deploy-executable` hitting MSYS `whoami`. Both remaining exceptions are
+environmental: `music-cli-contract` needs the gitignored `.env.music.test`, and
+`music-docker-release-authority` reads the git index, so it fails if you stage anything
+mid-run and passes on a static tree.
