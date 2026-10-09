@@ -9,6 +9,12 @@ import { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence.ts";
 export type MusicQualificationLaneName = "fast" | "pr" | "nightly" | "release";
 
 export const MUSIC_INTEGRATION_FILES = [
+  "server/test/account-recovery.test.ts",
+  "server/test/explorers-lifecycle.integration.test.ts",
+  "server/test/explorers-media.integration.test.ts",
+  "server/test/explorers-profile.integration.test.ts",
+  "server/test/explorers-recovery-callback.integration.test.ts",
+  "server/test/explorers-recovery.integration.test.ts",
   "server/test/google-sync.integration.test.ts",
   "server/test/load/music-load-http-postgres.integration.test.ts",
   "server/test/load/music-load-postgres.integration.test.ts",
@@ -190,7 +196,17 @@ export function requireExactContainerAbsent(result: {
   ];
   if (result.error || result.signal || result.status !== 1
     || !["", "[]"].includes(result.stdout.trim())
-    || !accepted.includes(result.stderr.trim())) throw new Error("container absence not proven");
+    || !accepted.includes(result.stderr.trim())) {
+    // Report what was actually observed. This guard compares Docker's stderr against
+    // two exact accepted spellings, so an upstream CLI message change fails a
+    // required check with no way to tell from the CI log what Docker really said.
+    // The inputs are Docker's own not-found text plus the container id, so there is
+    // nothing secret to redact. The leading phrase is deliberately unchanged: the
+    // qualification-lane contract asserts on it.
+    throw new Error(`container absence not proven: observed status=${String(result.status)}`
+      + ` signal=${String(result.signal ?? "none")} stdout=${JSON.stringify(result.stdout.trim())}`
+      + ` stderr=${JSON.stringify(result.stderr.trim())}; accepted=${JSON.stringify(accepted)}`);
+  }
 }
 
 export function preferredQualificationPort(taskId: string): number {

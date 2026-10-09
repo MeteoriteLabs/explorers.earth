@@ -1,7 +1,7 @@
 import { NavigationStatus } from "../features/navigation/NavigationStatus";
 import type { IntentAuthority } from "../features/navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Recommendations from "../features/Favorites/components/Recommendations";
 import Button from "../components/ui/Button";
@@ -9,19 +9,15 @@ import Modal from "../components/ui/Modal";
 import { AddIcon } from "../assets/icons/AddIcon";
 import LinksAndQR from "../features/Favorites/components/LinksAndQR";
 import AddLocationModal from "../components/ui/AddLocationModal";
-import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
-import {
-  accountDataQuery,
-  recommendationListQuery,
-} from "../features/Favorites/api/query";
 import { EarthLoader } from "../components/EarthLoader";
 import HeroSkeleton from "../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../components/ui/RecommendationCardSkeleton";
-import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
+import { useCreateLocation, locationSnapshot } from "../features/Favorites/hooks/useCreateLocation";
+import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
+import { usePlacesCommands } from "../features/Favorites/api/placesCommands";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
 import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
-import { updateRecommendedListMutation } from "../features/Favorites/api/mutation";
 import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
@@ -39,6 +35,7 @@ import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 import { ListVisibilityModal } from "../components/ListVisibilityModal";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 export interface Recommendation {
   title: string;
   image: string;
@@ -119,14 +116,12 @@ const Favorites = memo(() => {
   const { selectedCity, setSelectedCity } = useCityStore();
   const location = useLocation();
   // fetching the user details from the global state
-  const { user } = useAuthStore();
-  // account data by Id
-  const { data: accountById } = useQuery(accountDataQuery, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    skip: !user?.documentId,
-  });
+  const { generation: sessionGeneration } = useAuthStore();
+  const canonicalAccount = useCanonicalAccount();
+  // The signed-in account, from the session. The owner reads below are scoped to it, so
+  // there is nothing to look up by user id.
+  const accountId = useAuthStore((state) => state.accountId);
+  const accountById = accountId ? { accountId } : undefined;
 
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
   // local state for handling modal
@@ -197,24 +192,17 @@ const Favorites = memo(() => {
     useState<string>("");
   // local state for handling the loading state for adding the list name
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // fetching the cities data from the query
-  const {
-    data: cities,
-    loading,
-    refetch: refetchCities,
-  } = useQuery(recommendationListQuery, {
-    variables: {
-      filters: {
-        account: {
-          documentId: {
-            eq: accountById?.usersPermissionsUser?.accounts?.[0]?.documentId,
-          },
-        },
-      },
-    },
-    skip: !accountById?.usersPermissionsUser?.accounts?.[0]?.documentId,
-    fetchPolicy: "network-only",
-  });
+  // Ticket 5.1. The owner's Places lists come from the native owner API, which scopes
+  // them to the signed-in account rather than filtering by an account id read from a
+  // separate query.
+  const placesOwner = usePlacesOwner();
+  const commands = usePlacesCommands();
+  const cities = placesOwner.data;
+  const loading = placesOwner.loading;
+  const refetchCities = useCallback(async () => {
+    placesOwner.refetch();
+    return { data: placesOwner.data };
+  }, [placesOwner]);
 
   useEffect(() => {
     if (!loading && accountById) {
@@ -241,11 +229,55 @@ const Favorites = memo(() => {
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
   //   recommendationLists// );
 
-  // mutation for updating the recommended list
-  const [updateRecommendedList] = useMutation(updateRecommendedListMutation, {
-    refetchQueries: [recommendationListQuery],
-    fetchPolicy: "network-only",
-  });
+  /**
+   * The list writes, mapped onto the native commands.
+   *
+   * Strapi carried Visibility, is_pinned, pin_order, List_Name, slug,
+   * Instagram_Media_URL and List_Name_Details on one row, so one mutation set any of
+   * them. Those are now separate decisions with separate commands, and this adapter keeps
+   * the call sites unchanged while sending each part where it belongs.
+   */
+  const updateRecommendedList = useCallback(async (input: { variables: { documentId?: string; data: Record<string, unknown> } }) => {
+    const id = input.variables.documentId;
+    const data = input.variables.data;
+    if (!id) throw new Error("A list id is required");
+
+    if (data.Visibility !== undefined) {
+      await commands.publishList(id, Boolean(data.Visibility));
+    }
+    if (data.is_pinned !== undefined || data.pin_order !== undefined) {
+      // is_pinned is "pin_order is set", so an unpin is an explicit null.
+      const pinned = data.is_pinned === undefined ? true : Boolean(data.is_pinned);
+      const position = typeof data.pin_order === "number" ? data.pin_order : null;
+      await commands.setListPin(id, pinned ? position ?? 0 : null);
+    }
+    if (data.List_Name !== undefined || data.slug !== undefined) {
+      await commands.updateList(id, {
+        ...(data.List_Name === undefined ? {} : { title: String(data.List_Name) }),
+        ...(data.slug === undefined ? {} : { slug: String(data.slug) }),
+      });
+    }
+    if (data.List_Name_Details !== undefined || data.Instagram_Media_URL !== undefined) {
+      const details = (data.List_Name_Details ?? {}) as { note?: unknown; place_id?: unknown; location?: { latitude?: unknown; longitude?: unknown } | null };
+      const existing = cities?.recommendationLists?.find((list) => list.documentId === id)?.List_Name_Details ?? null;
+      await commands.setLocation(id, {
+        locationEntityId: null,
+        locationSnapshot: locationSnapshot({
+          placeId: details.place_id ?? existing?.place_id,
+          name: data.List_Name ?? existing?.name,
+          address: existing?.location?.address,
+          location: details.location ?? existing?.location ?? null,
+        }),
+        instagramMediaUrl: typeof data.Instagram_Media_URL === "string" && data.Instagram_Media_URL ? data.Instagram_Media_URL : null,
+      });
+      // The list note is the collection's own description.
+      if (details.note !== undefined) {
+        await commands.updateList(id, { description: typeof details.note === "string" && details.note ? details.note : null });
+      }
+    }
+    // The call sites only read back what they already sent, so the echo is enough.
+    return { data: { updateRecommendationList: { ...data, documentId: id } as Record<string, any> } };
+  }, [commands, cities]);
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -315,9 +347,10 @@ const Favorites = memo(() => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Syncing recommendations completion status:', currentIsRecommendationsComplete);
       }
-      setSetupStatus(isProfileComplete, currentIsRecommendationsComplete);
+      if (canonicalAccount.data) setSetupStatus(canonicalAccount.data.onboardingStatus === "complete",
+        currentIsRecommendationsComplete, canonicalAccount.data.id, sessionGeneration);
     }
-  }, [currentIsRecommendationsComplete, isRecommendationsComplete, isProfileComplete, setSetupStatus, cities]);
+  }, [currentIsRecommendationsComplete, isRecommendationsComplete, canonicalAccount.data, setSetupStatus, cities, sessionGeneration]);
 
 
   // Track route changes for better modal detection
@@ -487,7 +520,7 @@ const Favorites = memo(() => {
   useEffect(() => {
     // Set the default city when data is available
     if (cities?.recommendationLists?.length && !selectedCity) {
-      setSelectedCity(cities?.recommendationLists?.[0]);
+      setSelectedCity(cities?.recommendationLists?.[0] as unknown as selectedCity);
     }
   }, [
     cities,
@@ -499,10 +532,9 @@ const Favorites = memo(() => {
 
   // filtering and sorting the cities based on pinning/display_order
   const filteredCities = useMemo(() => {
-    const lists = cities?.recommendationLists?.filter(
-      (item: selectedCity) =>
-        item.account?.documentId === accountData?.documentId
-    ) || [];
+    // The owner read is already scoped to the signed-in account, so there is nothing to
+    // filter by - and no account id on the row to filter with.
+    const lists = cities?.recommendationLists ?? [];
 
     // Sort: Pinned items first (by pin_order), then unpinned items (by display_order)
     return [...lists].sort((a: any, b: any) => {
@@ -618,7 +650,7 @@ const Favorites = memo(() => {
 
   const handleCitySelect = (index: {
     List_Name?: string;
-    imageUrl: string;
+    imageUrl?: string;
     documentId?: string;
   }) => {
     setSelectedCity(index);
@@ -710,8 +742,8 @@ const Favorites = memo(() => {
   ): Promise<boolean> => {
     if (
       values.placeUrl !== selectedCity?.slug &&
-      cities?.account?.recommendation_lists.some(
-        (list: { slug: string }) => list.slug === values.placeUrl
+      (cities?.recommendationLists ?? []).some(
+        (list) => list.slug === values.placeUrl
       )
     ) {
       toast.error(t("toast.error.conflictError"));
@@ -1390,7 +1422,7 @@ const Favorites = memo(() => {
                           }}
                           isOpen={showAllPlaces}
                           onClose={() => setShowAllPlaces(false)}
-                          places={filteredCities}
+                          places={filteredCities as never}
                         />
                       )}
                     </div>

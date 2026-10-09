@@ -1,4 +1,7 @@
+import {completeGamesPreviews,gamePageCursor,mergeGamePage} from '../utils/publicProfileContent';
+import {completeMoviesPreviews,moviePageCursor,mergeMoviePage} from '../../Movies/api/publicMoviesContinuation';
 import { useEffect, useRef } from "react";
+import {completeBooksPreviews} from '../../Books/api/publicBooksContinuation';
 import { publicProfileGatewayClient, type PublicCategory } from "./publicProfileGatewayClient";
 import { subscribePublicProfileInvalidation } from "./publicProfileInvalidation";
 import { mergePublicPage, PUBLIC_PROFILE_PAGE_SIZE, readPublicPageRows } from "./publicProfilePagination";
@@ -14,13 +17,23 @@ export function usePublicRecommendationCategory(
   const normalizedUsername = username?.trim().toLowerCase();
   const scope = normalizedUsername ? `${normalizedUsername}\u0000${category}` : undefined;
   const deferredInvalidation = useRef<string>();
+  const movieCursors=useRef(new Map<number,string|null>());
+  const richPage=async(value:Promise<unknown>,signal:AbortSignal,bypass:boolean,offset=0)=>{
+    const page=await value;
+    if(category==='books')return completeBooksPreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass));
+    if(category!=='movies'&&category!=='games')return page;
+    const complete=await (category==='games'?completeGamesPreviews:completeMoviesPreviews)(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:12,cursor},signal,bypass));
+    const rows=readPublicPageRows(complete,category,false),cursor=(category==='games'?gamePageCursor:moviePageCursor)(complete,false);
+    if(cursor!==null&&rows.length!==PUBLIC_PROFILE_PAGE_SIZE)throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');
+    if(!signal.aborted){if(movieCursors.current.size>=1000)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');movieCursors.current.set(offset+rows.length,cursor);}return complete;
+  };
   const state = usePublicPagedResource({
     scope, enabled, bypassFirst: Boolean(scope && deferredInvalidation.current === scope),
-    readFirst: (signal, bypass) => publicProfileGatewayClient.category(username!, category, signal, bypass),
-    readNext: (offset, signal, bypass) => publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor: `o${offset}` }, signal, bypass),
+    readFirst: (signal, bypass) => {movieCursors.current.clear();return richPage(publicProfileGatewayClient.category(username!, category, signal, bypass),signal,bypass);},
+    readNext: (offset, signal, bypass) => {const cursor=(category==='movies'||category==='games')?movieCursors.current.get(offset):`o${offset}`;if(!cursor)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');return richPage(publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor }, signal, bypass),signal,bypass,offset);},
     peek: () => publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
     readRows: (data) => readPublicPageRows(data, category, false),
-    merge: (previous, next) => mergePublicPage(previous, next, category, false),
+    merge: (previous, next) => category==='games'?mergeGamePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):category==='movies'?mergeMoviePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):mergePublicPage(previous, next, category, false),
     showLoadingOnRevalidation: true,
   });
 
@@ -39,5 +52,5 @@ export function usePublicRecommendationCategory(
     });
   }, [category, enabled, normalizedUsername, scope, state.refetch]);
 
-  return state;
+  if(category!=='movies'&&category!=='games')return state;const hasMore=Boolean(state.data)&&(category==='games'?gamePageCursor:moviePageCursor)(state.data,false)!==null;return {...state,hasMore,loadMore:()=>hasMore?state.loadMore():Promise.resolve()};
 }

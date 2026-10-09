@@ -4,13 +4,52 @@ const capabilityRole = "music_runtime";
 const safeRoleName = /^[a-z_][a-z0-9_]{1,62}$/;
 const safePassword = /^[A-Za-z0-9_-]{43,256}$/;
 const expectedRuntimeTables = [
+  "account_category_content_state",
+  "account_category_pin_state",
+  "account_category_settings",
+  "account_lifecycle_operations",
+  "account_memberships",
+  "account_music_identity",
+  "account_presentation",
+  "account_recovery_proofs",
   "activity_logs",
+  "analytics_event_receipts",
+  "analytics_events",
   "analytics_snapshots",
   "api_tokens",
+  "app_entity_details",
+  "application_command_receipts",
+  "auth_account",
+  "auth_session",
+  "auth_user",
+  "auth_verification",
+  "book_entity_details",
+  "book_recommendation_context",
+  "canonical_music_numeric_retirements",
+  "category_recommendation_pins",
+  "collection_items",
+  "collection_location_links",
+  "collection_media",
+  "collections",
+  "creator_accounts",
+  "deletion_feedback",
   "email_logs",
+  "email_suppressions",
   "email_templates",
+  "entities",
+  "entity_identifiers",
   "explorers_analytics_receipts",
   "guest_interactions",
+  "guide_collection_details",
+  "guide_section_photos",
+  "guide_sections",
+  "initial_account_bindings",
+  "media_assets",
+  "media_objects",
+  "movie_entity_details",
+  "movie_entity_provider_genres",
+  "movie_provider_genre_terms",
+  "movie_recommendation_context",
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
@@ -18,19 +57,39 @@ const expectedRuntimeTables = [
   "music_publication_operation_archive",
   "music_publication_operations",
   "music_reactivation_tokens",
+  "music_request_quota",
   "music_schema_migrations",
   "page_contents",
+  "person_entity_details",
+  "place_collection_details",
+  "place_entity_details",
+  "place_recommendation_context",
   "playback_states",
   "played_songs",
   "playlist_songs",
   "playlists",
+  "product_entity_details",
+  "product_recommendation_context",
+  "profile_feed_items",
+  "profile_media",
+  "recommendation_app_screenshots",
+  "recommendation_book_covers",
+  "recommendation_display_overrides",
+  "recommendation_media",
+  "recommendation_movie_media",
+  "recommendation_place_photos",
+  "recommendation_taxonomy",
+  "recommendations",
   "seo_settings",
   "session",
   "songs",
   "system_settings",
+  "taxonomy_term_translations",
+  "taxonomy_terms",
   "team_members",
   "user_activity",
   "user_profiles",
+  "user_security_state",
   "user_sessions",
   "users",
   "widgets",
@@ -70,6 +129,8 @@ const expectedRuntimeSequences = [
   "youtube_tokens_id_seq",
 ] as const;
 const expectedRuntimeFunctions = [
+  "assert_music_venue_owned()",
+  "assert_music_venue_owner_retained()",
   "enforce_music_identity_immutability()",
   "enforce_music_identity_insert()",
   "enforce_music_lifecycle_operation_state()",
@@ -77,16 +138,57 @@ const expectedRuntimeFunctions = [
   "enforce_music_reactivation_token_identity()",
   "enforce_music_tombstone_immutability()",
   "enforce_music_tombstone_insert()",
+  "explorers_assert_no_unready_references()",
+  "explorers_assert_ready_attachment()",
+  "explorers_content_revision_delete()",
+  "explorers_content_revision_insert()",
+  "explorers_content_revision_lifecycle()",
+  "explorers_content_revision_update()",
+  "finalize_canonical_music_venue_deletion(integer,text,text)",
   "finalize_music_identity_deletion(integer,text,text)",
+  "guard_app_entity_details()",
+  "guard_book_entity_details()",
+  "guard_book_recommendation_context()",
+  "guard_canonical_music_numeric_retirement()",
+  "guard_guide_location_entity()",
+  "guard_guide_section_media()",
+  "guard_movie_context()",
+  "guard_movie_details()",
+  "guard_movie_genres()",
+  "guard_movie_media()",
+  "guard_person_entity_details()",
+  "guard_place_collection_details()",
+  "guard_place_context_kind()",
+  "guard_place_entity_details()",
+  "guard_product_entity_details()",
+  "guard_recommendation_app_screenshot()",
+  "guard_recommendation_book_cover()",
+  "guard_recommendation_entity_kind()",
+  "guard_recommendation_media()",
+  "guard_recommendation_place_photo()",
+  "guard_recommendation_taxonomy()",
+  "guard_taxonomy_tree()",
+  "lock_movie_genre_parent()",
+  "lock_movie_media_parent()",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
+  "lock_recommendation_taxonomy_parent()",
+  "lock_taxonomy_tree()",
   "music_compact_publication_operations(integer)",
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
+  "purge_expired_account_recovery_proofs(integer)",
+  "purge_expired_analytics_events(integer)",
+  "purge_explorers_account_content(uuid,uuid)",
+  "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
+  "reject_music_numeric_user_id_update()",
   "reject_music_publication_archive_mutation()",
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
+  "stamp_explorers_session_version()",
+  "validate_movie_context(uuid,text,bigint[])",
+  "validate_movie_media(uuid)",
 ] as const;
 
 export interface MusicRuntimeLoginInput {
@@ -529,13 +631,47 @@ export async function provisionMusicRuntimeLogin(
     }
     await client.query(`GRANT USAGE ON SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON canonical_music_numeric_retirements FROM ${capabilityRole}`);
     await client.query(`GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${capabilityRole}`);
+    await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON account_category_content_state FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION explorers_content_revision_insert(),
+      explorers_content_revision_update(),explorers_content_revision_delete(),explorers_content_revision_lifecycle()
+      FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_schema_migrations FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT ON music_schema_migrations TO ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_credential_revocation_operations FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON user_security_state,initial_account_bindings,account_recovery_proofs FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON application_command_receipts,deletion_feedback,account_lifecycle_operations FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,person_entity_details,place_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
+    await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
+      ON collection_location_links,guide_section_photos FROM ${capabilityRole}`);
+    // Decision D2. A suppression is a fact, not a field: no UPDATE, and no DELETE,
+    // because un-suppressing an address is the one operation here that can cause mail
+    // to reach somebody who asked for none. The GRANT ON ALL TABLES above re-grants
+    // what migration 0051 revoked, so this is what actually holds the boundary.
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON email_suppressions FROM ${capabilityRole}`);
+    // Decision D1. The monthly counter keeps UPDATE - incrementing is an amendment -
+    // but not DELETE: a runtime that can delete a period can reset a venue to zero.
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON music_request_quota FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_publication_operations FROM ${capabilityRole}`);
@@ -620,6 +756,18 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "CREATE TEMP TABLE music_runtime_temp_attestation(id integer)",
     "CREATE TABLE music_runtime_schema_attestation(id integer)",
     "TRUNCATE TABLE users",
+    "INSERT INTO account_category_content_state DEFAULT VALUES",
+    "UPDATE account_category_content_state SET revision=revision WHERE false",
+    "DELETE FROM analytics_events WHERE false",
+    "UPDATE analytics_events SET element=element WHERE false",
+    "DELETE FROM analytics_event_receipts WHERE false",
+    "UPDATE analytics_event_receipts SET input_hash=input_hash WHERE false",
+    "DELETE FROM account_category_content_state WHERE false",
+    "TRUNCATE TABLE account_category_content_state",
+    "SELECT explorers_content_revision_insert()",
+    "SELECT explorers_content_revision_update()",
+    "SELECT explorers_content_revision_delete()",
+    "SELECT explorers_content_revision_lifecycle()",
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
@@ -628,7 +776,13 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
     "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
     "DELETE FROM music_publication_operation_archive WHERE false",
+    "UPDATE email_suppressions SET reason=reason WHERE false",
+    "DELETE FROM email_suppressions WHERE false",
+    "DELETE FROM music_request_quota WHERE false",
     "DELETE FROM music_identity_tombstones WHERE false",
+    "UPDATE canonical_music_numeric_retirements SET retired_at=clock_timestamp() WHERE false",
+    "DELETE FROM canonical_music_numeric_retirements WHERE false",
+    "TRUNCATE canonical_music_numeric_retirements",
     "DELETE FROM music_reactivation_tokens WHERE false",
     "UPDATE music_schema_migrations SET checksum=checksum WHERE false",
     "DELETE FROM music_schema_migrations WHERE false",
@@ -663,17 +817,41 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "music_schema_migrations"
+    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms"].includes(row.object_name)
       ? [true, false, false, false]
+      : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
+        ? [true,true,false,false]
+      : row.object_name === "account_music_identity"
+        ? [true, true, false, false]
+      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || row.object_name === "product_entity_details" || row.object_name === "person_entity_details" || row.object_name === "place_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
+        ? [true, true, false, false]
+      : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
+        ? [true, true, false, true]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
+      : row.object_name === "canonical_music_numeric_retirements"
+        ? [true, true, false, false]
       : row.object_name === "music_credential_revocation_operations"
         ? [true, true, false, false]
       : row.object_name === "music_publication_operations"
           ? [true, true, true, false]
+      : row.object_name === "email_suppressions"
+          ? [true, true, false, false]
+      : row.object_name === "music_request_quota"
+          ? [true, true, true, false]
       : row.object_name === "music_owner_operations"
           ? [true, true, false, true]
         : row.object_name === "music_identity_tombstones" || row.object_name === "music_reactivation_tokens"
+          ? [true, true, true, false]
+        : row.object_name === "user_security_state" || row.object_name === "initial_account_bindings"
+          || row.object_name === "account_recovery_proofs"
+          || row.object_name === "application_command_receipts"
+          || row.object_name === "deletion_feedback"
+          || row.object_name === "account_lifecycle_operations"
+          || row.object_name === "entities"
+          || row.object_name === "collections"
+          || row.object_name === "recommendations"
+          || row.object_name === "account_category_pin_state"
           ? [true, true, true, false]
         : [true, true, true, true];
     return JSON.stringify([row.can_select,row.can_insert,row.can_update,row.can_delete]) !== JSON.stringify(expected)
@@ -705,7 +883,11 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
     WHERE namespace.nspname='public' ORDER BY procedure.oid::regprocedure::text`)).rows;
   if (!sameRuntimeInventory(functionRows.map((row) => row.function_signature), expectedRuntimeFunctions)
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
-        !== (row.function_signature !== "provision_music_runtime_login(name,text)"))) {
+        !== (row.function_signature !== "provision_music_runtime_login(name,text)"
+          && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
+          && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
+          && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
+          && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 

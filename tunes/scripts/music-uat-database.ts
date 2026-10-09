@@ -298,7 +298,12 @@ export async function startOwnedUatDatabase(
     "--env", `POSTGRES_PASSWORD_FILE=${PASSWORD_DESTINATION}`,
     "--mount", passwordMount,
     "--tmpfs", `${DATA_DESTINATION}:${DATA_TMPFS_OPTIONS}`,
-    "--health-cmd", `pg_isready -U ${POSTGRES_USER} -d ${input.database}`,
+    // Probed over TCP on purpose. The postgres entrypoint runs a socket-only
+    // temporary server while it initialises, so a default pg_isready can report
+    // healthy during that phase; the server then stops and restarts for real and a
+    // client that connected in the gap sees "Connection terminated unexpectedly".
+    // A TCP probe cannot pass until the real listener is up.
+    "--health-cmd", `pg_isready -U ${POSTGRES_USER} -d ${input.database} -h 127.0.0.1 -p 5432`,
     "--health-interval", "1s", "--health-timeout", "5s", "--health-retries", "30",
     POSTGRES_IMAGE,
   ]).trim();

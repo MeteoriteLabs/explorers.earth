@@ -22,6 +22,8 @@ function checkedInGraphqlOperation(relativePath: string, operation: string): str
     .map((match) => match[1])
     .filter((document) => new RegExp(`\\b(?:query|mutation)\\s+${operation}\\b`).test(document));
   if (matches.length !== 1) throw new Error(`expected one checked-in ${operation} document`);
+  // The profile save stopped shipping a GraphQL document in ticket 3.4, so UpdateAccount is
+  // read from Settings - the one surface that still issues it - rather than from the hook.
   return matches[0]!;
 }
 
@@ -372,9 +374,9 @@ describe("deterministic Music fixture services", () => {
     const authority = `Bearer ${token}`;
     const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const settingsQuery = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UsersPermissionsUser");
-    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
     const visibilityMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
     const publicProfileQuery = checkedInGraphqlOperation("explorers-earth/src/features/PublicHome/api/query.ts", "PublicProfileData");
 
@@ -483,8 +485,8 @@ describe("deterministic Music fixture services", () => {
       username: "fixture-explorer", accountDocumentId: "fixture-account-document-id",
       userDocumentId: "fixture-user-document-id", token,
     })).toThrow("complete namespaced authority tuple");
-    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
 
     const denied = [
@@ -512,7 +514,7 @@ describe("deterministic Music fixture services", () => {
     const authority = `Bearer ${token}`;
     const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
     const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     type QualificationAuthority = {
       expectedRevision: number;
       namespace: string;
@@ -602,7 +604,7 @@ describe("deterministic Music fixture services", () => {
   it("binds the runner tuple to the actual loopback fixture process and restores the preference", async () => {
     const token = "contract-process-fixture-token";
     const nonce = randomUUID();
-    const eligibilityQuery = checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility");
+    const eligibilityQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "MusicPageEligibility");
     const child = spawn(process.execPath, [
       "--experimental-strip-types",
       resolve(import.meta.dirname, "../../../scripts/music-fixture-server.ts"),
@@ -787,7 +789,7 @@ describe("deterministic Music fixture services", () => {
     const allowed = fixtureGraphqlResponse({
       authorization: "Bearer fixture-read-only-token",
       method: "POST",
-      query: checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility"),
+      query: checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "MusicPageEligibility"),
       variables: { documentId: "fixture-user-document-id" },
     });
     expect(allowed).toMatchObject({
@@ -856,4 +858,15 @@ describe("deterministic Music fixture services", () => {
 
     await expect(import("../../../scripts/music-smoke.ts")).resolves.toBeDefined();
   });
+});
+
+it('includes both Games contract dependencies in fixture COPY and default-deny context',()=>{
+ const repository=resolve(import.meta.dirname,'../../../..');const dockerfile=readFileSync(resolve(repository,'explorers-earth/Dockerfile.music-fixture'),'utf8');
+ for(const file of ['explorersGameContract.ts','explorersGameOwnerContract.ts']){
+  expect(dockerfile).toContain(`COPY tunes/shared/${file} /workspace/tunes/shared/${file}`);
+  for(const ignore of ['.dockerignore','explorers-earth/Dockerfile.music-fixture.dockerignore'])expect(readFileSync(resolve(repository,ignore),'utf8')).toContain(`!tunes/shared/${file}`);
+ }
+});
+it('admits exact uncommitted native Games production client modules in default-deny fixture context',()=>{
+ const repository=resolve(import.meta.dirname,'../../../..');for(const file of ['api/gamesClient.ts','api/gamesViewModel.ts','api/explorersAdapter.ts','hooks/useGamesOwner.ts'])for(const ignore of ['.dockerignore','explorers-earth/Dockerfile.music-fixture.dockerignore'])expect(readFileSync(resolve(repository,ignore),'utf8')).toContain(`!explorers-earth/src/features/Games/${file}`);
 });

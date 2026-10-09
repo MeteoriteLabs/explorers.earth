@@ -20,7 +20,12 @@ interface EditGeneralTipsModalProps {
   onClose: () => void;
   guide: Guide;
   guideId: string;
-  updateGuide: any; // Mutation function from useMutation
+  /**
+   * Saves the guide's tips and tags. Ticket 5.3: a typed callback rather than an Apollo
+   * mutation function, so this editor cannot compose a write of its own - the page owns
+   * the revision every write states.
+   */
+  saveTips: (input: {tipsNotes: unknown; tags: string[]}) => Promise<void>;
   onSuccess?: () => void;
 }
 
@@ -28,8 +33,7 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
   isOpen,
   onClose,
   guide,
-  guideId,
-  updateGuide,
+  saveTips,
   onSuccess,
 }) => {
   const [tipsNotes, setTipsNotes] = useState("");
@@ -83,15 +87,7 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
     try {
       const tipsBlocks = htmlToBlocks(tipsNotes);
 
-      await updateGuide({
-        variables: {
-          documentId: guideId,
-          data: {
-            Tips_Notes: tipsBlocks,
-            Guide_Tags: tags,
-          },
-        },
-      });
+      await saveTips({tipsNotes: tipsBlocks, tags});
 
       toast.success("Tips saved successfully!");
       onSuccess?.();

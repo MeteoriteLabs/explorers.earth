@@ -729,7 +729,6 @@ const RecommendationForm = memo(
                   documentId: string;
                 }>;
               }>, {
-                useLLMPrimary: true,
                 useRuleBasedFallback: true,
                 enableCache: true,
               });

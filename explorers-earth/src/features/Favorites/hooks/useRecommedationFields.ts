@@ -2,53 +2,12 @@ import * as Yup from "yup";
 import { Places } from "../../Profile/types/types";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
-type MediaItem = {
-  __typename: string;
-  url: string;
-};
-
-interface PlaceDetails {
-  Title: string;
-  Rating: number;
-  Place_Id: string;
-  Place_Name: string;
-  Geometry?: {
-    lat: number;
-    lng: number;
-  };
-  Place_Address?: string;
-  Rating_Count?: number;
-}
-
-type RecommendationSubCategory = {
-  __typename: string;
-  sub_category: string;
-  documentId: string;
-};
-
-type RecommendationCategory = {
-  Category_Name: string;
-  documentId: string;
-};
-
+import type { RecommendedPlaceView } from "../api/placesViewModel";
+// Ticket 5.1. The place as the owner view presents it. The Strapi-era types claimed every
+// field was populated; a manual place has no provider id or rating, a creator may have
+// disclosed no contact details, and an absent coordinate pair stays absent.
 interface FetchedPlace {
-  recommendedPlace: {
-    Contact_Name: string;
-    Contact_Number: string;
-    Media: MediaItem[];
-    recommendation_category: RecommendationCategory;
-    Place_Details: PlaceDetails;
-    Places_Social_Link: string | null;
-    Places_Website: string | null;
-    Users_Place_Note: string | null;
-    Users_Social_URL: string;
-    documentId: string;
-    media_details: string | null;
-    recommendation_sub_category: RecommendationSubCategory;
-    user_recommendation_note: string;
-    user_rating?: number | null;
-    google_rating?: number | null;
-  };
+  recommendedPlace: RecommendedPlaceView;
 }
 export const useRecommendationFields = ({
   places,
@@ -106,12 +65,10 @@ export const useRecommendationFields = ({
     title: fetchedPlace?.recommendedPlace?.Place_Details?.Title || "",
     address: fetchedPlace?.recommendedPlace?.Place_Details?.Place_Address || "",
     recommendation: "",
-    subcategory:
-      fetchedPlace?.recommendedPlace?.recommendation_sub_category
-        ?.documentId || "",
-    category:
-      fetchedPlace?.recommendedPlace?.recommendation_category
-        ?.documentId || "",
+    // Taxonomy is deferred to its own ticket, so a place carries no category or
+    // subcategory and the form offers none.
+    subcategory: "",
+    category: "",
     contactName: fetchedPlace?.recommendedPlace?.Contact_Name || "",
     contactNumber: fetchedPlace?.recommendedPlace?.Contact_Number || "",
     socialLink:

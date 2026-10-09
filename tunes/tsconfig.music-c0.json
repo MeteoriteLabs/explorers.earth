@@ -7,6 +7,19 @@
     "types": ["node", "vite/client", "passport"]
   },
   "include": [
+    "shared/explorersMovieMediaContract.ts",
+    "scripts/movies-browser-fixture.ts",
+    "server/services/movieImageFetch.ts",
+    "server/repositories/movieMedia.ts",
+    "server/application/movieMediaImport.ts",
+    "server/test/movie-media-import.integration.test.ts",
+    "server/test/movie-image-fetch.test.ts",
+    "server/test/movie-image-production-transport.test.ts",
+    "server/test/movies-public-gateway.integration.test.ts",
+    "server/test/explorers-object-storage.test.ts",
+    "server/services/movieCatalog.ts",
+    "server/explorers/categories/movies.ts",
+    "server/test/movie-catalog.test.ts",
     "scripts/inventory-runtime-surfaces.ts",
     "scripts/inventory-runtime-tables.ts",
     "scripts/music-*.ts",
@@ -17,6 +30,7 @@
     "server/services/musicReconciler.ts",
     "server/services/musicReconciliationSuspensionListener.ts",
     "server/types/express.d.ts",
+    "server/utils/types/geoip-lite.d.ts",
     "server/test/contracts/*.test.ts"
   ],
   "exclude": []
