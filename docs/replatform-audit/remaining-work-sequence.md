@@ -284,7 +284,26 @@ screen is the long-term sign-up page. Neither blocks Strapi retirement.
 - Four subpackages L0→L3; migrate the unmigrated legacy spec; add the absent held-completion, response-loss and reload cases.
 - Close the "no browser authority from account IDs" violation on *subjects* — it holds for bearers already.
 
-### 6. Public place and person detail — [5.1](tickets/ticket-5-1.md)/[7.1](tickets/ticket-7-1.md) · 6 calls, 4 files
+### 6. Public place and person detail — [5.1](tickets/ticket-5-1.md)/[7.1](tickets/ticket-7-1.md) · 6 calls, 4 files
+
+**Verified complete 2026-10-09, by measuring the premise rather than the call list.** There
+is no live Strapi API consumer left in the frontend outside D1's. Every non-test module
+reading `VITE_REST_API_URL` was classified:
+
+- **Asset-origin builders, not API calls** — `Home.tsx` (x2), `ProfileSetupAccordion.tsx`,
+  `ProfileRecommendationsTab.tsx` and the four category `*Helpers.ts`. Each is
+  `.replace("/api", "")` building an image origin. `Register.tsx`'s only occurrence is a
+  comment.
+- **Kept by D1** — `Checkout.tsx`, `paymentService.ts`, `subscriptionService.ts`.
+- **Canonical-first fallbacks** — `Profile.tsx`, `AddRecommendation.tsx`, unreachable on the
+  canonical runtime.
+
+And the asset-origin class, which is the half that once concealed a live defect in both
+runtimes, is **fully guarded**: all seven origin-builders import
+`isCanonicalMediaPath`. Sweeping for the defect's actual shape - a leading-slash test -
+finds three further modules without the guard, and none rewrites a media URL:
+`StaticPageLayout.tsx` and `localTunesApiClient.ts` are open-redirect and path-injection
+guards (both correctly reject `//`), and `getCurrentDomain.ts` builds share URLs.
 
 **Re-measured 2026-10-09: the second fetch is already gone, and the "6 calls" framing is
 wrong for what remains.** Original text kept below.
