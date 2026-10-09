@@ -39,7 +39,7 @@ jobs:
 
   static:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -57,9 +57,26 @@ jobs:
       # assertion in `replatform-e2e.test.mjs` that could not pass at any commit.
       #
       # A glob rather than a list, deliberately: a named list is what went stale in the
-      # `database` job's pinned selector, and `node --test` accepts patterns. These need no
-      # install - every import is a local sibling module - and `git show HEAD:` works on
-      # the default shallow checkout.
+      # `database` job's pinned selector, and `node --test` accepts patterns.
+      #
+      # The three steps above it are the correction to a claim I made when first gating
+      # this: that no install was needed because "every import is a local sibling module".
+      # That is true of the tests' own imports and false of the code they exercise.
+      # `snapshotSource` in `replatform-e2e.mjs` hashes `node_modules/.package-lock.json`
+      # for the root, `tunes/`, `explorers-earth/` and `tunes/auth-runtime/`, and one case
+      # spawns `explorers-earth/node_modules/@playwright/test` against a spec that calls
+      # `page.goto`, so it needs a browser binary. 230 of the 232 cases passed without
+      # them; the two that did not are the provenance and artifact-redaction cases, which
+      # are worth the ~2 minutes.
+      #
+      # `tunes/auth-runtime` needs no step of its own: `tunes/package.json` has
+      # `"postinstall": "npm ci --prefix auth-runtime --omit=dev"` and no `.npmrc` here
+      # sets `ignore-scripts`, so the tunes install above already covers it.
+      #
+      # `git show HEAD:` works on the default shallow checkout, which one case relies on.
+      - run: npm ci
+      - run: npm ci --prefix explorers-earth
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium
       - run: node --test "scripts/*.test.mjs" "scripts/*.test.cjs"
 
   unit-coverage:
