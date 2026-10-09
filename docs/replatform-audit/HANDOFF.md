@@ -873,3 +873,55 @@ Three things, not one vague blocker:
 
 Which means Strapi retirement is **not** blocked on anything unknown. It is blocked on the
 cutover plus one bounded product question about historical analytics.
+
+## Ticket 3.4 has TWO halves, and only one is owner-gated — mapped 2026-10-09
+
+I had been recording 3.4 as "the attestation needs a `workflow_dispatch`", which is true and
+incomplete. Tracing the last Strapi dependency inside the canonical runtime led straight
+back to it, so here is the whole shape.
+
+### Half one: the attestation (owner-gated, proven)
+
+`scripts/replatform-e2e.mjs`'s `validateManifest` fails unless `pending.length >= 7` with
+**every entry still `pending`**, so editing the manifest cannot satisfy this - it breaks it.
+The lane is registered at `frontend-e2e-qualification.yml:126`, a schedule-plus-dispatch
+workflow whose scheduled runs target the default branch. Only an owner `workflow_dispatch`
+on this branch produces the receipt.
+
+### Half two: repoint the dashboard (open engineering, NOT owner-gated, NOT mechanical)
+
+`GET /api/explorers/analytics/events` is the **last live Strapi dependency inside the
+canonical runtime**. It is the only route guarded by `authorizeOwner`, which resolves
+through a lazy `import()` to `verifyAnalyticsAccountOwnership` - a **Strapi JWT check on the
+`Authorization` header**. The frontend calls it from `readExplorersAnalyticsEvents`, used by
+`AnalyticsDashboard.tsx` and `pages/Home.tsx`.
+
+A canonical user has no Strapi JWT, and the dashboard already handles that honestly:
+`detailedAnalyticsUnavailable = isAuthenticated && !token` renders an `unavailable` state
+rather than claiming "no analytics yet". **So this is a known degradation, not a defect -
+but it does mean canonical users currently see no detailed analytics.**
+
+The remedy named in the code is to repoint at the canonical
+`GET /api/explorers/analytics/summary`, which exists and works
+(`AnalyticsService.getCreatorAnalytics` behind `requireActor`). It is not a URL swap,
+because the shapes are different in kind:
+
+| | legacy | canonical |
+|---|---|---|
+| payload | `events[]`, raw, aggregated client-side | `AnalyticsSummary` - `totals`, `daily[]`, `dimensions` |
+| granularity | every event | `views`/`clicks`/`interactions` per bucket |
+| dimensions | whatever the events carry | exactly `page`, `category`, `country`, `trafficSource`, `element`, `platform`, `collection`, `recommendation` |
+| completeness | all rows | buckets are **truncated**, with an `other` catch-all |
+
+Nine frontend modules consume `AnalyticsEvent` directly, including `ContentEngagementChart`,
+`GuidesChart`, `LocationEngagementChart`, `MediaItemChart`, `MediaItemsInListChart`,
+`MediaListEngagementChart` and `PageViewsTrendChart`.
+
+**The design question, which is the actual blocker and is small enough to answer in a
+sitting:** can every existing chart be rebuilt from eight truncated dimensions plus
+`totals`/`daily`, or do some charts change shape? `MediaItemsInListChart` is the one to
+check first - per-item-within-list granularity has no obvious canonical dimension, and
+bucket truncation plus `other` means a long tail cannot be reproduced exactly.
+
+Answer that and half two is ordinary engineering. It needs no acknowledgement, no
+credentials and no CI spend - unlike half one.
