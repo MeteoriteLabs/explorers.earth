@@ -117,3 +117,57 @@ npm test --prefix tunes -- --run server/test/contracts/platform-route-parity.tes
 # the live fixture ingress (needs the provisioned fixture; fails while it is legacy-music)
 npm run platform:local -- provision && npm run platform:test:routes
 ```
+
+## What it would actually take to make this green — costed 2026-10-09
+
+The invariant's own message says the remedy is to run the canonical composition. That had
+been carried as an open-ended "owner decision". It is not open-ended; it is a bounded change
+plus exactly one decision. Both are written out here so nobody re-derives them.
+
+### The change, in full
+
+The image's `CMD` is already `["node", "dist/server/api.js"]` — the mode-selecting
+entrypoint — so flipping the variable is sufficient to switch startup. In
+`docker-compose.replatform.yml`, for the `tunes` service:
+
+1. `EXPLORERS_API_MODE: canonical` instead of `legacy-music`.
+2. Add the four variables `resolveExplorersAuthConfig` requires:
+   `EXPLORERS_PUBLIC_ORIGIN` (`http://127.0.0.1:51474` — a local HTTP origin is accepted,
+   and it already matches `ALLOWED_ORIGINS`), `EXPLORERS_AUTH_SECRET` (≥32 characters),
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+3. Move the healthcheck off `/api/music-fixture/readiness`. That route is registered by
+   `server/routes/musicFixtureProbe.ts` in the legacy composition only, so under canonical
+   startup `compose up --wait` would fail on an unhealthy container before any probe ran.
+   `canonicalApp.ts:65` mounts `/health/live`, which is also one of the five routes the
+   invariant demands.
+
+**No real credentials are needed, and this is worth stating plainly because it is the
+assumption that made this look bigger than it is:** `betterAuth.ts` checks
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for *presence only* and
+`EXPLORERS_AUTH_SECRET` for *length only*. Nothing contacts Google at startup, and the five
+canonical probes do not exercise sign-in. Fixture placeholders in the same style as the
+`SESSION_SECRET` and `STRAPI_JWT_SECRET` values already in that file are sufficient.
+
+Everything else canonical startup needs is already configured on that service:
+`MUSIC_DATABASE_USER: music_runtime_login` and `MUSIC_DATABASE_MIGRATOR_USER: music_migrator`
+satisfy `verifyMusicRuntimeDatabaseConnection`, the migration gate runs ahead of it so
+`checkMusicDatabaseReadiness` has its schema, and `EXPLORERS_MEDIA_ENVIRONMENT: local`
+already selects the filesystem object store.
+
+### The one decision, and why it is not a fixture tweak
+
+`tunes/server/test/deployment/music-deployment-files.test.ts:33` is titled *"selects legacy
+API startup for every Compose service using the Tunes API image"* and asserts
+`legacy-music` across **all three** compose files — `docker-compose.yml`
+(`tunes-blue`/`tunes-green`, i.e. production), `docker-compose.music-test.yml` and
+`docker-compose.replatform.yml` — and asserts each uses the image's default entrypoint.
+
+So `EXPLORERS_API_MODE` is a **coordinated cutover switch, pinned consistent between
+production and the fixtures by a deliberate guard**. Moving the fixture alone means editing
+that guard to carve out an exception, which asserts that fixture and production startup may
+diverge. That is the decision, and it belongs to whoever owns the cutover sequence — not to
+a feature branch, and not to an agent tidying a red check.
+
+**Do not** flip the fixture and amend the guard to make this green. If the sequence calls
+for the fixture to lead production, amend the guard deliberately, with that intent in the
+commit, and expect the five probes to start passing as a result.
