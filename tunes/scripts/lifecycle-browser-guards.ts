@@ -11,6 +11,12 @@ export const LIFECYCLE_CASES = [
     'delayed old lifecycle response cannot navigate a new owner',
     'held feedback cannot mutate navigate or log out verified replacement B',
     'held feedback cannot mutate navigate or log out a fresh verified returning A session',
+    'held deletion completion preserves verified replacement B',
+    'held deletion completion preserves a fresh verified returning A session',
+    'held deactivation completion preserves verified replacement B',
+    'held deactivation completion preserves a fresh verified returning A session',
+    'held recovery completion preserves verified replacement B',
+    'held recovery completion preserves a fresh verified returning A session',
 ] as const;
 export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' {
     const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';

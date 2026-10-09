@@ -49,10 +49,18 @@ describe('owned lifecycle browser boundary', () => {
         for (const owner of [0, 1]) expect(() => validateLifecycleControl({ ...input, owner })).not.toThrow();
         for (const patch of [{ owner: 2 }, { owner: -1 }, { owner: '0' }, { owner: undefined }, { activeCaseId: undefined }, { activeCaseId: LIFECYCLE_CASES[0] }, { capability: 'b'.repeat(64) }, { remote: '10.0.0.1' }])
             expect(() => validateLifecycleControl({ ...input, ...patch } as typeof input)).toThrow();
-        expect(LIFECYCLE_CASES).toHaveLength(12);
+        expect(LIFECYCLE_CASES).toHaveLength(18);
         const results = LIFECYCLE_CASES.map(title => ({ title, status: 'passed', retry: 0 }));
         expect(() => assertLifecycleResults([...LIFECYCLE_CASES].slice(0, 10), results.slice(0, 10))).toThrow();
         expect(() => assertLifecycleResults([...LIFECYCLE_CASES], results.map((r, i) => i === 11 ? { ...r, status: 'failed' } : r))).toThrow();
+    });
+    it('requires all six completion replacement identities after the twelve retained cases', () => {
+        expect(LIFECYCLE_CASES.slice(12)).toEqual(['held deletion completion preserves verified replacement B', 'held deletion completion preserves a fresh verified returning A session', 'held deactivation completion preserves verified replacement B', 'held deactivation completion preserves a fresh verified returning A session', 'held recovery completion preserves verified replacement B', 'held recovery completion preserves a fresh verified returning A session']);
+        const results = LIFECYCLE_CASES.map(title => ({ title, status: 'passed', retry: 0 }));
+        for (let index = 12; index < 18; index++) {
+            expect(() => assertLifecycleResults(LIFECYCLE_CASES.filter((_, i) => i !== index), results.filter((_, i) => i !== index))).toThrow();
+            expect(() => assertLifecycleResults([...LIFECYCLE_CASES], results.map((result, i) => i === index ? { ...result, status: 'failed' } : result))).toThrow();
+        }
     });
     it('rejects provider code from a previous or absent scenario', () => {
         expect(() => assertProviderCode('this-case', 'this-case')).not.toThrow();

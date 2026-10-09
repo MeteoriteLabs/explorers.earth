@@ -1,5 +1,7 @@
 # Frozen lifecycle requirement-to-receipt map (19 + 3)
 
+> **Wave1 update2026-10-09:** Six held deletion/deactivation/recovery completion cases for replacement B/fresh returning A are now authored and locally executed, together with the twelve preserved cases:18 passed,0 skips/retries. See [Wave1 evidence](wave1-execution-2026-10-09.md). This advances L19's canonical completion proof; it does not close all lifecycle requirements, retire legacy protection or establish hosted acceptance. The run names base7f949519 plus the reviewed working-tree source hashes.
+
 > **Independent correction2026-10-09:** L19 is partial. Its cited canonical cases hold deletion-feedback only, not terminal deletion/deactivation/recovery completion. The legend below uses receipt to mean authored assertion, not an executed current-head result. Older all22-covered and obligation6-DONE claims are superseded; preserve legacy coverage until exact replacements gate merges. See [independent review](independent-regroom-review-2026-10-09.md).
 
 **Frozen 2026-10-08** against `codex/unified-replatform`. This is the artifact that

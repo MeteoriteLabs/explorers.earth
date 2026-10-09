@@ -397,6 +397,54 @@
           ],
           "project": "lifecycle-chromium",
           "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deletion completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deletion completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deactivation completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deactivation completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held recovery completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held recovery completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
         }
       ]
     },

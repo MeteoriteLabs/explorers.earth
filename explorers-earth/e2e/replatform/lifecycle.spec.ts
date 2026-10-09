@@ -267,3 +267,80 @@ for (const returningA of [false, true]) test(LIFECYCLE_CASES[returningA ? 11 : 1
         expect(after.account.status).toBe('active');
     }
 });
+
+for (const [offset, kind] of ['deletion', 'deactivation', 'recovery'].entries()) {
+    for (const returningA of [false, true]) test(LIFECYCLE_CASES[12 + offset * 2 + Number(returningA)], async ({ page, browser }) => {
+        await settings(page);
+        const original = await page.request.get('/api/auth/get-session');
+        expect(original.status()).toBe(200);
+        const originalId = (await original.json()).session.id, originalAuthority = await authority(page);
+        if (kind === 'recovery') {
+            await deactivate(page); await recover(page);
+            await expect(page.getByRole('button', { name: 'Reactivate account', exact: true })).toBeVisible();
+        } else if (kind === 'deletion') {
+            await deletionReason(page);
+            await page.getByPlaceholder('Please let us know the reason for leaving...').fill('Held deletion completion');
+            await page.getByRole('button', { name: 'Continue', exact: true }).click();
+            await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE');
+        } else await page.getByRole('button', { name: 'Deactivate your account? Temporarily disable your account', exact: true }).click();
+        const path = kind === 'recovery' ? `${base}/recovery/complete` : `${base}/account/${kind}`;
+        let release!: () => void, arrived!: () => void;
+        const held = new Promise<void>(done => release = done), ready = new Promise<void>(done => arrived = done);
+        let attempts = 0;
+        await page.route(`**${path}`, async route => {
+            ++attempts;
+            expect(route.request().method()).toBe('POST');
+            const response = await route.fetch();
+            expect(response.status()).toBe(200);
+            arrived(); await held; await route.fulfill({ response });
+        });
+        await page.getByRole('button', { name: kind === 'recovery' ? 'Reactivate account' : kind === 'deletion' ? 'Delete My Account' : 'Deactivate My Account', exact: true }).click();
+        await ready;
+        const committed = await control('observe', 0);
+        expect(committed.account.status).toBe(kind === 'recovery' ? 'active' : kind === 'deletion' ? 'pending_deletion' : 'suspended');
+        expect(committed.operations).toEqual(kind === 'recovery' ? [{ kind: 'deactivate', state: 'succeeded' }, { kind: 'reactivate', state: 'succeeded' }] : [{ kind: kind === 'deletion' ? 'delete' : 'deactivate', state: kind === 'deletion' ? 'pending' : 'succeeded' }]);
+        const b = await verifyReplacement(page, 1);
+        expect(b.sessionId).not.toBe(originalId);
+        expect(b.authority.generation).toBeGreaterThan(originalAuthority.generation);
+        if (returningA && kind !== 'recovery') {
+            expect((await page.request.get(`${base}/me`, { headers: { Cookie: owners[0].cookie } })).status()).toBe(401);
+            const recoveryContext = await browser.newContext({ baseURL: fixture.origin });
+            try {
+                await guard(recoveryContext);
+                const second = await recoveryContext.newPage();
+                await recover(second);
+                await expect(second.getByRole('button', { name: 'Reactivate account', exact: true })).toBeVisible();
+                expect((await second.request.get(`${base}/me`)).status()).toBe(401);
+                const completion = second.waitForResponse(r => new URL(r.url()).pathname === `${base}/recovery/complete` && r.request().method() === 'POST');
+                await second.getByRole('button', { name: 'Reactivate account', exact: true }).click();
+                expect((await completion).status()).toBe(200);
+                await expect(second.getByText('Account reactivated', { exact: true })).toBeVisible();
+                expect((await control('observe', 0)).account.status).toBe('active');
+            } finally { await recoveryContext.close(); }
+        }
+        const current = returningA ? await verifyReplacement(page, 0) : b;
+        if (returningA) {
+            expect(current.sessionId).not.toBe(originalId); expect(current.sessionId).not.toBe(b.sessionId);
+            expect(current.authority.generation).toBeGreaterThan(b.authority.generation);
+        }
+        const settled = [await control('observe', 0), await control('observe', 1)], settledUrl = page.url();
+        const staleRequests: string[] = [], staleNavigations: string[] = [];
+        page.on('request', request => {
+            const p = new URL(request.url()).pathname;
+            if (request.method() !== 'GET' && (p.startsWith(`${base}/account/`) || p.startsWith(`${base}/recovery/`) || p.startsWith('/api/auth/'))) staleRequests.push(p);
+        });
+        page.on('framenavigated', frame => { if (frame === page.mainFrame()) staleNavigations.push(frame.url()); });
+        const delivered = page.waitForResponse(r => new URL(r.url()).pathname === path && r.request().method() === 'POST');
+        release(); await (await delivered).finished();
+        await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+        expect(await authority(page)).toEqual(current.authority); expect(page.url()).toBe(settledUrl);
+        expect(staleRequests).toEqual([]); expect(staleNavigations).toEqual([]); expect(attempts).toBe(1);
+        for (const text of ['Account reactivated', 'Recovery could not finish. The proof may have expired or already been used.', 'Account service is unavailable.']) await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: /^(Reactivate account|Try Google recovery again|Sign in with Google|Delete My Account|Deactivate My Account)$/ })).toHaveCount(0);
+        const authenticated = await page.request.get('/api/auth/get-session');
+        expect(authenticated.status()).toBe(200); expect((await authenticated.json()).session.id).toBe(current.sessionId);
+        const me = await page.request.get(`${base}/me`);
+        expect(me.status()).toBe(200); expect((await me.json()).account.id).toBe(owners[returningA ? 0 : 1].accountId);
+        for (const owner of [0, 1]) expect(await control('observe', owner)).toEqual(settled[owner]);
+    });
+}

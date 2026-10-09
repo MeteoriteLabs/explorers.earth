@@ -1,5 +1,7 @@
 # Legacy lifecycle spec → canonical replacement map
 
+> **Wave1 update2026-10-09:** Canonical held completion replacement cases now have an18-case local browser receipt, including preserved feedback coverage. See [Wave1 evidence](wave1-execution-2026-10-09.md). Unresolved legacy read/pending reload/second-tab gaps and partial replacements remain; this run grants no legacy suite retirement.
+
 > **Independent correction2026-10-09:** Retain both gap groups and all partial replacements; the later phrase only clean gap does not override the pending-deletion reload/second-tab gap. No suite retirement follows from this map. See [independent review](independent-regroom-review-2026-10-09.md).
 
 **Written 2026-10-08.** Ticket 2.4's correction **C4** requires "a one-to-one behavioral map
