@@ -146,7 +146,7 @@ concluding that something was merely left undone.
 
 | Blocker | Step / ticket | What it needs, exactly |
 |---|---|---|
-| **`platform-fixture` is red by design** (once, transiently, it failed earlier at `postgres-start` — see 2026-10-09) | 1.2 | Nothing on a feature branch. **Now costed** — see `route-graph-invariant.md`: a bounded change (mode flip, four presence-checked env vars, healthcheck off a legacy-only route; no real credentials needed) blocked by ONE decision, that `music-deployment-files.test.ts` pins `legacy-music` across all three compose files including production, making this a coordinated cutover. The fixture must run the canonical composition instead of `EXPLORERS_API_MODE: legacy-music`. Until then the red is correct and must not be silenced — see the by-design section below. A merge needs you to accept a known-failing required check. |
+| **`platform-fixture` is red by design** (once, transiently, it failed earlier at `postgres-start` — see 2026-10-09) | 1.2 | **DECIDED 2026-10-09: leave it red, accept at merge.** Do not attempt to green it. **Now costed** — see `route-graph-invariant.md`: a bounded change (mode flip, four presence-checked env vars, healthcheck off a legacy-only route; no real credentials needed) blocked by ONE decision, that `music-deployment-files.test.ts` pins `legacy-music` across all three compose files including production, making this a coordinated cutover. The fixture must run the canonical composition instead of `EXPLORERS_API_MODE: legacy-music`. Until then the red is correct and must not be silenced — see the by-design section below. A merge needs you to accept a known-failing required check. |
 | **Browser lanes are coordinator-reserved** | 6.3, 7.1's `public-parity.spec.ts`, 7.3, step 15's place specs | A Docker fixture runner plus `suite-manifest.json` identities. Both are allocated by the coordinator, not writable from a ticket. |
 | **Hosted QA environment and live providers** | 7.3, 2.4, 3.3's re-attestation, 4.1's live TMDB smoke | Real credentials and a hosted run at a named commit. A fixture cannot substitute, and each of those tickets says so itself. |
 | **`TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement** | 3.4 | Yours to give. Hand-adding the lane would falsify an attestation. |
@@ -970,3 +970,35 @@ Two useful negatives, both measured rather than assumed:
 is ordinary porting. Note also that buckets are truncated with an `other` catch-all, so the
 per-item charts in Group B will show a long tail differently even once ported - worth
 deciding deliberately rather than discovering in review.
+
+## OWNER DECISIONS TAKEN, 2026-10-09
+
+Two of the open decisions in this handoff were put to the owner and answered. They are
+decisions now, not questions — treat them as settled unless the owner reopens them.
+
+### 1.2 / `platform-fixture`: leave it red, accept it at merge
+
+Full record in `route-graph-invariant.md`. `platform-fixture` and `music-required` stay
+failing deliberately; merging #121 means accepting one known-failing required check. **Do
+not attempt to green it** — every route to green either deletes a probe or lets fixture and
+production startup diverge, and both were priced and declined.
+
+### 3.4 half two (dashboard repoint): leave the port for later
+
+The owner chose to keep the current behaviour over both porting options. So:
+
+- Canonical users continue to see the honest `unavailable` state in the Analytics dashboard
+  (`detailedAnalyticsUnavailable = isAuthenticated && !token`). **That state is now
+  intentional and supported — do not "fix" it as a bug.**
+- `AnalyticsDimensionKey` is **not** gaining a `city` dimension or a guide subtype.
+- `GET /api/explorers/analytics/events` and its Strapi JWT `authorizeOwner` check therefore
+  remain the last live Strapi dependency inside the canonical runtime, and they stay.
+- The 13-consumer mapping above stays as the plan for whenever this is picked up: 10 port
+  within the existing contract, 3 need the contract extended or must change shape.
+
+### Still open, and still owner-gated
+
+CI spend for the e2e lanes and the 3.4 attestation dispatch; the
+`TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement; the `strapiIdentityAbsenceProof`
+grant; D3/D5; legal copy; hosted QA credentials.
+

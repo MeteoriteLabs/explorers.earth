@@ -202,3 +202,24 @@ The previous section therefore stands only as an inventory of *what the canonica
 costs*, not as a fix. The `music-deployment-files.test.ts` cross-file pin remains a real
 second obstacle. Neither is the blocker on its own: **the blocker is that the acceptance
 criteria contradict each other and someone has to choose.**
+
+## OWNER DECISION, 2026-10-09: leave it red and accept it at merge
+
+Asked and answered. Of the four options costed above and in the handoff — accept the red,
+flip the fixture to canonical and amend the cross-compose guard, narrow the probe set, or
+downgrade the gate to advisory — the owner chose **accept the red at merge**.
+
+So this is no longer an open question, and the practical consequences are:
+
+- **`platform-fixture` and `music-required` stay failing, by design and by decision.** Do
+  not "fix" them. Not by deleting a probe, not by lowering
+  `EXPECTED_PLATFORM_PROBE_COUNT`, not by reverting `b4975654`, and not by flipping
+  `EXPLORERS_API_MODE` on the fixture.
+- **Merging PR #121 requires accepting one known-failing required check.** That is the
+  decision, taken deliberately with the alternatives priced.
+- The canonical cutover work stays unscheduled. The costing in the sections above remains
+  valid for whenever it is picked up, including the correction that the mode flip alone
+  trades five failures for six.
+- Step 12's server-side remainder stays gated behind that cutover — except what was already
+  measured dead in **both** runtimes, which is deleted (`30475300`, 378 lines, green in CI).
+
