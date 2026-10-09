@@ -67,13 +67,22 @@ to be driven to full coverage.
    `account_music_identity` maps that exact account to that exact venue row. Neither
    branch may fall through to the other on failure.
 
-5. **Canonical owners cannot be tombstoned yet, and that is recorded rather than
-   worked around.** `music_identity_tombstones` has `strapi_user_document_id` as its
-   primary key and `strapi_account_document_id` as `NOT NULL UNIQUE`, so a canonical
-   owner has no representable tombstone. The canonical read therefore reports no
-   tombstone, which is accurate — canonical owner deletion is not implemented either.
-   Giving canonical owners a tombstone key is a further append-only migration and
-   belongs with the lifecycle work, not with 6.1.
+5. **Canonical owner deletion records retirement through the account operation.**
+   Corrected2026-10-09 against integrated `3e5113c0`: migration0042 already implements
+   `finalize_canonical_music_venue_deletion(integer,text,text)`, authorizing release only
+   for the pending account deletion that owns the venue. The retained account deletion
+   operation records finalization. Canonical owners have no Strapi-keyed tombstone:
+   `music_identity_tombstones` requires external document IDs, and no synthetic IDs or
+   widening of the legacy lifecycle tables is authorized by this decision.
+
+   **Numeric retirement is not yet fully enforced.** Migration0040 checks retired numeric
+   IDs against legacy tombstones only;0041 skips those for canonical venues, and0042
+   does not persist the released numeric ID. Serial allocation is not a durable guard
+   against explicit INSERT or sequence reset. Ticket6.4 retains that requirement; its
+   next append-only package must separately protect canonical numeric retirement while
+   preserving pending-operation authorization. The delivered finalization proof is not
+   evidence that this remaining guarantee holds. See
+   [the integrated lifecycle preflight](../replatform-audit/lifecycle-preflight-3e5113c0.md).
 
 6. **The canonical API app issues Music credentials.** The canonical session and the
    account-to-venue mapping both live there, so it is the natural issuer, and it now

@@ -1,5 +1,7 @@
 # Ticket 6.4: Canonical Music owner deletion saga
 
+> **Integrated preflight2026-10-09:** Canonical finalization is delivered by0042; its retirement record is the account deletion operation. ADR008 decision5 now records that implementation. Numeric ID nonreuse remains a real database gap: legacy tombstones do not record canonical releases, and serial allocation does not block explicit inserts or sequence reset. See [the bounded next package](../lifecycle-preflight-3e5113c0.md). Historical tombstone representability preflights below are superseded by this implemented design; numeric retirement and execution requirements remain binding.
+
 > **Current status and dispatch (2026-10-09):** Read [the two-tree reconciliation](../reconciliation-2026-10-09.md) and [the reconciled sequence](../../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). Earlier verdicts/execution cards below are historical; requirements and checkboxes remain binding and do not record completed runs.
 
 **Status:** consult the [durable implementation ledger](../../../.superpowers/sdd/epic-01/progress.md); checkboxes below do not assert implementation status.
