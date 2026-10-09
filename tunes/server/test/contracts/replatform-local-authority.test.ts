@@ -197,6 +197,7 @@ describe("replatform local authority", () => {
     ["fixture Strapi boundary mismatch", "fixture-identity-boundary"],
     ["fetch failed", "ingress-unreachable"],
     ["The operation was aborted due to timeout", "ingress-unreachable"],
+    ["ingress served the application shell where JSON was expected", "ingress-html-shell"],
     ["Unexpected token < in JSON at position 0", "ingress-malformed-body"],
     ["Unexpected end of JSON input", "ingress-malformed-body"],
     ["something nobody anticipated", "unclassified"],

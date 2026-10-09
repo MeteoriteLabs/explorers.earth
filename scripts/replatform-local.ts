@@ -235,7 +235,7 @@ type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-res
   */
 export type PlatformIngressFailure = "canonical-route-absent" | "canonical-handler-mismatch"
   | "fixture-route-mismatch" | "fixture-handler-mismatch" | "fixture-identity-boundary"
-  | "ingress-unreachable" | "ingress-malformed-body" | "unclassified";
+  | "ingress-unreachable" | "ingress-malformed-body" | "ingress-html-shell" | "unclassified";
 
 let failurePhase: PlatformPhase = "docker-endpoint";
 let failureCause: PlatformBuildFailure | PlatformIngressFailure | undefined;
@@ -304,6 +304,13 @@ export function classifyPlatformIngressFailure(error: unknown): PlatformIngressF
    * CI (`phase=ingress-check; cause=unclassified`) was neither a mismatch nor a transport
    * error, and this is the remaining way `verifyPlatformIngress` can throw.
    */
+  /*
+   * The SPA shell, which is the specific case `ingress-malformed-body` turned out to be
+   * hiding. A route absent from the fixture falls through to the catch-all and is answered
+   * 200 with `index.html`, so the status assertion passes and only the body gives it away.
+   * Named separately because the remedy is to mount the route.
+   */
+  if (message.startsWith("ingress served the application shell")) return "ingress-html-shell";
   if (error instanceof SyntaxError
       || /JSON|Unexpected token|Unexpected end of/i.test(message)) return "ingress-malformed-body";
   return "unclassified";

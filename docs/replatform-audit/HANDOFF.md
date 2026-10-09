@@ -398,9 +398,26 @@ closed cause set - `canonical-route-absent`, `canonical-handler-mismatch`,
 tested the same way, with a synthetic secret in each input asserted absent from the output.
 Redaction is unchanged: only fixed enum values are ever printed.
 
-**So read the phase on the next failing run before doing anything else.** If it says
-`ingress-check`, the cause names which probe class failed. If it still says
-`receipt-check`, the authority receipt is the problem and ingress was never reached.
+**It has now been read, and the answer narrows to one thing.** Run `37865052473`
+reported:
+
+    Replatform local command refused or failed; phase=ingress-check; cause=ingress-malformed-body
+
+That is: a probe got **the status it expected** and then `response.json()` threw. So no
+route is missing by status code, nothing timed out, and the authority receipt is fine -
+one route answered with a body that is not JSON.
+
+The likeliest shape by a wide margin is **the SPA shell**: a route absent from the
+fixture falls through to the catch-all, which answers `200` with `index.html`, so the
+status assertion passes and only the body gives it away. That is exactly the masking
+ticket 1.2's route invariant exists to catch. A dedicated cause now separates it -
+`ingress-html-shell`, decided on the response's `content-type` before parsing - so the
+next failing run distinguishes "a route is not mounted" from "something truncated the
+body".
+
+**What the owner needs to decide, if `ingress-html-shell` is confirmed:** which route,
+which needs the probe's path in the output. That is the redaction change described below
+and it is still not made.
 
 What is still not done, and is the part that wants the owner: letting any probe *detail*
 through - the path, the expected and received status. That is a redaction change in
