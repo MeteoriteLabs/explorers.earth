@@ -369,9 +369,13 @@ The tree argument does re-run the deployment files that `image-deploy-contract` 
 That duplication is deliberate — a few seconds against an exclusion list that would need
 maintaining.
 
-## A gate that pins CI's shape is not itself gated
+## A gate that pins CI's shape was not itself gated — now resolved
 
-`server/test/deployment/` is in **no** gated selector, so nothing in CI runs it.
+**Resolved 2026-10-09.** The `contracts` job's argument is now `server/test`, the whole
+tree, which includes `server/test/deployment/`. The history below is kept because the
+failure mode is general and will recur in another directory.
+
+`server/test/deployment/` was in **no** gated selector, so nothing in CI ran it.
 `music-image-ci-tests.test.ts` lives there and pins the exact list of integration files
 `.github/workflows/test.yml` runs. On 2026-10-08 that list grew from nine to fourteen
 (`111466e6`, `4c86ab6b`) and the assertion was not updated; CI stayed green through both
@@ -666,3 +670,49 @@ remaining files gained cases.
 The previous figures, for anyone reconciling an older note: **4532 / 325** (2026-10-08),
 **4502 / 320** before that, tunes contracts **1190**, lifecycle + recovery integration
 **42/42** on a reset fixture database.
+## "Named in no workflow" is not the same as "never ran" — 2026-10-09
+
+A sweep found **34 of 52** tunes integration files named in no workflow, roughly 429
+cases. The obvious conclusion — that they never ran — is **wrong**, and the correction is
+the useful part of this section.
+
+`tunes.yml`'s `build-test-scan-push` runs `npm run test:integration` with **no file
+arguments**, and that script is `vitest run --config vitest.integration.config.ts`: every
+integration file, inside its owned C10 container. A grep for file names across workflows
+cannot see a no-argument run. **Before concluding a test is ungated, check for
+argument-less runs, not just selector lists.**
+
+The real gap is narrower and was worth closing:
+
+| Workflow | Trigger | Integration reach |
+|---|---|---|
+| `tunes.yml` | `pull_request: branches: [main]` + path filter | all of them |
+| `test.yml` | `pull_request: {}` — every PR, every base | only what the `database` job names |
+
+So on a pull request to any base other than `main` — **the entire replatform branch
+included** — or one touching none of those paths, `test.yml`'s `database` job was the only
+lane executing integration files, and it named 16 of 52. It now names **48**.
+
+Naming is the fix rather than a directory argument, because `tunes/vitest.config.ts:24`
+excludes `*.integration.test.ts` from the default config.
+
+### The two exclusions, and why they are not a backlog item
+
+`explorers/games.integration.test.ts` and `games-public-gateway.integration.test.ts`
+cannot run on this service **by construction**: `captureGamesOwnedPostgres` demands an
+attested owned C10 container whose port equals `DATABASE_URL_TEST`'s, and
+`scripts/music-qualification-postgres.ts:67` rejects 55432 as "the five-service fixture
+port is reserved". A GitHub service container cannot attest a commit, container id and
+image id. They run on the owned-container lane, which is the only lane that can.
+
+### Measure the combination, not the files
+
+`user-leak.integration.test.ts` was excluded as a third, on one failure with `immutable
+external identity is tombstoned` from `enforce_music_identity_insert()`. It passes in
+company with the other 47. The pollution was the two Games files throwing in `beforeAll`
+alongside it. **A failure observed in a set is evidence about the set**, so the combination
+that CI will actually run is the thing to measure: 48 files on a fresh
+`postgres:15-alpine` gave 42 passed, 5 skipped (environment-gated), 630 tests, and one
+failure that is `music-runtime-role` reading `whoami.exe /user` — a `process.platform ===
+"win32"` branch that does not execute on `ubuntu-24.04`, where it is already gated and
+already green.
