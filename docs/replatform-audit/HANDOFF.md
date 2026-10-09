@@ -764,6 +764,19 @@ and it runs exactly what it names. Measured reach on this branch:
 | tunes integration | 52 | **48** (fixed 2026-10-09; 2 Games by construction) | all |
 | frontend unit | ~325 files / ~4554 tests | the `frontend` job's selectors + the 16-file critical-coverage gate | all, via `ci.yml` |
 | frontend e2e | 36 specs | **3** | 3 + `ci.yml`'s 5 config-scoped jobs |
+| repository script tests | 8 files / 232 cases | **all** (fixed 2026-10-09; was 0) | all |
+
+That last row was the worst of them and the easiest to miss. Two of the eight files were
+named in `tunes.yml` and the other six in nothing at all, so on this branch **none of the
+232 cases ran**. Running them found an assertion in `scripts/replatform-e2e.test.mjs` that
+could not pass *at any commit*: it truncated the manifest's prior lanes to 64 identities and
+compared them against HEAD, which carries 68. The splices dated from when the working
+manifest held identities the committed one did not; once both were committed the assertion
+became unsatisfiable. Fixed in `cc7a3f30`, gated in `f8346611`.
+
+**That one is gated by a glob, not a list** — `node --test "scripts/*.test.mjs"
+"scripts/*.test.cjs"` — because a named list is precisely what went stale in the `database`
+job's pinned selector. Prefer a pattern or a tree argument wherever the runner accepts one.
 
 ### What was done about it, and what was not
 
