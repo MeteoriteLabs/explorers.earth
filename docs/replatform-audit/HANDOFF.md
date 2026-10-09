@@ -131,9 +131,15 @@ concluding that something was merely left undone.
 | **`strapiIdentityAbsenceProof` deletion authority** | step 12 | An explicit grant. Not mine to assume. |
 | **Legal copy values** | 7.2 | Company name, country/state, app URL, contact email. A one-file edit once you supply them; rewriting a legal document's operative text is not an engineering call. |
 | **D3, D5** | Phase D (step 15) | The Places taxonomy vocabulary (an export, or a decision to ship without it) and per-place pinning. |
-| **D8's `recommendation_list.List_Name_Details`** | step 7 | The last third of D8. Three live readers, including the public share card. |
 | **The 55 ungated `server/test` root files** | CI hygiene | Each file's pass state confirmed against a CI checkout first. `server/test/deployment`'s 46 release-authority cases read the git index, so they may not be CI-safe as-is. |
 | **eslint burn-down** | — | 1647 warnings against a 0-error gate, deliberately unsequenced. |
+
+**D8 came off this list on 2026-10-09.** Its last third,
+`recommendation_list.List_Name_Details`, turned out to be already built on the exact
+destination the register recommended - one shared `legacyListNameDetails` assembling the
+blob from three canonical columns, used by the public projection, the owner view model and
+the write path alike, with all three named readers served. No decision was needed; see the
+owner-decisions record.
 
 **What is not on this list is done or recorded as measured.** The engineering-side items
 closed on 2026-10-09 are 8.1a's module move, 7.1's named acceptance suite (21 cases
