@@ -114,6 +114,30 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   | grep -v "__tests__\|/test/" | wc -l
 ```
 
+## Ticket checkboxes are NOT status — counted 2026-10-09
+
+**331 unchecked `- [ ]` items remain across `docs/replatform-audit/tickets/`, and that
+number says almost nothing about remaining work.** Only 69 of them are `Run`/`UAT`-style
+verification steps; the rest read like implementation items, and many are simply stale -
+nobody ticked a box as the work landed.
+
+Two from `ticket-5-3.md`, which the sequence records as **done**:
+
+- *"Replace Strapi numeric upload IDs and bearer-token media calls in `guideService.ts`"* -
+  `guideService.ts` **does not exist**; it was deleted.
+- *"In `guides.integration.test.ts`, create sections S1/S2 …"* - that file exists and is
+  34 KB.
+
+Every ticket also carries this in its own boilerplate: *"Commands and checkboxes specify
+required verification, not completed runs."*
+
+**So do not read an unchecked box as open work, and do not read a count of them as
+progress.** The current authorities are, in order: this handoff, then
+[the remaining-work sequence](remaining-work-sequence.md), then
+[the ticket index](ticket-index.md). Reconciling all 331 against the delivered state is
+bookkeeping worth doing, but it is bookkeeping - it would change no code and close no
+blocker, and it is not what the table below is waiting on.
+
 ## What stands between here and a finished plan — consolidated 2026-10-09
 
 The steps below are not blocked on engineering judgement or on more code being written.
