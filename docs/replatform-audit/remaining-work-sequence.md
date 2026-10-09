@@ -730,7 +730,7 @@ against third-party APIs, so they can ship before or after retirement, in any or
 - **[3.3](tickets/ticket-3-3.md) Books** — "no Books flow requires Strapi" is unproven at an exact SHA; otherwise 20/20 verified.
 
 ### 15. Owed from the delivered category tickets
-- `tunes/server/test/explorers/places.test.ts` — the unit suite 5.1 names.
+- ~~`tunes/server/test/explorers/places.test.ts` — the unit suite 5.1 names.~~ **DONE 2026-10-09**, 11 cases, three of them mutation-checked. The directories holding it were ungated, so the `contracts` job now takes `server/test/explorers` and `server/test/publicProfile` as directory arguments; see the handoff for the 79-of-176 count behind that.
 - `e2e/replatform/places.spec.ts` and `place-links.spec.ts` — need the Docker fixture runner plus `suite-manifest.json` identities; **reserved to the coordinator**.
 - Places seeded taxonomy and the sector browse — blocked on **D3**.
 - Per-place pinning — blocked on **D5**.
