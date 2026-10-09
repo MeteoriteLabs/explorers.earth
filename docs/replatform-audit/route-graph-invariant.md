@@ -171,3 +171,34 @@ a feature branch, and not to an agent tidying a red check.
 **Do not** flip the fixture and amend the guard to make this green. If the sequence calls
 for the fixture to lead production, amend the guard deliberately, with that intent in the
 commit, and expect the five probes to start passing as a result.
+
+### Correction: the change above is necessary but NOT sufficient
+
+The costed change in the previous section would switch the fixture to canonical startup. It
+would **not** make `platform-fixture` green, and anyone acting on that section alone would
+be surprised. Ticket 1.2's own text, which I should have read before costing this, says why:
+
+> Closing it needs an owner decision on sequencing, because this ticket asks for two things
+> one runtime cannot both provide — keep the six legacy probes (`/api/check`,
+> `/api/csrf-token`, `/api/user/reactivate` and the `/api/users/me` Strapi boundary are
+> legacy-only) *and* require canonical routes the legacy runtime does not serve.
+
+So the probe set is **self-contradictory against any single runtime**. Today five canonical
+probes fail. Flip the mode and the six legacy probes fail instead — a different red, not a
+green one. The two sets cannot both pass in one composition, which is the whole of the
+sequencing decision: what should the fixture prove, and during which phase of the cutover.
+
+Two further constraints from the same ticket, both of which outrank a tidy-up:
+
+- **"Coordinator allocation is required before any writer starts."**
+  `scripts/replatform-route-parity.ts` and
+  `tunes/server/test/contracts/platform-route-parity.test.ts` are shared files every epic
+  landing a canonical route must extend. The ticket asks for an exclusive window and no
+  overlapping writers.
+- **"Preserve the production half of the invariant unchanged"** — production must still
+  reject fixture session authority even once the route graph is equivalent.
+
+The previous section therefore stands only as an inventory of *what the canonical half
+costs*, not as a fix. The `music-deployment-files.test.ts` cross-file pin remains a real
+second obstacle. Neither is the blocker on its own: **the blocker is that the acceptance
+criteria contradict each other and someone has to choose.**
