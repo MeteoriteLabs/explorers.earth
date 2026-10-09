@@ -114,7 +114,16 @@ test('Games exact identity admission rejects renamed duplicate extra and missing
 test('Games ambient fixture authority is rejected before any child',()=>{assert.throws(()=>assertEnvironment({GAMES_E2E_FIXTURE_PATH:'unowned'}));});
 
 test('Games receipts preserve source artifact cleanup and single-attempt ownership guards',()=>{const lane=gamesManifest().lanes.at(-1);for(const change of [c=>c.receipt.provenance.sourceHash='0'.repeat(64),c=>c.receipt.cleanup.status='failed',c=>c.receipt.authority.database='foreign',c=>c.receipt.artifacts.trace='on',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1}),c=>c.receipt.results[0].attempts[0].status='skipped']){const c=structuredClone(child(lane));change(c);assert.throws(()=>validateLaneReceipt(lane,c,provenance));}});
-test('Games addition preserves committed prior sixty-two identities and rejects altered prior discovery',()=>{const prior=JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true}));const m=gamesManifest();const preserved=structuredClone(m.lanes.slice(0,5));preserved.find(l=>l.name==='lifecycle').identities.splice(10);preserved.find(l=>l.name==='profile').identities.splice(2);assert.deepEqual(preserved,prior.lanes.slice(0,5));const lane=structuredClone(m.lanes[0]),raw=rawReport(lane);lane.identities[0].titlePath=['unreviewed old-lane rename'];assert.throws(()=>decodeProtectedReport(raw,lane,process.cwd(),false));});
+/*
+ * The two `splice` calls this test used to make - lifecycle to 10, profile to 2 - dated
+ * from when the working manifest carried identities the committed one did not yet have.
+ * Both are committed now (68 across the first five lanes, and a sibling test asserts
+ * that 68), so truncating `preserved` to 64 made the assertion unsatisfiable: it could
+ * never pass again, at any commit. Nothing caught it because no workflow runs this file.
+ * Comparing the working manifest's prior lanes against HEAD's is the whole intent, so
+ * they are compared untruncated.
+ */
+test('Games addition preserves committed prior sixty-eight identities and rejects altered prior discovery',()=>{const prior=JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true}));const m=gamesManifest();const preserved=structuredClone(m.lanes.slice(0,5));assert.equal(preserved.reduce((n,l)=>n+l.identities.length,0),68);assert.deepEqual(preserved,prior.lanes.slice(0,5));const lane=structuredClone(m.lanes[0]),raw=rawReport(lane);lane.identities[0].titlePath=['unreviewed old-lane rename'];assert.throws(()=>decodeProtectedReport(raw,lane,process.cwd(),false));});
 
 test('Games declared source titles remain exact before actual protected discovery',()=>{const source=readFileSync(new URL('../explorers-earth/e2e/replatform/games.spec.ts',import.meta.url),'utf8');const declared=[...source.matchAll(/^test\('([^']+)'/gm)].map(m=>m[1]);assert.deepEqual(declared.sort(),[...gamesTitles].sort());});
 
