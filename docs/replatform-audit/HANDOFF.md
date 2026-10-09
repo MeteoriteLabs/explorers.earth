@@ -1,4 +1,11 @@
-# Handoff — replatform, as of 2026-10-08
+# Handoff — replatform, as of 2026-10-09 (wave 1 merged, plus this branch)
+
+> **Base is current as of `69e0d47f`** (PR #120, wave 1: D1, D2, D4, D6, D7, D8, D10
+> decided and landed). **This file then moved well past that on `claude/wave3-auth-lifecycle`**
+> (PR #121), which is where the 2026-10-09 sections below come from. If
+> `git log --oneline -1` shows something later than that branch, check this file against it
+> before trusting its "remains" sections — they have drifted twice already, and a stale
+> remains-list is the most misleading thing a handoff can carry.
 
 Written to end a long session. Start here, then use
 [the sequence doc](remaining-work-sequence.md) as the backlog. Branch
@@ -80,19 +87,19 @@ receipts; three obligations remain.
 |---|---|
 | 1. Guides (5.3) | Done |
 | 2. Dashboard home | Done |
-| 3. Claim flow | **Open — D4.** Measured, not implemented. See below. |
+| 3. Claim flow | **Done.** D4 decided against it; the flow is dropped in `7399cfe1`. |
 | 4. Auth pages | Done. Was never D10's — see below. |
 | 5. Auth UX and lifecycle (2.4) | Prerequisite discharged; 2 of 6 obligations done; 3 remain |
 | 6. Public place/person detail | Done |
 | 7. Profile, Settings, Analytics | Done. Ticket 7.2's reference content landed 2026-10-08 |
 | 8. Music glue | Done |
-| 9. Billing | Done, without pre-empting D1 |
+| 9. Billing | Done. D1 has since landed too: AI features removed (`76224913`) and the monthly request cap (`6fcf0187`). |
 
 Apollo hook consumers outside tests: **19 → 2**, and the milestone is sharper than the
 number. The two left are `AuthSyncManager` and `useLogout`, and both hold nothing but
 `apollo.clearStore()` — cache plumbing that goes with Apollo in step 12. So as of 2026-10-08
 **the frontend makes no Strapi read or write through Apollo at all.** `CreateGuideStep2` went
-with D9, `ClaimAccount` with the claim-flow containment, and `useFaqs`/`usePlatformTerms`
+with D9, `ClaimAccount` when D4 dropped the flow, and `useFaqs`/`usePlatformTerms`
 with ticket 7.2.
 
 What that does **not** mean is that the frontend is off Strapi — see the REST note in the
@@ -117,18 +124,12 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   Ten locales, which is what Strapi actually had — not the i18n bundles' 47.
 - **D9, guide categories — done** in `f84f96df`. Suggestions come from the creator's own
   history and the field accepts anything typed, so no vocabulary was invented.
-- **D4, the claim flow — the part that was mine is done** in `dfb16b35`, and my earlier
-  description of it here was wrong. It does **not** break mid-flow after a document upload:
-  the verification step is reachable only after a successful search, and the search is a
-  Strapi read, so the flow never reaches an upload. What it did was fail at the door with a
-  **misleading** message — "No account found with the provided details" — telling an owner
-  whose place is claimable that it is not. That now says the feature is unavailable and
-  explicitly that this does not mean the place is unclaimable, reaches no network, and no
-  longer carries `Bearer VITE_PUBLIC_ACCESS_TOKEN` to Strapi's `/upload`.
-
-  **Still D4's**, and unchanged: whether a canonical claim flow is rebuilt and in what shape
-  — 18 MISSING fields, no table, no route, no contract. If it is, an unauthenticated document
-  upload needs a server-issued, single-use, purpose-bound grant, the way recovery proofs do.
+- **D4 — decided against, and the flow is gone.** `7399cfe1 feat(5.4): drop the claim flow,
+  which D4 decided against` removed `pages/ClaimAccount.tsx` outright, along with the
+  truthful-refusal change I had made as an interim step and its test. Nothing to carry
+  forward except the note for anyone who rebuilds it: an unauthenticated document upload
+  needs a server-issued, single-use, purpose-bound grant, the way recovery proofs do — not
+  a `VITE_PUBLIC_ACCESS_TOKEN` shipped to the browser, which is what the old flow used.
 
 **Not decisions, just not mine or not here:**
 
@@ -362,7 +363,8 @@ way is a no-op here.
 `scripts/check-retired-dependencies.mjs`'s `codeOnly` had exactly this, under a comment
 promising "blank out comments so a mention in prose is never read as code" - so a
 `STRAPI_*` mention inside a `//` comment in the canonical closure failed the scan as
-though it were a real read. Fixed `d6209e77` by normalising `
+though it were a real read. Fixed `d6209e77` by normalising `
+
 ` first, and proved by
 probe: the same comment passes with the normalisation and fails without it.
 
@@ -537,7 +539,18 @@ $env:DATABASE_URL_TEST='postgresql://music_migrator:music@127.0.0.1:55432/music_
 npx vitest run --config vitest.integration.config.ts server/test/explorers-lifecycle.integration.test.ts
 ```
 
-Last known good: frontend **4532 tests / 325 files** (measured 2026-10-08, all passing;
-the previous 4502/320 figure was stale by then, so do not read the increase as only the 23
-new ticket-7.2 cases), tunes contracts **1190**, lifecycle + recovery integration **42/42**
-on a reset fixture database.
+Last known good, measured 2026-10-09 on this branch after merging the base: frontend
+**4549 tests / 324 files**, all passing; tunes `server/test/contracts` +
+`server/test/explorers` + `server/test/publicProfile` **1469 passing / 86 files** with the
+one known local-fixture load failure (`music-cli-contract`, missing `.env.music.test`); the
+sixteen-file `database` list **122 passing / 8 skipped** on a **fresh** container.
+
+**Do not read the frontend file count as a regression.** It was **325 / 4532** on
+2026-10-08, and three test files were *added* on this branch - so the fall to 324 is the
+base's wave-1 deletions: `7399cfe1`, `76224913` and `dfb16b35` removed 28 test files
+between them when the claim flow and the AI features went. Tests rose because the
+remaining files gained cases.
+
+The previous figures, for anyone reconciling an older note: **4532 / 325** (2026-10-08),
+**4502 / 320** before that, tunes contracts **1190**, lifecycle + recovery integration
+**42/42** on a reset fixture database.
