@@ -347,6 +347,30 @@ About 8 of the 15 files skip locally — they gate on environment the local cont
 not provide — so a local pass is a weaker signal than CI's, not an equal one. On a fresh
 database the list is 7 passed / 8 skipped / 0 failed.
 
+## A CRLF trap that silently disables comment stripping
+
+This repository is CRLF throughout. Splitting a file on a newline therefore leaves a
+trailing carriage return on every line, and **a carriage return is a line terminator in a
+JavaScript regex**. So in `line.replace(/\/\/.*$/, "")`:
+
+- `.` will not match the carriage return, and
+- `$` without the `m` flag anchors only at the very end of the whole string,
+
+which means the pattern matches **nothing**. Any "strip line comments" step written this
+way is a no-op here.
+
+`scripts/check-retired-dependencies.mjs`'s `codeOnly` had exactly this, under a comment
+promising "blank out comments so a mention in prose is never read as code" - so a
+`STRAPI_*` mention inside a `//` comment in the canonical closure failed the scan as
+though it were a real read. Fixed `d6209e77` by normalising `
+` first, and proved by
+probe: the same comment passes with the normalisation and fails without it.
+
+The direction was over-strict rather than unsafe, so nothing was ever missed. But **this
+is the real cause of the "banned-word assertion trips on my own comment" problem** that
+this plan's notes record twice as a quirk to work around by rewording. It was not a quirk.
+If you write a scanner here, normalise line endings before anything else.
+
 ## Lessons that will cost you time if you skip them
 
 - **`tsc -p tsconfig.json` in explorers-earth checks nothing** and always reports 0 errors
