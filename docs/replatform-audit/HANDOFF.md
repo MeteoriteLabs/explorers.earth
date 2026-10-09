@@ -269,6 +269,34 @@ The rationale lives in the classification doc's section D and in the entry above
 share one index and one working tree, so `git add -A` in either one commits whatever the other
 is holding, under the wrong message.
 
+## 79 of 176 tunes unit test files were in no CI job — counted 2026-10-09
+
+Every tunes job in `.github/workflows/test.yml` runs an **explicit file list**, except the
+`contracts` job, which passes a directory. So coverage grows only when someone edits a
+list, and the tree has outgrown the lists:
+
+| Directory | Ungated unit files |
+|---|---|
+| `server/test` (root) | 55 |
+| `server/test/publicProfile` | 11 |
+| `server/test/explorers` | 5 |
+| `server/test/deployment` | 3 |
+| `server/test/migrations`, `music`, `integration`, `helpers` | 5 |
+
+**Partly closed:** the `contracts` job now also takes `server/test/explorers` and
+`server/test/publicProfile` — 29 files, 277 cases, all passing when added. Directory
+arguments were chosen deliberately: a list grows stale, a directory does not. It is safe
+because `tunes/vitest.config.ts:24` excludes `*.integration.test.ts`, so a directory
+argument cannot pull a database-dependent file into that database-less job.
+
+**Still ungated: the 55 files in `server/test` root, plus deployment and migrations.**
+Those were not added in the same change for a reason — the root directory holds files
+that gate on environment (`account-recovery.test.ts` and `*.real-tool.test.ts` are
+excluded by config, but others skip at runtime), and `server/test/deployment` holds 46
+release-authority cases, some of which read the git index and would need checking against
+a CI checkout before being made required. Adding them is worth doing and is its own
+change, with each file's pass state confirmed first.
+
 ## A gate that pins CI's shape is not itself gated
 
 `server/test/deployment/` is in **no** gated selector, so nothing in CI runs it.

@@ -81,7 +81,14 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes --legacy-peer-deps
-      - run: npm test --prefix tunes -- --run server/test/contracts
+      # Directory arguments, which is what makes this job's coverage grow with the tree
+      # instead of with an edited list. `server/test/explorers` and
+      # `server/test/publicProfile` were added 2026-10-09: a count found 79 of 176 tunes
+      # unit files in no CI job at all, and these two directories are the category and
+      # public-projection suites, 29 files and 277 cases. The default vitest config
+      # excludes `*.integration.test.ts`, so a directory argument cannot pull a
+      # database-dependent file into this database-less job.
+      - run: npm test --prefix tunes -- --run server/test/contracts server/test/explorers server/test/publicProfile
 
   database:
     runs-on: ubuntu-24.04
