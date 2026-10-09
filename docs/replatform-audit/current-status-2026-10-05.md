@@ -1,5 +1,7 @@
 # Current ticket and delivered-slice status
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 Checked against the durable execution ledger on 2026-10-05. This summary corrects planning ambiguity; it does not rerun tests, reopen accepted tickets or turn bounded acceptance into full parity.
 
 The organizer PASS is **structural custody only**: document count, card presence and dependency cycles. It does not verify this ledger summary, application source, semantic requirement coverage or independent acceptance. Recording an outstanding requirement under a blocker or downstream owner does not satisfy ticket closure; every mandatory obligation still needs accepted evidence or an explicit authorized scope decision.

@@ -1,5 +1,7 @@
 # Replatform recovery and re-groomed execution plan
 
+> **Sequencing superseded 2026-10-09:** Read [the reconciled sequence](2026-10-09-replatform-reconciled-sequence.md) and [the status reconciliation](../../replatform-audit/reconciliation-2026-10-09.md). This plan remains historical; its requirements are not waived.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans task-by-task. Every new delegated assignment uses a fresh agent. Checkboxes are requirements, not execution receipts.
 
 **Goal:** Resume the existing migration backlog with verified prerequisites, preserved acceptance requirements and independently deliverable packages.

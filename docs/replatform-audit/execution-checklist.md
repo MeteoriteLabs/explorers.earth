@@ -1,5 +1,7 @@
 # Shared execution checklist
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 **Corrected amendment (2026-10-05).** This block replaces the two earlier inline "current finite status" amendments, which were stale and partly contradicted by the receipts they cited. Read the [re-groomed execution plan](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md) for ownership and remaining prerequisites, and the [corrected execution order](implementation-plan.md#corrected-execution-order-2026-10-05) for dispatch order. Every new assignment uses a fresh agent. **No full parity, operational QA or release claim follows from any slice below.**
 
 **Corrected identity counts.** Three separate aggregates were previously conflated; keep them distinct:

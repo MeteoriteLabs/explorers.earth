@@ -1,5 +1,7 @@
 # Individual ticket implementation plans
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 **2026-10-05 re-groom:** [Current dependency order, all-ticket disposition and parallel ownership](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md). Required red cases retain their acceptance owner; saving a plan changes no delivery status.
 
 **Sequencing (2026-10-08):** [Remaining work, in the order we will do it](remaining-work-sequence.md)

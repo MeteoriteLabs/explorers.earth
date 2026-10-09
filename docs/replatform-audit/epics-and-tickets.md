@@ -1,5 +1,7 @@
 # Unified Explorers: epic and ticket backlog
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 ## Current authority (2026-10-05)
 
 Everything below this header is a **historical grooming draft**. It is retained because it preserves the original requirement set, and it must not be deleted. It is **not** current completion status, and **not** current execution order. For those, use the [current status](current-status-2026-10-05.md), the [individual ticket plans and verdicts](ticket-index.md), the [corrected execution order](implementation-plan.md#corrected-execution-order-2026-10-05) and the [re-groomed execution plan](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md). Do not regenerate amended tickets from the grouped drafts below; the organizer validates custody read-only.

@@ -1,5 +1,7 @@
 # Remaining work, in the order we will do it
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 **2026-10-08. Supersedes `strapi-retirement-path.md`.**
 
 Everything still outstanding, sequenced. This says *what* and *when*, not *how* — the ticket

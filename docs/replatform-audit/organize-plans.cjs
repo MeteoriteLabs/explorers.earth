@@ -3,7 +3,7 @@
 {
  const fs = require('node:fs'), path = require('node:path');
  if (process.argv.slice(2).some(arg => arg !== '--check')) throw new Error('Only --check is supported; regeneration is disabled.');
- const plan = JSON.parse(fs.readFileSync(path.join(__dirname, 'execution-packages.json'), 'utf8'));
+ const plan = JSON.parse(fs.readFileSync(path.join(__dirname, 'execution-packages-2026-10-05.json'), 'utf8'));
  const rows = new Map(plan.tickets.map(row => [row.id, row]));
  if (rows.size !== 38 || plan.tickets.length !== 38) throw new Error('Expected 38 unique tickets.');
  const active = new Set(), visited = new Set();
@@ -25,7 +25,7 @@
   const body = fs.readFileSync(path.join(__dirname, 'epics', `epic-${String(n).padStart(2, '0')}.md`), 'utf8');
   if (!body.includes('## Current execution authority')) throw new Error(`Missing epic authority ${n}`);
  }
- console.log('PASS: 38 ticket contracts/cards, 10 epic authorities, acyclic package prerequisites, 7 preserved completed tickets. Read-only; independent review is a separate gate.');
+ console.log('HISTORICAL CHECK ONLY; current dispatch uses schema-v2 execution-packages.json. PASS: 38 ticket contracts/cards, 10 epic authorities, acyclic package prerequisites, 7 preserved completed tickets. Read-only; independent review is a separate gate.');
  process.exit(0);
 }
 // Disabled historical implementation follows; never run it to regenerate current plans.

@@ -1,5 +1,7 @@
 # Ticket 4.2: Games
 
+> **Current status and dispatch (2026-10-09):** Read [the two-tree reconciliation](../reconciliation-2026-10-09.md) and [the reconciled sequence](../../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). Earlier verdicts/execution cards below are historical; requirements and checkboxes remain binding and do not record completed runs.
+
 
 **Current finite status (2026-10-05):** Manual Games slice independently reviewed, committed and pushed at46eea549d0d2661424a3dd2b8d71cee38cc47f30, with exact committed canonical82 acceptance and separate native Games checks. Later1a5c image/C0 hosted validation succeeded. Full IGDB/provider parity, required broader browser QA, operational QA and release remain open. Earlier commit-preparation wording is historical. See [checked status](../current-status-2026-10-05.md).
 

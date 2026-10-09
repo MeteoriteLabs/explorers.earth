@@ -1,5 +1,7 @@
 # Owner decisions — 2026-10-08
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 TK took the decisions below in one session. This file is the record; the
 [coverage register](strapi-coverage-register.md) §7 and the
 [sequence doc](remaining-work-sequence.md) point here rather than restating them.

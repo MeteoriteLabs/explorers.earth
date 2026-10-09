@@ -1,5 +1,7 @@
 # Legacy lifecycle spec → canonical replacement map
 
+> **Independent correction2026-10-09:** Retain both gap groups and all partial replacements; the later phrase only clean gap does not override the pending-deletion reload/second-tab gap. No suite retirement follows from this map. See [independent review](independent-regroom-review-2026-10-09.md).
+
 **Written 2026-10-08.** Ticket 2.4's correction **C4** requires "a one-to-one behavioral map
 from each retired case to its canonical replacement" **before** `account-lifecycle.spec.ts`
 is retired, and records that map as unwritten. This is it.

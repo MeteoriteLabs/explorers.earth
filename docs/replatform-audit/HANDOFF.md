@@ -1,5 +1,7 @@
 # Handoff — replatform, as of 2026-10-09 (wave 1 merged)
 
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
 > **Current as of `69e0d47f`** (PR #120, wave 1: D1, D2, D4, D6, D7, D8, D10 decided and
 > landed). If `git log --oneline -1` shows something later, check this file against it before
 > trusting its "remains" sections — they have drifted twice already, and a stale remains-list
