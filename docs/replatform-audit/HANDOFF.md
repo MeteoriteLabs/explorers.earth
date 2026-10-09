@@ -131,7 +131,6 @@ concluding that something was merely left undone.
 | **`strapiIdentityAbsenceProof` deletion authority** | step 12 | An explicit grant. Not mine to assume. |
 | **Legal copy values** | 7.2 | Company name, country/state, app URL, contact email. A one-file edit once you supply them; rewriting a legal document's operative text is not an engineering call. |
 | **D3, D5** | Phase D (step 15) | The Places taxonomy vocabulary (an export, or a decision to ship without it) and per-place pinning. |
-| **The 55 ungated `server/test` root files** | CI hygiene | Each file's pass state confirmed against a CI checkout first. `server/test/deployment`'s 46 release-authority cases read the git index, so they may not be CI-safe as-is. |
 | **eslint burn-down** | — | 1647 warnings against a 0-error gate, deliberately unsequenced. |
 
 **D8 came off this list on 2026-10-09.** Its last third,
@@ -318,19 +317,27 @@ list, and the tree has outgrown the lists:
 | `server/test/deployment` | 3 |
 | `server/test/migrations`, `music`, `integration`, `helpers` | 5 |
 
-**Partly closed:** the `contracts` job now also takes `server/test/explorers` and
-`server/test/publicProfile` — 29 files, 277 cases, all passing when added. Directory
-arguments were chosen deliberately: a list grows stale, a directory does not. It is safe
-because `tunes/vitest.config.ts:24` excludes `*.integration.test.ts`, so a directory
-argument cannot pull a database-dependent file into that database-less job.
+**Closed.** The `contracts` job now runs `server/test` — the whole tree, as a single
+argument, so it cannot go stale again. Naming directories or files only moves the
+staleness somewhere else.
 
-**Still ungated: the 55 files in `server/test` root, plus deployment and migrations.**
-Those were not added in the same change for a reason — the root directory holds files
-that gate on environment (`account-recovery.test.ts` and `*.real-tool.test.ts` are
-excluded by config, but others skip at runtime), and `server/test/deployment` holds 46
-release-authority cases, some of which read the git index and would need checking against
-a CI checkout before being made required. Adding them is worth doing and is its own
-change, with each file's pass state confirmed first.
+Measured before landing, because "just gate everything" deserves evidence: **168 of 170
+files pass** locally, and both exceptions are environment rather than code.
+
+- `music-cli-contract` needs a gitignored `.env.music.test` this worktree was never
+  provisioned with; CI's checkout has no reason to lack it, and that file is already in
+  the job today and green.
+- `music-docker-release-authority` reads the git index, so it fails if the tree changes
+  while it runs — which is what happened: I committed during the run. On a static tree it
+  is **46/46**, and a CI checkout is static.
+
+The 55 previously-ungated root files were separately confirmed first: **53 run and all
+pass**; the other two (`account-recovery.test.ts`, `*.real-tool.test.ts`) are excluded by
+`vitest.config.ts:24` and cannot run in the default config at all.
+
+The tree argument does re-run the deployment files that `image-deploy-contract` also runs.
+That duplication is deliberate — a few seconds against an exclusion list that would need
+maintaining.
 
 ## A gate that pins CI's shape is not itself gated
 

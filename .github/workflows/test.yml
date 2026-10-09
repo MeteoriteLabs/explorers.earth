@@ -81,14 +81,25 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes --legacy-peer-deps
-      # Directory arguments, which is what makes this job's coverage grow with the tree
-      # instead of with an edited list. `server/test/explorers` and
-      # `server/test/publicProfile` were added 2026-10-09: a count found 79 of 176 tunes
-      # unit files in no CI job at all, and these two directories are the category and
-      # public-projection suites, 29 files and 277 cases. The default vitest config
-      # excludes `*.integration.test.ts`, so a directory argument cannot pull a
-      # database-dependent file into this database-less job.
-      - run: npm test --prefix tunes -- --run server/test/contracts server/test/explorers server/test/publicProfile
+      # The whole tree, deliberately, and as one argument so this can never go stale.
+      #
+      # It was `server/test/contracts` alone, which left **79 of 176** tunes unit files in no
+      # CI job at all - counted 2026-10-09, and three separate defects reached CI through
+      # that gap in a single day. Naming directories or files instead would just move the
+      # staleness; a tree argument grows with the tree.
+      #
+      # Safe because `tunes/vitest.config.ts:24` excludes `*.integration.test.ts`,
+      # `account-recovery.test.ts` and `*.real-tool.test.ts`, so this cannot pull a
+      # database-dependent or credentialed file into this database-less job. Measured before
+      # landing: 168 of 170 files pass locally, and both exceptions are environment, not code
+      # - `music-cli-contract` needs a gitignored `.env.music.test` that CI's checkout has no
+      # reason to lack, and `music-docker-release-authority` reads the git index, so it fails
+      # only if the tree changes mid-run (46/46 on a static tree, which a CI checkout is).
+      #
+      # It does re-run the deployment files that `image-deploy-contract` also runs. That
+      # duplication is accepted: a second execution costs a few seconds, and the alternative
+      # is an exclusion list that needs maintaining.
+      - run: npm test --prefix tunes -- --run server/test
 
   database:
     runs-on: ubuntu-24.04
