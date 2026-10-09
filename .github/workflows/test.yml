@@ -137,12 +137,21 @@ jobs:
       - run: npm ci --prefix tunes --legacy-peer-deps
       - name: Refuse any non-disposable database target
         run: node -e "const u=new URL(process.env.DATABASE_URL_TEST);if(u.protocol!=='postgresql:'||u.username!=='music_migrator'||u.hostname!=='127.0.0.1'||u.port!=='55432'||u.pathname!=='/music_fixture')process.exit(5)"
-      # Thirty-one files added 2026-10-09. A sweep of every tunes integration file found
-      # 34 of 52 named in no workflow at all - roughly 429 cases that existed and never
-      # ran. This is the same gap class as the `contracts` job's 79-of-176, and it is
-      # closed the same way: by naming, because `vitest.config.ts:24` excludes
-      # `*.integration.test.ts` from the default config, so a directory argument on a
-      # database-less job cannot reach them.
+      # Thirty-one files added 2026-10-09, because 34 of 52 tunes integration files were
+      # named in no workflow - roughly 429 cases.
+      #
+      # Stated carefully, because the first version of this comment overstated it: those
+      # files were *unnamed*, not unrun. `tunes.yml`'s `build-test-scan-push` runs
+      # `npm run test:integration` with no file arguments, which is every integration
+      # file, inside its owned C10 container. The gap is which pull requests reach that
+      # lane: `tunes.yml` is `pull_request: branches: [main]` behind a path filter, while
+      # this workflow is `pull_request: {}`. So on a PR to any base other than `main` -
+      # the entire replatform branch included - or one touching none of those paths, this
+      # job was the only lane executing integration files, and it named 16 of 52.
+      #
+      # Naming is the fix rather than a directory argument because `vitest.config.ts:24`
+      # excludes `*.integration.test.ts` from the default config, so a database-less job
+      # cannot reach them the way `contracts` reaches the unit tree.
       #
       # Measured before landing, not assumed. All 34 were run on a fresh
       # `postgres:15-alpine` matching this service, then the full 47-file set this step
@@ -152,9 +161,13 @@ jobs:
       #
       # Three of the 34 are deliberately NOT here, each for a measured reason:
       #   - `explorers/games.integration.test.ts` and `games-public-gateway.integration.test.ts`
-      #     fail with "Explicit owned Games PG authority required":
-      #     `parseC10StandalonePostgresAuthority` rejects port 55432 as reserved, so Games
-      #     needs its own disposable container rather than this shared service.
+      #     fail with "Explicit owned Games PG authority required". Not a missing env var:
+      #     `captureGamesOwnedPostgres` demands an *attested* owned C10 container whose
+      #     port equals `DATABASE_URL_TEST`'s, and `music-qualification-postgres.ts:67`
+      #     rejects 55432 outright as "the five-service fixture port is reserved". A
+      #     GitHub service container cannot satisfy that by construction. These two are
+      #     covered by `tunes.yml`'s owned-container lane, which is the only lane that can
+      #     attest such authority - so they are excluded here, not untested.
       #   - `user-leak.integration.test.ts` passes 4/4 alone on a fresh container but fails
       #     in company with `immutable external identity is tombstoned` from
       #     `enforce_music_identity_insert()`. That is order-dependent cross-suite
