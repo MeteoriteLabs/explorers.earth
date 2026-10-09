@@ -161,6 +161,43 @@ describe("replatform local authority", () => {
     expect(classifyPlatformBuildFailure("sensitive but unknown failure")).toBe("unclassified");
   });
 
+  /*
+   * `phase=postgres-start` appeared in CI on 2026-10-09 carrying no cause, because `run`
+   * classified only `service-build`. These cases pin both the two categories a service
+   * start can hit that a build cannot, and the ordering that makes them reachable: a
+   * "port is already allocated" message also contains "Error", and an invalid-service
+   * message also matches the image-resolution "not found" shape, so an earlier arm could
+   * swallow either.
+   */
+  it.each([
+    ["Error response from daemon: driver failed programming external connectivity: Bind for 127.0.0.1:51434 failed: port is already allocated", "port-unavailable"],
+    ["listen tcp 127.0.0.1:51474: bind: address already in use", "port-unavailable"],
+    ["no such service: postgres", "compose-config-invalid"],
+    ["validating docker-compose.replatform.yml: services.postgres Additional property healthchek is not allowed", "compose-config-invalid"],
+    ["yaml: line 12: did not find expected key", "compose-config-invalid"],
+    // Still reaches the pre-existing arms, so adding these two narrowed nothing.
+    ["dependency failed to start: container postgres is unhealthy", "service-health"],
+    ["no space left on device", "resource-exhaustion"],
+  ])("classifies a postgres-start refusal into the closed set (%#)", (raw, expected) => {
+    const cause = classifyPlatformBuildFailure(`${raw}\ncredential=synthetic-secret-value`);
+    expect(cause).toBe(expected);
+    const message = formatPlatformFailure("postgres-start", cause);
+    expect(message).toBe(
+      `Replatform local command refused or failed; phase=postgres-start; cause=${expected}; authority details redacted.\n`,
+    );
+    // The whole point of the closed set: the category speaks, the output never does.
+    expect(message).not.toContain("synthetic-secret-value");
+    expect(message).not.toContain("51434");
+    expect(message).not.toContain("51474");
+  });
+
+  it("carries no build stage on a postgres-start refusal, because there is no build output", () => {
+    // A stage would be fabricated here - `classifyPlatformBuildStage` parses BuildKit
+    // step lines, and a service start produces none, so it would always say "unknown".
+    expect(formatPlatformFailure("postgres-start", "port-unavailable")).not.toContain("build-stage=");
+    expect(classifyPlatformBuildStage("no such service: postgres")).toBe("unknown");
+  });
+
   it.each([
     ["tunes-migrate Error pull access denied for explorers-replatform-local-tunes, repository does not exist or may require 'docker login'", "local-fixture-pull-denied"],
     ["Error pull access denied for docker.io/library/explorers-replatform-local-tunes:c4, repository does not exist", "local-fixture-pull-denied"],

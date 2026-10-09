@@ -228,7 +228,8 @@ type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" 
   | "ingress-check";
 type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-resolution" | "compose-option"
   | "local-fixture-pull-denied" | "upstream-registry-auth" | "mixed-registry-auth"
-  | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
+  | "resource-exhaustion" | "service-health" | "build-command"
+  | "port-unavailable" | "compose-config-invalid" | "unclassified";
 /**
   * Why an ingress probe refused, as a closed set. Carries no path, status, body or host:
   * the probe messages do name a path, and they are never printed - only the category is.
@@ -279,6 +280,15 @@ export function classifyPlatformBuildFailure(output: string): PlatformBuildFailu
   if (/manifest unknown|failed to resolve source metadata|pull access denied|not found:.*image/i.test(output)) return "image-resolution";
   if (/unknown flag|unknown shorthand flag|unsupported option/i.test(output)) return "compose-option";
   if (/no space left|out of memory|\bENOBUFS\b|cannot allocate memory/i.test(output)) return "resource-exhaustion";
+  /*
+   * Two categories a service start can hit that a build cannot, added when
+   * `phase=postgres-start` first appeared in CI with no cause at all. Both are remedied by
+   * the environment rather than by the compose file or the image, so they are worth
+   * separating from `unclassified` - that is the same reason `ingress-malformed-body`
+   * exists.
+   */
+  if (/port is already allocated|address already in use|bind for [^\s]+ failed/i.test(output)) return "port-unavailable";
+  if (/no such service|services\.\S+ (?:must be|Additional property)|yaml: |is invalid because|validating \S+\.yml/i.test(output)) return "compose-config-invalid";
   if (/unhealthy|dependency failed to start|timed out waiting for/i.test(output)) return "service-health";
   if (/failed to solve|did not complete successfully|npm (?:ERR!|error)/i.test(output)) return "build-command";
   return "unclassified";
@@ -379,10 +389,17 @@ function run(file: string, args: string[], environment = childEnvironment(), tim
     shell: false, timeout, maxBuffer: 8 * 1024 * 1024, input,
   });
   if (result.error || result.status !== 0) {
-    if (failurePhase === "service-build") {
+    /*
+     * `postgres-start` is classified with the same closed set as `service-build`. It was
+     * omitted here, so when CI started failing at `phase=postgres-start` the log carried
+     * no cause and the failure could not be told apart from a dozen others - and the
+     * details are redacted by design, so the category is the only thing that can speak.
+     * The build *stage* is deliberately not set: there is no BuildKit output to parse.
+     */
+    if (failurePhase === "service-build" || failurePhase === "postgres-start") {
       const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`;
       failureCause = classifyPlatformBuildFailure(output);
-      failureStage = classifyPlatformBuildStage(output);
+      if (failurePhase === "service-build") failureStage = classifyPlatformBuildStage(output);
     }
     throw new Error("local subprocess failed");
   }
