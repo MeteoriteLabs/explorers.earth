@@ -838,3 +838,38 @@ Scheduled runs execute against the default branch, so this branch's lane never r
 branch** (or merging to `main`). Not taken here: it spends a 13-lane browser qualification
 run, and this repository has already hit Actions billing limits once. It is not a code gap,
 and no amount of local work closes it.
+
+## Strapi is not a startup dependency of the canonical runtime — measured 2026-10-09
+
+This correction matters because the opposite was being carried as fact, including by me:
+that `app.ts:179`'s required `strapiOrigin` blocks epic 6's exit. **It does not.**
+`server/app.ts` and `server/routes/index.ts` are **not in the canonical closure** —
+`canonicalStartup.ts` builds the app through `canonicalApp.ts` and never imports either. So
+that requirement belongs to the legacy runtime, which the cutover retires anyway.
+
+Nothing on the canonical startup path requires a `STRAPI_*` variable. The scan's three
+allowlisted env reads are the complete set inside the closure, and none can fail startup:
+
+| Read | Why it cannot fail startup |
+|---|---|
+| `security-containment.ts` → `STRAPI_JWT_SECRET` | Inside `verifyStrapiToken`'s body. Its only caller is now `security-containment.ts:241`, its own legacy bearer path (the legacy `jwt-auth-middleware` was deleted 2026-10-09). |
+| `explorers-analytics-composition.ts` → `STRAPI_URL` | `process.env.STRAPI_URL \|\| ""` — defaults, never throws — inside `createLegacyExplorersAnalyticsDependencies`, reached only through a **lazy dynamic import** at `explorersCanonicalAnalyticsRoutes.ts:14` (`legacy ??= import(...)`, named `historical`). |
+| `music-local-profile.ts` → `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE` | A local fixture profile constant. |
+
+### So what Strapi retirement actually still depends on, in full
+
+Three things, not one vague blocker:
+
+1. **The legacy runtime** — `app.ts`, `routes/index.ts` and everything only they reach.
+   Retired by the `EXPLORERS_API_MODE` cutover. This is the bulk of it, and the cutover is
+   the owner decision recorded in `route-graph-invariant.md`.
+2. **The lazily-imported historical analytics path** in `explorersCanonicalAnalyticsRoutes.ts`.
+   This one is *inside* the canonical runtime, so the cutover does not remove it. Whether
+   historical analytics must keep reading from Strapi, or can be served from
+   `analytics_receipts` alone, is a **product question** — small, concrete, and nobody has
+   asked it.
+3. **`security-containment.ts`'s own legacy bearer path**, which is the sole remaining
+   caller of `verifyStrapiToken`. Dead once (1) lands.
+
+Which means Strapi retirement is **not** blocked on anything unknown. It is blocked on the
+cutover plus one bounded product question about historical analytics.
