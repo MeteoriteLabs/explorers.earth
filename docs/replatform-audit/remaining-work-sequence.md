@@ -687,7 +687,29 @@ Still open in this step:
 - Note `execution-packages.json:21` still describes 1.2's inventory as unextended; it is now stale on that point.
 
 ### 12. Retire Strapi — [8.1b](tickets/ticket-8-1.md), [8.2](tickets/ticket-8-2.md), [8.3](tickets/ticket-8-3.md)
-- Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features.
+
+**"Verify zero active consumers" was done on 2026-10-09, frontend side. Four of the five
+remaining Strapi REST call sites are already not live consumers**, which makes 8.1b a
+deletion exercise rather than a porting one. Traced individually:
+
+| Call site | Reachability |
+|---|---|
+| `EmailVerification.tsx:46` → `/send-email-confirmation` | **Dead code.** The file is imported by nothing, and `AuthRoutes.tsx:28` routes `/email-verification` to `<Navigate to="/login">`. The page cannot render. |
+| `Profile.tsx:1751,1849` → `/upload`, and `:1685` → `/accounts?filters…` | **Fallback only.** Both sit after `if (accountQuery.data) { …canonical…; return; }`, and the canonical path is fully built: `createMedia(file,'profile'\|'background')` then `updateAccount({profileImageId\|backgroundImageId})`. On the canonical runtime the Strapi branch is unreachable. |
+| `AddRecommendation.tsx:732` → `/upload/files/:id` | Same pattern; needs the same per-branch check before deletion. |
+| `Checkout.tsx:171,362` → `/accounts?filters…` | **Live and unconditional**, reached from `BillingTab.tsx:233` and `SubscriptionPlans.tsx:242`. Kept by **D1** ("payments and all we will document and keep"), so this is the one that stays and is documented. |
+| `paymentService.ts:16`, `subscriptionService.ts:3` | Live fallbacks of `VITE_PAYMENT_API_URL` → `VITE_REST_API_URL`. Same D1 bucket. |
+
+So after the payment flows are set aside by D1, the frontend's Strapi REST surface is one
+dead file plus three canonical-first fallbacks.
+
+**Do not confuse that variable's two jobs.** `VITE_REST_API_URL` is also used to build
+*asset origins* in eight more files, which is a different problem with a different fix -
+and it was concealing a live defect in both runtimes, fixed in `2861d88d` and `1b18157e`
+via `explorers-earth/src/lib/canonicalMedia.ts`. Anything that rewrites a relative URL
+must recognise `/api/explorers/v1/media/<uuid>/content` first.
+
+- Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features. **The `gql` documents are dead already — the frontend executes no Apollo operation at all (see step 6), so this part is deletion with no replacement work.**
 - 8.2: remove the duplicate Tunes frontend — still built and served. A CI-gating risk, not a product change.
 - 8.3: the mechanical backend rename, strictly after 8.1 and 8.2.
 
