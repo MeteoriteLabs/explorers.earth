@@ -483,20 +483,38 @@ workflow:
 
 So it has failed continuously since the commit that added `CANONICAL_ROUTES`.
 
-**The exact failing probe is `/health/live`, and here is the measurement that pins it.**
-The last passing run printed `{"ingressHandlersChecked":6}` — the five legacy probes plus
-the `/api/users/me` Strapi boundary, all of which still pass. `/health/live` is the first
-of the five canonical probes, it expects **200**, and
-`explorers-earth/nginx.music-fixture.conf` has no location for it, so it falls to
-`location / { try_files $uri $uri/ /index.html; }` and is answered with the SPA **at 200**.
-The status assertion therefore passes and `response.json()` throws on HTML — which is
-precisely `cause=ingress-malformed-body`, the cause observed. With `5e4fd449` the same
-failure now reports `ingress-html-shell`.
+**What the evidence supports, and no more.** The last passing run printed
+`{"ingressHandlersChecked":6}` — the five legacy probes plus the `/api/users/me` Strapi
+boundary — so those six still pass and the failure is in the canonical five.
 
-*(Correcting an earlier draft of this section, which said the Nginx config proxies "only
-one of the ten probe paths". That was inferred from reading the config and is wrong: six
-probes demonstrably pass. The config does lack a location for `/health/live` and for the
-`/api/explorers/v1` and `/api/auth` paths, which is the part that holds.)*
+The cause is `ingress-malformed-body`, which narrows it precisely: **the failing probe
+matched its expected status and then returned a body that is neither HTML nor JSON.**
+
+- Not a status mismatch, or the cause would be `canonical-route-absent` or
+  `fixture-route-mismatch`.
+- Not a transport failure, or it would be `ingress-unreachable`.
+- **Not the SPA shell.** `replatform-route-parity.ts:137-139` checks `content-type` for
+  `text/html` *before* parsing and throws a distinct message that maps to
+  `ingress-html-shell`. That classifier was present in the run (`5e4fd449` is an ancestor
+  of it) and did **not** fire. An empty body is the most likely remaining shape.
+
+**I previously asserted here that the probe is `/health/live`, answered the SPA at 200 by
+`try_files`. That is withdrawn — the cause code refutes it**, and it was inference from
+reading the Nginx config rather than measurement. The honest state: six probes pass, one
+of the canonical five returns a status-matching non-JSON non-HTML body, and **which one
+cannot be determined from CI output alone** because the script prints only the category.
+
+Settling it needs either the fixture running — impossible on this Windows host, see below —
+or the owner's decision to let the probe path into the output, which is the redaction change
+described further down.
+
+*(Two corrections to earlier drafts of this section, both of mine, both from reading the
+Nginx config instead of measuring. First: it said the config proxies "only one of the ten
+probe paths" — wrong, six probes demonstrably pass. Second: it then named `/health/live`
+and the SPA shell as the cause — withdrawn above, because the `ingress-html-shell`
+classifier was live and did not fire. What survives is only that the config has no location
+for `/health/live`, `/api/explorers/v1/*` or `/api/auth/*`, which is consistent with those
+routes being absent but does not identify the failing probe.)*
 
 The underlying cause is that `docker-compose.replatform.yml:56,106` starts
 `EXPLORERS_API_MODE: legacy-music`, whose composition mounts neither Better Auth, nor
