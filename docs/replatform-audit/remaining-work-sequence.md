@@ -726,7 +726,11 @@ against third-party APIs, so they can ship before or after retirement, in any or
 
 ### 14. Provider search
 - **[4.2](tickets/ticket-4-2.md) Games** — the IGDB provider chain is dead code behind an unconditional 503; four named provider cases absent; 7 MISSING provider-fact fields.
-- **[4.1](tickets/ticket-4-1.md) Movies** — the live TMDB provider is open; two named cases absent by name.
+- **[4.1](tickets/ticket-4-1.md) Movies** — ~~two named cases absent by name~~ **both written 2026-10-09**
+  (`e951e5b8`), and the file they live in was itself ungated until `1b966866`. The three field
+  assertions at `:45` now have a traceability map: two were already covered under a
+  differently-named case and "no fabricated year" was genuinely missing and was added. **The
+  live TMDB provider qualification stays open** - it needs a real-provider smoke, not a fixture.
 - **[3.3](tickets/ticket-3-3.md) Books** — "no Books flow requires Strapi" is unproven at an exact SHA; otherwise 20/20 verified.
 
 ### 15. Owed from the delivered category tickets
