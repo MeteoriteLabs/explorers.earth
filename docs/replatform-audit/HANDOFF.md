@@ -925,3 +925,48 @@ bucket truncation plus `other` means a long tail cannot be reproduced exactly.
 
 Answer that and half two is ordinary engineering. It needs no acknowledgement, no
 credentials and no CI spend - unlike half one.
+
+### Half two's design question, answered 2026-10-09
+
+I left this as "can every chart be rebuilt from eight truncated dimensions?" It is
+answerable by reading the charts, so here is the answer. Thirteen consumers, three groups.
+
+**Group A — repoint with no contract change (5).** They read only fields the summary already
+carries (`type` → counts, `timestamp` → `daily`, `page`, `country`, `utmParams` →
+`trafficSource`):
+`PageViewsTrendChart`, `TopCountriesChart`, `TrafficSourceChart`, `WorldMapChart`, and
+`AnalyticsDashboard` itself.
+
+**Group B — map onto existing dimensions (5).** Each reads `metadata` keys that correspond
+to a dimension the contract already has:
+
+| Chart | `metadata` keys | Canonical dimension |
+|---|---|---|
+| `SocialMediaInteractionChart` | `platform` | `platform` |
+| `ContentEngagementChart` | `id`, `title`, `originalElement` | `recommendation` + `element` |
+| `MediaItemChart` | `id`, `title`, `originalElement` | `recommendation` + `element` |
+| `MediaItemsInListChart` | `id`, `listName`, `title`, `originalElement` | `recommendation` + `collection` |
+| `MediaListEngagementChart` | `listName`, `originalElement` | `collection` + `element` |
+
+**Group C — need data the contract deliberately does not carry (3).** This is the whole of
+the remaining decision:
+
+| Chart | Needs | Canonical gap |
+|---|---|---|
+| `LocationEngagementChart` | `cityname`, `url` | **city-level geography**; the contract has `country` only |
+| `RecommendedPlacesChart` | `cityname`, `placeName`, `category`, `url` | same city gap (`category` is covered) |
+| `GuidesChart` | `guideType` | guide **subtype**; `category` carries only `guides` |
+
+Two useful negatives, both measured rather than assumed:
+
+- **No chart needs sub-daily granularity.** Every one of the thirteen aggregates by day or
+  coarser, so `daily[]` is sufficient on the time axis.
+- `metadata` is the only blocker, and it is deliberate: `shared/explorersContract.ts` says
+  the boundary "intentionally has no arbitrary JSON field". Group C is not an oversight,
+  it is that decision meeting three charts.
+
+**So the decision is narrow: add a `city` dimension (and a guide-subtype) to
+`AnalyticsDimensionKey`, or accept that those three charts change shape.** Everything else
+is ordinary porting. Note also that buckets are truncated with an `other` catch-all, so the
+per-item charts in Group B will show a long tail differently even once ported - worth
+deciding deliberately rather than discovering in review.
