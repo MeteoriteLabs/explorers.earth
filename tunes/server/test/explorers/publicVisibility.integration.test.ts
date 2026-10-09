@@ -30,6 +30,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCanonicalApp } from "../../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../../auth/betterAuth";
 import { LocalObjectStorage } from "../../services/objectStorage";
+import { ProfileInputError, ProfileService } from "../../application/profiles";
+import type { Actor } from "../../application/actor";
 
 let pool: pg.Pool;
 let app: ReturnType<typeof createCanonicalApp>["app"];
@@ -348,5 +350,77 @@ describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
     // which would confirm the bytes and let a cache keep serving them.
     const revalidated = await request(app).get(contentPath).set("If-None-Match", etag as string);
     expect(revalidated.status).toBe(404);
+  });
+
+  /*
+   * Reserved handle protection, which ticket 7.1 requires and which **nothing asserted**
+   * before this: a search of `server/test` for `Handle is unavailable` returned zero
+   * files.
+   *
+   * It matters because the reserved list is the only thing stopping a creator from
+   * claiming a handle that shadows an application route. A profile at `settings` or
+   * `music` would sit under the same path space the app serves its own pages from, and
+   * the public read resolves purely on `handle_key`, so it cannot tell the difference.
+   * Protection therefore lives entirely on the write path - which is why it needs a test
+   * there, not only a 404 for a handle nobody holds.
+   */
+  describe("reserved handles", () => {
+    /** An owner actor, via an oauth credential so no `auth_session` row is needed. */
+    async function owner(): Promise<{ actor: Actor; handle: string }> {
+      const handle = `p${randomUUID().replaceAll("-", "").slice(0, 20)}`;
+      const account = (await pool.query(
+        `INSERT INTO creator_accounts(handle,display_name,account_type,public_profile,onboarding_status)
+         VALUES($1,'Owner','Personal',true,'complete') RETURNING id`, [handle])).rows[0].id;
+      await pool.query(`INSERT INTO account_presentation(account_id) VALUES($1)`, [account]);
+      const userId = `u-${randomUUID()}`;
+      await pool.query(
+        `INSERT INTO auth_user(id,name,email,email_verified) VALUES($1,'Owner',$2,true)`,
+        [userId, `${userId}@example.invalid`]);
+      await pool.query(`INSERT INTO user_security_state(user_id) VALUES($1)`, [userId]);
+      await pool.query(
+        `INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')`,
+        [account, userId]);
+      return {
+        handle,
+        actor: { userId, accountId: account, role: "owner",
+          credential: { kind: "oauth", grantId: randomUUID(), scopes: ["profile:write"] } },
+      };
+    }
+
+    const context = { requestId: randomUUID() };
+
+    /*
+     * The message is asserted, not just the error type. `ProfileInputError` is also what
+     * a schema failure throws ("Invalid profile fields"), so `toBeInstanceOf` alone would
+     * have passed for every reserved word even if the reserved list were deleted - which
+     * is exactly what the positive control below caught when the payload was malformed.
+     */
+    it.each(["api", "settings", "music", "admin", "assets", "guides"])(
+      "refuses %s as a handle", async (reserved) => {
+        const { actor } = await owner();
+        const service = new ProfileService(pool);
+        const update = service.updateAccount(actor, { handle: reserved, expectedRevision: 1 }, context);
+        await expect(update).rejects.toBeInstanceOf(ProfileInputError);
+        await expect(update).rejects.toThrow("Handle is unavailable");
+      });
+
+    it("still accepts an ordinary handle, so the refusals above are not refusing everything", async () => {
+      const { actor } = await owner();
+      const service = new ProfileService(pool);
+      const accepted = `ok${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+      const updated = await service.updateAccount(actor, { handle: accepted, expectedRevision: 1 }, context);
+      expect(updated.username ?? updated.handle).toBe(accepted);
+    });
+
+    it("answers a reserved handle on the public read with the ordinary unavailable response", async () => {
+      // Transitive, but worth pinning: because the write path refuses them, no account
+      // can hold one, so the public read must look exactly like any other missing handle.
+      const missing = await request(app).get(categoryPath("no-such-handle-at-all"));
+      for (const reserved of ["settings", "music", "admin"]) {
+        const response = await request(app).get(categoryPath(reserved));
+        expect(response.status).toBe(missing.status);
+        expect(response.body).toEqual(missing.body);
+      }
+    });
   });
 });
