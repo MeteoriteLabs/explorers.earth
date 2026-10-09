@@ -50,6 +50,17 @@ jobs:
       - run: npm ci --prefix tunes --legacy-peer-deps
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
+      # The repository's own script tests - 232 cases that ran on no lane. Only
+      # `image-ci-disk` and `node-runtime-alignment` were named anywhere, in `tunes.yml`,
+      # which is `pull_request: branches: [main]` behind a path filter and so never runs
+      # on this branch; the other six were named nowhere at all. Running them found an
+      # assertion in `replatform-e2e.test.mjs` that could not pass at any commit.
+      #
+      # A glob rather than a list, deliberately: a named list is what went stale in the
+      # `database` job's pinned selector, and `node --test` accepts patterns. These need no
+      # install - every import is a local sibling module - and `git show HEAD:` works on
+      # the default shallow checkout.
+      - run: node --test "scripts/*.test.mjs" "scripts/*.test.cjs"
 
   unit-coverage:
     # Native Windows ACL behavior has injected unit contracts and a native local proof;
