@@ -41,7 +41,7 @@ const ENV_READ_ALLOWLIST = [
     file: "server/security-containment.ts",
     variable: "STRAPI_JWT_SECRET",
     reason:
-      "Read inside verifyStrapiToken's body, so it cannot fail startup. Its callers are the legacy jwt-auth-middleware (outside the closure) and security-containment's own legacy bearer path.",
+      "Read inside verifyStrapiToken's body, so it cannot fail startup. Its only caller is now security-containment's own legacy bearer path: the legacy jwt-auth-middleware was deleted on 2026-10-09, being unreachable from every entrypoint.",
     disposition: "Deleted with the legacy-music path in step 12 (8.1b/8.2).",
   },
   {

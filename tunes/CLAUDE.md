@@ -51,7 +51,6 @@ server/
 │   ├── paymentRoutes.ts        # Razorpay webhooks
 │   ├── emailRoutes.ts          # Email templates & sending
 │   ├── instagramRoutes.ts      # Instagram webhooks
-│   ├── strapiRoutes.ts         # Strapi CMS sync
 │   ├── subscriptionRoutes.ts   # Subscription management
 │   ├── pageRoutes.ts           # CMS page content
 │   ├── reactivationRoutes.ts   # Account reactivation endpoints
@@ -61,7 +60,6 @@ server/
 │   ├── email-service.ts        # Resend email delivery (REST API)
 │   ├── reactivation-service.ts # Account reactivation logic/service
 │   ├── spotify-playlist-import.ts # Spotify playlist import
-│   ├── strapi-service.ts       # Strapi CMS integration
 │   ├── system-settings-service.ts # App-wide config
 │   ├── youtube-playlist-import.ts # YouTube playlist import
 │   └── user-sync-service.ts    # User data sync
