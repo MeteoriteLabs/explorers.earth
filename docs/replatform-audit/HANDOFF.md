@@ -468,15 +468,38 @@ workflow:
 | `b4975654` (14:44) — *"bind the route-parity invariant to the real canonical app"* | **failure** |
 | every run since, up to today | failure |
 
-So it has failed continuously since the commit that added `CANONICAL_ROUTES`. The cause is
-that `docker-compose.replatform.yml:56,106` starts `EXPLORERS_API_MODE: legacy-music`,
-whose composition mounts neither Better Auth, nor `/health/live`, nor the
-`/api/explorers/v1` owner routes — and `explorers-earth/nginx.music-fixture.conf` proxies
-only one of the ten probe paths to tunes, so the rest reach
-`location / { try_files $uri $uri/ /index.html; }` and are answered with the SPA.
+So it has failed continuously since the commit that added `CANONICAL_ROUTES`.
 
-**How to clear it, and it is not a code fix on a feature branch:** make the fixture run the
-canonical composition. Until then the red is correct, and
+**The exact failing probe is `/health/live`, and here is the measurement that pins it.**
+The last passing run printed `{"ingressHandlersChecked":6}` — the five legacy probes plus
+the `/api/users/me` Strapi boundary, all of which still pass. `/health/live` is the first
+of the five canonical probes, it expects **200**, and
+`explorers-earth/nginx.music-fixture.conf` has no location for it, so it falls to
+`location / { try_files $uri $uri/ /index.html; }` and is answered with the SPA **at 200**.
+The status assertion therefore passes and `response.json()` throws on HTML — which is
+precisely `cause=ingress-malformed-body`, the cause observed. With `5e4fd449` the same
+failure now reports `ingress-html-shell`.
+
+*(Correcting an earlier draft of this section, which said the Nginx config proxies "only
+one of the ten probe paths". That was inferred from reading the config and is wrong: six
+probes demonstrably pass. The config does lack a location for `/health/live` and for the
+`/api/explorers/v1` and `/api/auth` paths, which is the part that holds.)*
+
+The underlying cause is that `docker-compose.replatform.yml:56,106` starts
+`EXPLORERS_API_MODE: legacy-music`, whose composition mounts neither Better Auth, nor
+`/health/live`, nor the `/api/explorers/v1` owner routes. So fixing the ingress alone would
+not help: the routes are not there to proxy to.
+
+**How to clear it — and `route-graph-invariant.md` is explicit that the choice is the
+owner's, not an engineer's.** One runtime cannot answer both probe sets: `/api/check`,
+`/api/csrf-token`, `/api/user/reactivate` and the Strapi boundary are legacy-only, and the
+canonical app serves none of them. The three options it lists are (1) flip the fixture to
+`EXPLORERS_API_MODE: canonical` and retire the legacy six with the legacy server in step
+12, which is the end state and a real package — canonical startup needs its own
+environment and the existing fixture E2E lanes are built on legacy endpoints, so they move
+with it; (2) run both graphs behind the one ingress during the transition, so both sets
+pass honestly; (3) accept the red until step 12 reaches the fixture. Until one is chosen
+the red is correct, and
 [route-graph-invariant.md:72](route-graph-invariant.md) is explicit that reverting the probes
 "restores the vacuous pass; it does not restore correctness" — so **do not** delete a probe,
 lower `EXPECTED_PLATFORM_PROBE_COUNT`, or revert `b4975654`.
