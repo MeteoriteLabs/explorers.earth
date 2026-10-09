@@ -285,6 +285,43 @@ screen is the long-term sign-up page. Neither blocks Strapi retirement.
 - Close the "no browser authority from account IDs" violation on *subjects* — it holds for bearers already.
 
 ### 6. Public place and person detail — [5.1](tickets/ticket-5-1.md)/[7.1](tickets/ticket-7-1.md) · 6 calls, 4 files
+
+**Re-measured 2026-10-09: the second fetch is already gone, and the "6 calls" framing is
+wrong for what remains.** Original text kept below.
+
+`PlaceOverview` and `PersonOverview` make no request at all - they take the entity from the
+caller, which already found it in the list it is rendering, and `PersonOverview` says so at
+its own `person?` prop. `PlaceDetails/` holds no fetching code, and `PublicHome.tsx` issues
+no query. So "two sources for one page" is closed for these components.
+
+**The frontend executes no Apollo operation anywhere.** Measured across all non-test source:
+zero `useQuery`/`useMutation`/`useLazyQuery` call sites (the only two `useQuery(` matches are
+TanStack, in `useCanonicalAccount` and `useTunesDashboard`), and zero `.query(`/`.mutate(`.
+The `gql` documents in the twelve `api/query.ts` and `api/mutation.ts` files are **dead
+documents** with no executor, and `categoryNavigationApi.ts` takes an `ApolloClient` whose
+own type comment says "Temporary callsite compatibility only; never queried or mutated".
+
+**What is actually left is REST, not GraphQL**, in 14 non-test files via
+`VITE_REST_API_URL` (which defaults to `http://localhost:1337`). Two different things wear
+that name:
+
+- **Real Strapi REST calls:** `/accounts?filters…` (`Checkout.tsx:171,362`,
+  `Profile.tsx:1685`), `/upload` (`Profile.tsx:1751,1849`), `/upload/files/:id`
+  (`AddRecommendation.tsx:732`), `/send-email-confirmation`
+  (`EmailVerification.tsx:46`), and `paymentService`/`subscriptionService` falling back to
+  it.
+- **Asset-origin concatenation**, which is a different problem with a different fix, and one
+  instance of it was a live defect - see `2861d88d`: canonical cover images were being
+  requested from the Strapi origin, and from TMDB's host on the movie shelf. The rule now
+  lives once, in `explorers-earth/src/lib/canonicalMedia.ts`.
+
+So this step's remaining work is the REST list above plus the public guide read, and it
+belongs with step 12's retirement rather than being an Apollo-repointing package. **Do not
+plan it from a count of `gql` documents** - that count is almost entirely dead code and will
+overstate the work by an order of magnitude.
+
+Original text:
+
 - `PlaceDetails`, `PlaceOverview`, `PersonOverview` and the remaining PublicHome readers still fetch detail through Strapi while the list read next to them is native.
 - Two sources for one page is how "right on the grid, wrong in the modal" happens, and 7.1 cannot prove parity across the split.
 
