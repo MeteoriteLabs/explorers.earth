@@ -32,6 +32,7 @@ import { resolveExplorersAuthConfig } from "../../auth/betterAuth";
 import { LocalObjectStorage } from "../../services/objectStorage";
 import { ProfileInputError, ProfileService } from "../../application/profiles";
 import type { Actor } from "../../application/actor";
+import { OwnerContentService } from "../../application/ownerContent";
 
 let pool: pg.Pool;
 let app: ReturnType<typeof createCanonicalApp>["app"];
@@ -421,6 +422,91 @@ describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
         expect(response.status).toBe(missing.status);
         expect(response.body).toEqual(missing.body);
       }
+    });
+  });
+
+  /*
+   * The ticket's "table-driven visibility matrix across owner/other-owner/anonymous".
+   *
+   * One hidden collection, read three ways. The interesting column is the middle one: a
+   * second signed-in creator must be refused the same way an anonymous caller is, and
+   * refused with "unavailable" rather than "forbidden" - a distinguishable refusal tells
+   * a logged-in stranger that a private list exists and what its id is.
+   *
+   * The owner column is what makes the other two meaningful. Without it the matrix would
+   * be satisfied by a collection that simply does not exist.
+   */
+  describe("visibility matrix", () => {
+    const SECRET = "public-visibility-secret-".repeat(2);
+
+    async function ownerOf(account: string): Promise<Actor> {
+      const userId = `u-${randomUUID()}`;
+      await pool.query(
+        `INSERT INTO auth_user(id,name,email,email_verified) VALUES($1,'Owner',$2,true)`,
+        [userId, `${userId}@example.invalid`]);
+      await pool.query(`INSERT INTO user_security_state(user_id) VALUES($1)`, [userId]);
+      await pool.query(
+        `INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')`,
+        [account, userId]);
+      return { userId, accountId: account, role: "owner",
+        credential: { kind: "oauth", grantId: randomUUID(),
+          scopes: ["collections:read", "profile:write"] } };
+    }
+
+    /*
+     * `ownerRead` differs per row, and finding out why is worth recording: archiving
+     * hides a collection from its **owner's** default view too, because
+     * `statusPredicate` filters on `archived_at IS NULL` unless the request asks for
+     * `archived` or `all` (`ownerContent.ts:37`, `explorersOwnerContentContract.ts:14`).
+     * So "hidden from everyone but its owner" is true of private and unpublished
+     * collections, and true of an archived one only when the owner asks for archived.
+     * The first draft of this case asserted the default read and failed - correctly.
+     */
+    it.each([
+      ["private visibility", "UPDATE collections SET visibility='private' WHERE account_id=$1", {}],
+      ["unpublished state", "UPDATE collections SET publication_state='draft' WHERE account_id=$1", {}],
+      ["archived", "UPDATE collections SET archived_at=now() WHERE account_id=$1", { status: "archived" }],
+    ])("hides a %s collection from everyone but its owner", async (_label, hide, ownerRead) => {
+      const seeded = await seedCollection(2);
+      const mine = await ownerOf(seeded.account);
+      const stranger = await seedCollection(1);
+      const theirs = await ownerOf(stranger.account);
+      const owners = new OwnerContentService(pool, SECRET);
+
+      // Visible to its owner while still public, so the hide below is a change of state.
+      await expect(owners.getCollection(mine, seeded.collection)).resolves.toBeDefined();
+
+      await pool.query(hide, [seeded.account]);
+
+      // owner: still theirs to see.
+      await expect(owners.getCollection(mine, seeded.collection, ownerRead)).resolves.toBeDefined();
+
+      // other owner: refused, and refused as unavailable rather than forbidden - with
+      // the same request the owner just succeeded with, so the only difference is who
+      // is asking.
+      const crossRead = owners.getCollection(theirs, seeded.collection, ownerRead);
+      await expect(crossRead).rejects.toMatchObject({ status: 404 });
+
+      // anonymous: the list is gone from the public read, rows and all.
+      const anonymous = await request(app).get(detailPath(seeded.handle, seeded.slug));
+      expect(anonymous.status).toBe(404);
+      for (const id of seeded.ids) expect(JSON.stringify(anonymous.body)).not.toContain(id);
+    });
+
+    it("refuses a stranger an id that does not exist the same way", async () => {
+      // The pair that makes the middle column above a real guarantee: "someone else's
+      // private list" and "no such list" must be indistinguishable to that stranger.
+      const stranger = await seedCollection(1);
+      const theirs = await ownerOf(stranger.account);
+      const other = await seedCollection(1);
+      const owners = new OwnerContentService(pool, SECRET);
+      await pool.query(
+        "UPDATE collections SET visibility='private' WHERE account_id=$1", [other.account]);
+
+      const hidden = await owners.getCollection(theirs, other.collection).catch((error) => error);
+      const absent = await owners.getCollection(theirs, randomUUID()).catch((error) => error);
+      expect(hidden.status).toBe(absent.status);
+      expect(hidden.message).toBe(absent.message);
     });
   });
 });

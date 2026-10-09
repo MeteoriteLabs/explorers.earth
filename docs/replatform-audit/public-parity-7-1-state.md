@@ -202,10 +202,27 @@ times** (the projection's `s.is_public` gate, and both halves of `freshBooksRead
 before/after check), so no single mutation fails that case. It is a test that the cursor
 carries no authority of its own, not a test of any one check.
 
-Still not addressed: the table-driven visibility matrix across owner/other-owner/anonymous
-(the new suite covers the anonymous column only), reserved handle protection, the
-nine-route pin checks, and `public-parity.spec.ts`, which does not exist and which the
-ticket makes dependent on 6.3. The ticket also states full
+**Also now covered** (`0ecb7eea`, `+ the matrix commit`): reserved handle protection —
+which nothing asserted anywhere before, a search for `Handle is unavailable` across
+`server/test` returning zero files — and the table-driven visibility matrix across
+owner / other-owner / anonymous, over private, unpublished and archived collections.
+
+Two things the matrix work established that are easy to get wrong:
+
+- **Archiving hides a collection from its owner too.** `statusPredicate` filters on
+  `archived_at IS NULL` unless the request asks for `archived` or `all`
+  (`ownerContent.ts:37`), so "visible to its owner" holds for private and unpublished
+  collections but for an archived one only with an explicit status filter. The first
+  draft of that row asserted the default read and failed, correctly.
+- **The refusal to a second signed-in creator must be indistinguishable from "no such
+  id".** A separate case asserts same status and same message for a stranger's private
+  collection and a random UUID, because a distinguishable refusal tells a logged-in
+  stranger that a private list exists.
+
+Still not addressed: the nine-route pin checks — category dispatch is already pinned
+enum-driven in `contracts/public-category-coverage.test.ts`, so what remains is HTTP
+route pinning rather than producer coverage — and `public-parity.spec.ts`, which does not
+exist and which the ticket makes dependent on 6.3. The ticket also states full
 parity depends on every category producer and Music; **6.3 has not landed**, so the Music
 public/unlisted/revoked semantics it requires cannot be exercised yet.
 
