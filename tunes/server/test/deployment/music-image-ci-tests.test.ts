@@ -45,7 +45,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all forty-seven ordinary database selectors on their existing service", () => {
+  it("preserves all forty-eight ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
@@ -141,9 +141,16 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/music-e2e-identity-count-adapter.integration.test.ts",
       "server/test/music-e2e-initial-capture.integration.test.ts",
       "server/test/music-e2e-state-restore.integration.test.ts",
+      /*
+       * Briefly excluded as order-dependent, then re-measured against this exact 48-file
+       * set on a fresh container and gated: the "immutable external identity is
+       * tombstoned" failure came from the two Games files throwing in `beforeAll`
+       * alongside it, not from this suite.
+       */
+      "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(47);
-    expect(new Set(selectors).size).toBe(47);
+    expect(selectors).toHaveLength(48);
+    expect(new Set(selectors).size).toBe(48);
   });
 
   /*
@@ -152,7 +159,7 @@ describe("owned image CI PostgreSQL wiring", () => {
    * measured reason, recorded beside the run step in the workflow; if the underlying
    * reason is fixed, this test is where the decision to gate it gets recorded.
    */
-  it("keeps the three measured exclusions off the shared fixture service", () => {
+  it("keeps the two measured exclusions off the shared fixture service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     const run = job.steps.find((step: any) => step.run?.includes("npm run test:integration")).run;
@@ -161,16 +168,13 @@ describe("owned image CI PostgreSQL wiring", () => {
       // so Games needs its own disposable container, not this shared service.
       "server/test/explorers/games.integration.test.ts",
       "server/test/games-public-gateway.integration.test.ts",
-      // Passes 4/4 alone on a fresh container; fails in company with "immutable external
-      // identity is tombstoned". Order-dependent pollution, not a defect of the file.
-      "server/test/user-leak.integration.test.ts",
     ]) {
       expect(run).not.toContain(excluded);
     }
-    // And the reasons stay written down where the next person changing this job will see them.
+    // And the reason stays written down where the next person changing this job will see it.
     const workflow = read(".github/workflows/test.yml");
     expect(workflow).toContain("Explicit owned Games PG authority required");
-    expect(workflow).toContain("order-dependent cross-suite");
+    expect(workflow).toContain("the five-service fixture port is reserved");
   });
 });
 
