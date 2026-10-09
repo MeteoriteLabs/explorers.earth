@@ -779,3 +779,29 @@ and it runs exactly what it names. Measured reach on this branch:
   this branch in two lines, and it is the cleanest fix. It also changes two workflows this
   replatform does not own and multiplies CI cost for every PR to the branch. **Owner
   decision**, and the better one of the two if the branch is going to be long-lived.
+
+## Ticket 3.4's analytics attestation is structurally owner-gated — verified 2026-10-09
+
+`remaining-work-sequence.md` records 3.4 as "10 analytics identities authored, 0 attested",
+and warns that adding the lane by hand would be falsifying an attestation record. Reading
+`scripts/replatform-e2e.mjs` confirms it is stronger than a warning — **the validator
+requires the obligation to stay pending:**
+
+- `validateManifest` fails unless `pending.length >= 7` **and every entry's status is still
+  `pending`**. Moving 3.4 out of the pending ledger fails validation rather than satisfying
+  it.
+- It also fails unless `manifest.scopeContents` **equals** `Object.keys(lanes)`, a hardcoded
+  set that does not include analytics. A lane cannot be added to the manifest without
+  changing the runner's own lane table.
+- `assertEnvironment` fails if `PLAYWRIGHT_EXTERNAL_BASE_URL` is set, and
+  `analytics-browser-fixture.ts` sets it from its own origin — so the analytics fixture is
+  deliberately a *different* mechanism from this milestone runner, not a missing entry in it.
+
+So the attestation can only come from the lane actually running, and it is registered at
+`frontend-e2e-qualification.yml:126` — a **`schedule` + `workflow_dispatch`** workflow.
+Scheduled runs execute against the default branch, so this branch's lane never runs.
+
+**The one available action is an owner's `workflow_dispatch` of that workflow on this
+branch** (or merging to `main`). Not taken here: it spends a 13-lane browser qualification
+run, and this repository has already hit Actions billing limits once. It is not a code gap,
+and no amount of local work closes it.
