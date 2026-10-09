@@ -102,3 +102,34 @@ This ordering is a gate, not a suggestion. Any other order either deletes covera
 - [ ] **Then** remove the Vite build path: `tunes/package.json:18` `build`, `tunes/vite.config.ts`, `tunes/server/index.ts:20` `setupVite` and the `serveStatic` branch at `tunes/server/config/music-startup.ts:124` / `tunes/server/runtime.ts:18`. Reconcile `package.json:14` `build:all` in the same change.
 - [ ] **Then** delete `tunes/client/` and regenerate lockfiles reproducibly, with no unrelated dependency upgrades.
 - [ ] Retain `api-only-build.test.ts:119` as the post-removal regression: it must still pass, and must not be relaxed to accommodate the removal.
+
+**Why steps 2-4 are one atomic change, measured 2026-10-09.** They cannot be sliced, and
+the two obvious slices both fail:
+
+- *Delete only the two coverage-gated files.* `client/src/lib/musicCredential.ts` has
+  **nine importers inside `client/src`** - `components/guest-capability-import.tsx`,
+  `components/playlist-table.tsx`, `components/search-songs.tsx`,
+  `hooks/use-auth-compat.tsx`, `hooks/use-auth.tsx`, `hooks/use-neon-user.ts`,
+  `hooks/use-strapi-auth.tsx`, `hooks/use-websocket.tsx` and `lib/queryClient.music.test.ts`.
+  `tunes/package.json:18` `build` still runs `vite build`, so deleting them breaks that
+  build.
+- *Remove the serving path first.* The two entrypoints differ exactly here:
+  `server/api.ts:14` passes `apiOnly: true` and gets a typed 404 catch-all, while
+  `server/index.ts` passes nothing and so reaches `setupVite` in development or
+  `serveStatic` in production (`config/music-startup.ts:121-124`). Removing that branch
+  changes what `npm start` and `npm run build` produce, which is pinned by the deployment
+  contracts - `api-only-build.test.ts`, the compose-safety manifest, the image-digest
+  contracts and 46 release-authority cases.
+
+So the change is: drop the two script entries, delete `client/`, remove the Vite branch
+and reconcile `build`/`build:all`, in one commit.
+
+**What it needs that this session could not provide**, and the reason it is left for
+whoever can: the ticket's own gate requires a packaged-image inspection, a production
+graph smoke and the Explorers owner/guest/reconnect/publication browser scenarios. Those
+need Docker image builds and the browser lane. Landing the deletion without them would be
+an unverified change to a deployment path, which is worse than leaving it.
+
+One useful side effect to expect: the duplicate client is where roughly 138 of the
+pre-existing `tsc -p tunes/tsconfig.json` errors live, so removal should move that
+baseline to near zero. Do not treat that drop as a regression in the error count.
