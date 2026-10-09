@@ -27,3 +27,14 @@ These are bounded merge checks, not full database/browser qualification. Local N
 Only two documentation conflicts occurred: HANDOFF and remaining-work-sequence. Resolution retains incoming full body plus local authoritative reconciliation notice. Other reconciliation annotations merge automatically. Existing incoming EOF whitespace is cosmetic, not a failed behavior check.
 
 After push, inspect checks against the resulting integration SHA. Preserve known-red route decision; an unrelated failure requires diagnosis. Do not claim hosted acceptance from this prepared overlay.
+
+## Exact merged-head checks
+
+Merged and pushed integration SHA: `3e5113c02f4b2b4b4f9867c37d29051cb92d08bb`. GitHub records PR121 as merged into replatform; PR119 remains draft.
+
+- [Frontend run37939884985](https://github.com/tandavkrishna27/explorers.earth/actions/runs/37939884985): success, including all five browser lanes, full unit suite, TypeScript/build/lint/integration and `replatform-required`.
+- [Backend run37939885063](https://github.com/tandavkrishna27/explorers.earth/actions/runs/37939885063): database/browser and other applicable jobs pass. `platform-fixture` fails at ingress with `ingress-malformed-body`; dependent `music-required` fails. This retains the known route-fixture mismatch, not a candidate waiver. Load-chaos is skipped.
+- [Music C0 run37939885048](https://github.com/tandavkrishna27/explorers.earth/actions/runs/37939885048): Linux and Windows contracts pass.
+- [API image run37939885590](https://github.com/tandavkrishna27/explorers.earth/actions/runs/37939885590): fails the fixable high/critical vulnerability gate after build and image graph/migration proof. The scanner loaded its database and reported threshold matches; this is an additional blocker requiring report-based triage. Release-preflight is skipped. No image qualification/release claim.
+
+These receipts apply to `3e5113c0`, not subsequent lifecycle changes. The integration is not a fully green trusted candidate.
