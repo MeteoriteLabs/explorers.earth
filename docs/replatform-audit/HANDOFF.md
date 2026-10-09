@@ -491,6 +491,32 @@ work happens. CI does not hit this because `test.yml:305` runs `npm ci` at the r
 `:306` and `:307` install the two packages. Same tsx version (4.21.0) either way - the
 difference is which copy resolves.
 
+**And on this Windows host the fixture cannot be provisioned at all, for a reason that
+has nothing to do with the repository.** With root deps installed, `provision` reaches
+`phase=postgres-start` and the container is created but never starts:
+
+    Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:51434
+    -> 127.0.0.1:0: listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a
+    socket in a way forbidden by its access permissions.
+
+`netsh int ipv4 show excludedportrange protocol=tcp` lists **51342-51441** and
+**51442-51541** as excluded ranges, reserved by WinNAT/Hyper-V. The fixture needs
+**51434** for its postgres (`replatform-local.ts:13` `PLATFORM_PORT`) and **51474** for
+the ingress the route probes hit (`docker-compose.replatform.yml:178`). **Both are inside
+excluded ranges**, so no amount of retrying helps.
+
+Options, all the owner's: reserve the two ports (`netsh int ipv4 add excludedportrange
+... store=persistent` after a `net stop winnat`), move `PLATFORM_PORT` and the published
+ingress port out of the excluded ranges, or accept that this fixture is CI-only on this
+machine. Until one of those happens, **`platform-fixture` can only be diagnosed from CI
+logs on this host**, which is why the phase and cause work in `44b00775`, `042a1f43` and
+`5e4fd449` was worth doing at all.
+
+Cleanup note: a refused `provision` leaves a created-but-never-started container, and
+`platform:local -- stop` refuses to clean it because there is no valid receipt. Remove it
+by label - `docker rm -f`, then `docker network/volume rm` filtered on
+`label=com.docker.compose.project=explorers-replatform-local`.
+
 **Do not conclude "the Nginx config is missing locations, add them"** on the strength of
 the first paragraph alone. That is the shape of the evidence, not a verified cause.
 
