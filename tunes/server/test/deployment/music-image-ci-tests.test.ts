@@ -45,12 +45,20 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all sixteen ordinary database selectors on their existing service", () => {
+  it("preserves all forty-seven ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
     const run = job.steps.find((step: any) => step.run?.includes("npm run test:integration")).run;
-    expect(run.match(/server\/test\/\S+\.integration\.test\.ts/g)).toEqual([
+    const selectors = run.match(/server\/test\/\S+\.integration\.test\.ts/g) ?? [];
+    /*
+     * The first sixteen are checked as an exact ordered prefix, because each carries a
+     * per-ticket reason below and that reason is the thing worth preserving. The
+     * thirty-one added afterwards are checked as a set in the next assertion: they were
+     * gated as one measured batch with one shared reason, so ordering them here would be
+     * bookkeeping that goes stale without catching anything.
+     */
+    expect(selectors.slice(0, 16)).toEqual([
       "server/test/migrations/music-migration.integration.test.ts", "server/test/music-identity-projection.integration.test.ts",
       "server/test/music-credential.integration.test.ts", "server/test/music-domain-repository.integration.test.ts",
       "server/test/musicLifecycle.integration.test.ts", "server/test/musicReconciler.integration.test.ts",
@@ -93,6 +101,76 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/explorers/movies.integration.test.ts",
     ]);
+
+    /*
+     * Added 2026-10-09. A sweep of every tunes integration file found 34 of 52 named in no
+     * workflow - roughly 429 cases that existed and never ran. All 34 were measured on a
+     * fresh `postgres:15-alpine`, then the whole 47-file set was run together to prove the
+     * combination, because cross-suite pollution is the real risk here and one file
+     * demonstrated it.
+     */
+    expect([...selectors.slice(16)].sort()).toEqual([
+      "server/test/book-catalog.integration.test.ts",
+      "server/test/book-cover-import.integration.test.ts",
+      "server/test/books-public-gateway.integration.test.ts",
+      "server/test/explorers-account-provision.integration.test.ts",
+      "server/test/explorers-analytics-events.integration.test.ts",
+      "server/test/explorers-auth.integration.test.ts",
+      "server/test/explorers-content-revision.integration.test.ts",
+      "server/test/explorers-manual-overrides.integration.test.ts",
+      "server/test/explorers-media.integration.test.ts",
+      "server/test/explorers-owner-content.integration.test.ts",
+      "server/test/explorers-profile.integration.test.ts",
+      "server/test/explorers-public-content.integration.test.ts",
+      "server/test/explorers-recommendation-api.integration.test.ts",
+      "server/test/explorers-recommendations.integration.test.ts",
+      "server/test/explorers-recovery.integration.test.ts",
+      "server/test/explorers-search.integration.test.ts",
+      "server/test/explorers/category-write-path.integration.test.ts",
+      "server/test/explorers/guides.integration.test.ts",
+      "server/test/explorers/people.integration.test.ts",
+      "server/test/explorers/placeLinks.integration.test.ts",
+      "server/test/explorers/places.integration.test.ts",
+      "server/test/explorers/products.integration.test.ts",
+      "server/test/google-sync.integration.test.ts",
+      "server/test/load/music-load-http-postgres.integration.test.ts",
+      "server/test/load/music-load-postgres.integration.test.ts",
+      "server/test/migrations/music-runtime.integration.test.ts",
+      "server/test/movie-media-import.integration.test.ts",
+      "server/test/movies-public-gateway.integration.test.ts",
+      "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+      "server/test/music-e2e-initial-capture.integration.test.ts",
+      "server/test/music-e2e-state-restore.integration.test.ts",
+    ]);
+    expect(selectors).toHaveLength(47);
+    expect(new Set(selectors).size).toBe(47);
+  });
+
+  /*
+   * The exclusions are pinned too. Without this, the cheap way to make a red required job
+   * green is to add one of these three, and nothing would object. Each is excluded for a
+   * measured reason, recorded beside the run step in the workflow; if the underlying
+   * reason is fixed, this test is where the decision to gate it gets recorded.
+   */
+  it("keeps the three measured exclusions off the shared fixture service", () => {
+    const ordinary = load(read(".github/workflows/test.yml"));
+    const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
+    const run = job.steps.find((step: any) => step.run?.includes("npm run test:integration")).run;
+    for (const excluded of [
+      // Both reject port 55432: `parseC10StandalonePostgresAuthority` treats it as reserved,
+      // so Games needs its own disposable container, not this shared service.
+      "server/test/explorers/games.integration.test.ts",
+      "server/test/games-public-gateway.integration.test.ts",
+      // Passes 4/4 alone on a fresh container; fails in company with "immutable external
+      // identity is tombstoned". Order-dependent pollution, not a defect of the file.
+      "server/test/user-leak.integration.test.ts",
+    ]) {
+      expect(run).not.toContain(excluded);
+    }
+    // And the reasons stay written down where the next person changing this job will see them.
+    const workflow = read(".github/workflows/test.yml");
+    expect(workflow).toContain("Explicit owned Games PG authority required");
+    expect(workflow).toContain("order-dependent cross-suite");
   });
 });
 
