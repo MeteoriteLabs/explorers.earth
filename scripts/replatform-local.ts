@@ -304,7 +304,21 @@ export function classifyPlatformBuildFailure(output: string): PlatformBuildFailu
    * separating from `unclassified` - that is the same reason `ingress-malformed-body`
    * exists.
    */
-  if (/port is already allocated|address already in use|bind for [^\s]+ failed/i.test(output)) return "port-unavailable";
+  /*
+   * The alternatives are not stylistic. A real failure was captured by running this
+   * service's own compose definition against a host where its port is unavailable, and the
+   * daemon said:
+   *
+   *   ports are not available: exposing port TCP 127.0.0.1:51434 -> 127.0.0.1:0:
+   *   listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a socket in a way
+   *   forbidden by its access permissions.
+   *
+   * which contains none of "port is already allocated", "address already in use" or
+   * "bind for ... failed" - the three forms this arm was first written with. It would have
+   * reported `unclassified`, which is the bug this whole closed set exists to avoid, so
+   * the daemon's own prefix and the bare `bind:` form are matched too.
+   */
+  if (/ports are not available|port is already allocated|address already in use|bind for [^\s]+ failed|:\s*bind:\s/i.test(output)) return "port-unavailable";
   if (/no such service|services\.\S+ (?:must be|Additional property)|yaml: |is invalid because|validating \S+\.yml/i.test(output)) return "compose-config-invalid";
   if (/unhealthy|dependency failed to start|timed out waiting for/i.test(output)) return "service-health";
   if (/failed to solve|did not complete successfully|npm (?:ERR!|error)/i.test(output)) return "build-command";

@@ -175,6 +175,12 @@ describe("replatform local authority", () => {
   it.each([
     ["Error response from daemon: driver failed programming external connectivity: Bind for 127.0.0.1:51434 failed: port is already allocated", "port-unavailable"],
     ["listen tcp 127.0.0.1:51474: bind: address already in use", "port-unavailable"],
+    /*
+     * Captured verbatim from the daemon by running this service's own compose definition
+     * against a host where 51434 is unavailable. Kept exactly as emitted, because the
+     * first version of the regex matched none of it and would have said `unclassified`.
+     */
+    ["Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:51434 -> 127.0.0.1:0: listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a socket in a way forbidden by its access permissions.", "port-unavailable"],
     ["no such service: postgres", "compose-config-invalid"],
     ["validating docker-compose.replatform.yml: services.postgres Additional property healthchek is not allowed", "compose-config-invalid"],
     ["yaml: line 12: did not find expected key", "compose-config-invalid"],
