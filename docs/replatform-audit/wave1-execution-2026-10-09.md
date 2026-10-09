@@ -27,3 +27,9 @@ Freeze the committed Wave1 package for exact-head checks and supported protected
 The clean Wave1 commit10ab7ac9 protected qualification stopped in the auth lane: the existing purpose-bound recovery case could not find its ready button. Cleanup passed; later lanes were not executed. Failure receipt is retained locally at C:/Users/TK/AppData/Local/Temp/replatform-e2e-b5a8de74-c8da-45f4-adae-6041e9629ba0/qualification.json.
 
 A diagnostic subagent reproduced5 passed/1 failed. The fixture directly suspended its recovery persona without a lifecycle operation; the lifecycle classifier correctly returned manual_review for an orphaned transition. Fixture setup now uses the actual canonical deactivation API, asserting suspended status and operation identity before issuing the existing purpose-bound proof. Production recovery guards and browser assertions are unchanged. Focused auth rerun passed all6 cases with cleanup. Full clean-head qualification remains required after this repair.
+
+## Integrated protected result
+
+Clean committed source91aa9e66ef99ca0c799c8725e353ea0e970abc35 passed all94 exact identities: auth6, profile6, Books20, lifecycle18, Movies24 and Games20. Every lane reports zero errors and successful cleanup; protected artifacts are disabled and cleaned. Root separately confirmed no owned fixture containers remain. [Retained protected receipt](wave1-protected-qualification-2026-10-09.json) records source and manifest hashes and dirty=false.
+
+The receipt qualifies that exact implementation commit. The subsequent documentation-only receipt commit is a different Git head and requires its own hosted CI. Delivered slice passed; overall milestone/full parity remain incomplete and releaseEligible=false. Independent review approved the canonical auth fixture repair before this run. Next implementation sequence is Wave2 combined Music and retained category/public qualification, then Wave3 coordinated fixture/runtime cutover.
