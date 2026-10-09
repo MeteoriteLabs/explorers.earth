@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { issueRecoveryProof } from "../auth/recoveryProof";
+import { createAccountMusicRepository } from "../music/accountMusicRepository";
 import { AccountLifecycleService } from "../application/accountLifecycle";
 import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
 import { LocalObjectStorage } from "../services/objectStorage";
@@ -48,6 +49,24 @@ async function pendingDeletion(owner: Awaited<ReturnType<typeof identity>>) {
     .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
   expect(deletion.status).toBe(200);
   return deletion.body.lifecycle.operationId as string;
+}
+
+// Numeric retirement must hold for the actual non-owner runtime capability.
+async function numericRuntimeQuery(sql: string, parameters: unknown[] = []) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE music_runtime");
+    await client.query("SET LOCAL statement_timeout='5s'");
+    expect((await client.query("SELECT current_user AS role,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0])
+      .toEqual({ role: "music_runtime", rolsuper: false });
+    const result = await client.query(sql, parameters);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally { client.release(); }
 }
 
 async function webActor(owner: Awaited<ReturnType<typeof identity>>) {
@@ -532,6 +551,106 @@ describe("canonical account lifecycle", () => {
     // No Strapi-keyed tombstone: a canonical venue has no external identity to retire,
     // and the account's own deletion operation above is the record.
     expect((await pool.query("SELECT 1 FROM music_identity_tombstones WHERE music_user_id=$1", [musicUserId])).rowCount).toBe(0);
+    expect((await pool.query("SELECT account_id,lifecycle_operation_id FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [musicUserId])).rows)
+      .toEqual([{ account_id: owner.accountId, lifecycle_operation_id: pending.body.lifecycle.operationId }]);
+    expect((await pool.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3) AS released",
+      [musicUserId, pending.body.lifecycle.operationId, "retry"])).rows[0].released).toBe(false);
+    await expect(pool.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3)",
+      [musicUserId, randomUUID(), "wrong-retry"]))
+      .rejects.toThrow(/resource-bound canonical retirement history/);
+
+    await expect(numericRuntimeQuery(`INSERT INTO canonical_music_numeric_retirements(music_user_id,account_id,lifecycle_operation_id)
+      VALUES($1,$2,$3)`, [musicUserId+1000000, owner.accountId, pending.body.lifecycle.operationId]))
+      .rejects.toThrow(/requires authorized owned account deletion/);
+    await expect(numericRuntimeQuery("TRUNCATE canonical_music_numeric_retirements"))
+      .rejects.toMatchObject({ code: "42501" });
+
+    const replacementOwner = await identity();
+    const replacement = await createAccountMusicRepository(pool).ensureMusicAccount(await webActor(replacementOwner));
+    expect(replacement.musicUserId).toBeGreaterThan(musicUserId);
+    await expect(numericRuntimeQuery("UPDATE users SET id=$1 WHERE id=$2", [musicUserId, replacement.musicUserId]))
+      .rejects.toThrow(/numeric Music user ID is immutable/);
+    await expect(numericRuntimeQuery(`INSERT INTO users(id,username,guest_url,venue_name,guest_capability_hash)
+      VALUES($1,$2,$3,'Venue',$4)`, [musicUserId, `retired-${randomUUID()}`, randomUUID(), "a".repeat(64)]))
+      .rejects.toThrow(/numeric Music user ID is retired/);
+    await expect(numericRuntimeQuery(`INSERT INTO users(id,username,password,guest_url,venue_name,
+      strapi_user_document_id,strapi_account_document_id,guest_capability_hash,lifecycle_operation_id)
+      VALUES($1,$2,'disabled',$3,'Venue',$4,$5,$6,$7)`,
+      [musicUserId, `retired-legacy-${randomUUID()}`, randomUUID(), `user-${randomUUID()}`,
+        `account-${randomUUID()}`, "b".repeat(64), `provision-${randomUUID()}`]))
+      .rejects.toThrow(/numeric Music user ID is retired/);
+
+    const sequence = (await pool.query("SELECT last_value::text,is_called FROM users_id_seq")).rows[0];
+    try {
+      await numericRuntimeQuery("SELECT setval('users_id_seq',$1,false)", [musicUserId]);
+      await expect(numericRuntimeQuery(`INSERT INTO users(username,guest_url,venue_name,guest_capability_hash)
+        VALUES($1,$2,'Venue',$3)`, [`reset-${randomUUID()}`, randomUUID(), "c".repeat(64)]))
+        .rejects.toThrow(/numeric Music user ID is retired/);
+    } finally {
+      await numericRuntimeQuery("SELECT setval('users_id_seq',$1,$2)", [sequence.last_value, sequence.is_called]);
+    }
+    await expect(numericRuntimeQuery("UPDATE canonical_music_numeric_retirements SET retired_at=clock_timestamp() WHERE music_user_id=$1", [musicUserId]))
+      .rejects.toMatchObject({ code: "42501" });
+    await expect(numericRuntimeQuery("DELETE FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [musicUserId]))
+      .rejects.toMatchObject({ code: "42501" });
+
+  });
+
+  it("serializes canonical Music retirement against concurrent explicit numeric ID reuse", async () => {
+    const owner = await identity();
+    const venue = await createAccountMusicRepository(pool).ensureMusicAccount(await webActor(owner));
+    const operationId = await pendingDeletion(owner);
+    const deleting = await pool.connect();
+    const inserting = await pool.connect();
+    let result: Promise<{ accepted: boolean; message: string }> | undefined;
+    try {
+      await deleting.query("BEGIN");
+      await deleting.query("SET LOCAL ROLE music_runtime");
+      await inserting.query("SET ROLE music_runtime");
+      await inserting.query("SET statement_timeout='10s'");
+      await deleting.query("SET LOCAL statement_timeout='5s'");
+      expect((await inserting.query("SELECT current_user AS role,rolsuper FROM pg_roles WHERE rolname=current_user")).rows[0])
+        .toEqual({ role: "music_runtime", rolsuper: false });
+      await deleting.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3)",
+        [venue.musicUserId, operationId, "numeric-race"]);
+      const pid = (await inserting.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+      result = inserting.query(`INSERT INTO users(id,username,guest_url,venue_name,guest_capability_hash)
+        VALUES($1,$2,$3,'Venue',$4)`, [venue.musicUserId, `racing-${randomUUID()}`, randomUUID(), "d".repeat(64)])
+        .then(() => ({ accepted: true, message: "" }), (error: Error) => ({ accepted: false, message: error.message }));
+      let blocked = false;
+      const deadline = Date.now()+5000;
+      while (Date.now()<deadline) {
+        blocked = (await deleting.query("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND locktype='advisory' AND NOT granted) AS blocked", [pid])).rows[0].blocked;
+        if (blocked) break;
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(blocked).toBe(true);
+      await deleting.query("COMMIT");
+      expect(await within(result)).toMatchObject({ accepted: false, message: expect.stringMatching(/numeric Music user ID is retired/) });
+      expect((await pool.query("SELECT count(*)::int AS count FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [venue.musicUserId])).rows[0].count).toBe(1);
+      expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [venue.musicUserId])).rows[0].count).toBe(0);
+    } finally {
+      try {
+        await deleting.query("ROLLBACK");
+        if (result) await within(result, 11000);
+        await inserting.query("RESET statement_timeout");
+        await inserting.query("RESET ROLE");
+      } finally { deleting.release(); inserting.release(); }
+    }
+  }, 20000);
+
+  it("rolls canonical numeric retirement back with a cancelled database transaction", async () => {
+    const owner = await identity();
+    const venue = await createAccountMusicRepository(pool).ensureMusicAccount(await webActor(owner));
+    const operationId = await pendingDeletion(owner);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3)", [venue.musicUserId, operationId, "rollback"]);
+      await client.query("ROLLBACK");
+    } finally { client.release(); }
+    expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [venue.musicUserId])).rows[0].count).toBe(1);
+    expect((await pool.query("SELECT count(*)::int AS count FROM canonical_music_numeric_retirements WHERE music_user_id=$1", [venue.musicUserId])).rows[0].count).toBe(0);
   });
 
   it("refuses a canonical release that no pending account deletion owns", async () => {

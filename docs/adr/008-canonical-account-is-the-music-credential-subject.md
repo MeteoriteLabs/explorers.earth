@@ -75,13 +75,14 @@ to be driven to full coverage.
    `music_identity_tombstones` requires external document IDs, and no synthetic IDs or
    widening of the legacy lifecycle tables is authorized by this decision.
 
-   **Numeric retirement is not yet fully enforced.** Migration0040 checks retired numeric
-   IDs against legacy tombstones only;0041 skips those for canonical venues, and0042
-   does not persist the released numeric ID. Serial allocation is not a durable guard
-   against explicit INSERT or sequence reset. Ticket6.4 retains that requirement; its
-   next append-only package must separately protect canonical numeric retirement while
-   preserving pending-operation authorization. The delivered finalization proof is not
-   evidence that this remaining guarantee holds. See
+   **Numeric retirement has a separate append-only implementation in0052.** The integrated
+   baseline0040–0042 did not retain canonical numeric IDs. Migration0052 adds immutable
+   canonical numeric retirement linked to the retained account deletion operation, numeric
+   advisory locking before finalization, both-identity INSERT nonreuse and immutable numeric
+   keys on UPDATE. Runtime cannot update, delete or truncate retirement history. This does
+   not manufacture Strapi IDs or backfill unrecorded historical releases. Source/static
+   review is complete; database behavioral and browser execution remain required before
+   claiming ticket6.4 acceptance. See [the B1 implementation record](../replatform-audit/numeric-retirement-implementation-2026-10-09.md) and
    [the integrated lifecycle preflight](../replatform-audit/lifecycle-preflight-3e5113c0.md).
 
 6. **The canonical API app issues Music credentials.** The canonical session and the

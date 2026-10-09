@@ -119,7 +119,7 @@ describe("Music E2E transactional state restore", () => {
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "app_entity_details", "application_command_receipts", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_suppressions", "email_templates", "entities", "entity_identifiers",
+      "auth_verification", "book_entity_details", "book_recommendation_context", "canonical_music_numeric_retirements", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_suppressions", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "guide_collection_details", "guide_section_photos", "guide_sections", "initial_account_bindings", "media_assets", "media_objects",
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens", "music_request_quota",
@@ -164,6 +164,7 @@ describe("Music E2E transactional state restore", () => {
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
       "0051_explorers_launch_controls",
+      "0052_canonical_music_numeric_retirement",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -171,6 +172,9 @@ describe("Music E2E transactional state restore", () => {
       // EACH ROW, so tgtype is ROW(1) plus its events: INSERT(4)+UPDATE(16)=21, DELETE(8)=9.
       { table: "account_music_identity", name: "account_music_identity_owner_retained", enabled: "O", type: 9 },
       { table: "users", name: "users_music_venue_owned", enabled: "O", type: 21 },
+      { table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_insert", enabled: "O", type: 7 },
+      { table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_immutable", enabled: "O", type: 27 },
+      { table: "users", name: "users_music_numeric_id_immutable", enabled: "O", type: 19 },
       { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
       { table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 },
       { table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 },

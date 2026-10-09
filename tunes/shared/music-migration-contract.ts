@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0051_explorers_launch_controls" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0052_canonical_music_numeric_retirement" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -50,6 +50,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0048_explorers_place_location_aggregate",
   "0049_explorers_collection_location_links",
   "0050_explorers_guide_sections",
+  "0051_explorers_launch_controls",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -105,6 +106,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0048_explorers_place_location_aggregate",
   "0049_explorers_collection_location_links",
   "0050_explorers_guide_sections",
+  "0051_explorers_launch_controls",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

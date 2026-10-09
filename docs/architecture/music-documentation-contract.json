@@ -80,7 +80,8 @@
     "0048_explorers_place_location_aggregate",
     "0049_explorers_collection_location_links",
     "0050_explorers_guide_sections",
-    "0051_explorers_launch_controls"
+    "0051_explorers_launch_controls",
+    "0052_canonical_music_numeric_retirement"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

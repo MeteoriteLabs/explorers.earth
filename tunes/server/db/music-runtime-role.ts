@@ -25,6 +25,7 @@ const expectedRuntimeTables = [
   "auth_verification",
   "book_entity_details",
   "book_recommendation_context",
+  "canonical_music_numeric_retirements",
   "category_recommendation_pins",
   "collection_items",
   "collection_location_links",
@@ -148,6 +149,7 @@ const expectedRuntimeFunctions = [
   "guard_app_entity_details()",
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
+  "guard_canonical_music_numeric_retirement()",
   "guard_guide_location_entity()",
   "guard_guide_section_media()",
   "guard_movie_context()",
@@ -180,6 +182,7 @@ const expectedRuntimeFunctions = [
   "purge_explorers_account_content(uuid,uuid)",
   "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
+  "reject_music_numeric_user_id_update()",
   "reject_music_publication_archive_mutation()",
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
@@ -628,6 +631,8 @@ export async function provisionMusicRuntimeLogin(
     }
     await client.query(`GRANT USAGE ON SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON canonical_music_numeric_retirements FROM ${capabilityRole}`);
     await client.query(`GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -775,6 +780,9 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "DELETE FROM email_suppressions WHERE false",
     "DELETE FROM music_request_quota WHERE false",
     "DELETE FROM music_identity_tombstones WHERE false",
+    "UPDATE canonical_music_numeric_retirements SET retired_at=clock_timestamp() WHERE false",
+    "DELETE FROM canonical_music_numeric_retirements WHERE false",
+    "TRUNCATE canonical_music_numeric_retirements",
     "DELETE FROM music_reactivation_tokens WHERE false",
     "UPDATE music_schema_migrations SET checksum=checksum WHERE false",
     "DELETE FROM music_schema_migrations WHERE false",
@@ -821,6 +829,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, true]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
+      : row.object_name === "canonical_music_numeric_retirements"
+        ? [true, true, false, false]
       : row.object_name === "music_credential_revocation_operations"
         ? [true, true, false, false]
       : row.object_name === "music_publication_operations"

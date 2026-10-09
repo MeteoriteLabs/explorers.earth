@@ -63,6 +63,9 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
   Object.freeze({ table: "account_music_identity", name: "account_music_identity_owner_retained", enabled: "O", type: 9 }),
   Object.freeze({ table: "users", name: "users_music_venue_owned", enabled: "O", type: 21 }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_insert", enabled: "O", type: 7 }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_immutable", enabled: "O", type: 27 }),
+  Object.freeze({ table: "users", name: "users_music_numeric_id_immutable", enabled: "O", type: 19 }),
   Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 }),
@@ -115,6 +118,7 @@ const replayTriggers = Object.freeze([
   ...revisionTriggers.map(({table,name}) => Object.freeze({table,name,mode:'ENABLE'})),
   Object.freeze({ table: "users", name: "users_music_identity_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_insert", mode: "ENABLE" }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_publication_operations", name: "music_publication_operation_immutability", mode: "ENABLE ALWAYS" }),
 ]);
 
