@@ -473,9 +473,23 @@ trusting it.** Two facts contradict it:
 
 So either something proxies these paths that is not in the committed Nginx config, or the
 probes do not run against the Nginx container at all. Resolving that needs the fixture
-running - `npm run platform:local -- provision`, then `curl -i http://127.0.0.1:51474/api/check`
-- which is one command for whoever has Docker and the receipt, and is why this is written
-down rather than guessed at further.
+running:
+
+```bash
+npm ci                                    # root deps FIRST - see below
+npm run platform:local -- provision
+curl -i http://127.0.0.1:51474/api/check  # 401 means it reaches tunes; 200 + HTML means Nginx
+```
+
+**`npm ci` at the repository root is not optional, and omitting it fails in a way that
+looks like a code bug.** A fresh worktree has no root `node_modules`, so
+`npm run platform:local` resolves a *globally* installed `tsx`, which loads
+`tunes/scripts/music-output-redaction.ts` as CommonJS. `import.meta.dirname` is undefined
+under CJS, so its line 3 `resolve(import.meta.dirname, "../..")` throws
+`ERR_INVALID_ARG_TYPE: paths[0] ... Received undefined` at module load, before any Docker
+work happens. CI does not hit this because `test.yml:305` runs `npm ci` at the root before
+`:306` and `:307` install the two packages. Same tsx version (4.21.0) either way - the
+difference is which copy resolves.
 
 **Do not conclude "the Nginx config is missing locations, add them"** on the strength of
 the first paragraph alone. That is the shape of the evidence, not a verified cause.
