@@ -124,9 +124,17 @@ async function main(): Promise<number> {
   if (suite === 'auth') {
     const recovery = personas.ownerB;
     const selected = await ensureInitialAccount(db, recovery.userId);
-    await db.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1", [selected.accountId]);
-    await db.query('UPDATE user_security_state SET blocked_at=now(),session_version=session_version+1 WHERE user_id=$1', [recovery.userId]);
-    await db.query('DELETE FROM auth_session WHERE user_id=$1', [recovery.userId]);
+    // Establish a real lifecycle operation: a raw suspended row is deliberately
+    // classified as an orphaned transition requiring manual review.
+    const account = await db.query<{ revision: string }>('SELECT revision::text FROM creator_accounts WHERE id=$1', [selected.accountId]);
+    const deactivated = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/account/deactivation`, {
+      method: 'POST', headers: { Cookie: recovery.cookie, Origin: origin,
+        'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() },
+      body: JSON.stringify({ expectedRevision: Number(account.rows[0].revision) }),
+    });
+    const deactivation = await deactivated.json() as { lifecycle?: { status?: string; operationId?: string } };
+    if (deactivated.status !== 200 || deactivation.lifecycle?.status !== 'suspended' || !deactivation.lifecycle.operationId)
+      throw new Error('Owned auth recovery fixture deactivation failed');
     const context = await composed.auth.$context;
     const temporary = await context.internalAdapter.createSession(recovery.userId, false);
     recoveryProof = (await issueRecoveryProof(db, { userId: recovery.userId,

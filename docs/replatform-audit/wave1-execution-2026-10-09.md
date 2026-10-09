@@ -21,3 +21,9 @@ Independent source reviewer approved the whole slice and preparation docs; coord
 ## Next
 
 Freeze the committed Wave1 package for exact-head checks and supported protected all-lane qualification. Proceed to Wave2 combined Music using its reviewed card, with coordinator-only shared registration and serialized protected runs. QA/provider/recovery input acquisition remains independent preparation; trusted candidate remains blocked by known fixture ingress/music-required until coordinated cutover.
+
+## Protected-run follow-up
+
+The clean Wave1 commit10ab7ac9 protected qualification stopped in the auth lane: the existing purpose-bound recovery case could not find its ready button. Cleanup passed; later lanes were not executed. Failure receipt is retained locally at C:/Users/TK/AppData/Local/Temp/replatform-e2e-b5a8de74-c8da-45f4-adae-6041e9629ba0/qualification.json.
+
+A diagnostic subagent reproduced5 passed/1 failed. The fixture directly suspended its recovery persona without a lifecycle operation; the lifecycle classifier correctly returned manual_review for an orphaned transition. Fixture setup now uses the actual canonical deactivation API, asserting suspended status and operation identity before issuing the existing purpose-bound proof. Production recovery guards and browser assertions are unchanged. Focused auth rerun passed all6 cases with cleanup. Full clean-head qualification remains required after this repair.
