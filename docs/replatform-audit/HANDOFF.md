@@ -286,6 +286,39 @@ Two consequences worth keeping in mind:
   cases, some of which read the git index and would need checking against a CI checkout
   before being made required.
 
+## You can run the integration suites locally, and they need a FRESH database each time
+
+Nothing in the repo says how, and the suites are the only way to verify server work
+without pushing. The recipe, which is exactly what `.github/workflows/test.yml:91-105`
+does:
+
+```bash
+docker run -d --name explorers-pg15-fixture-local   -e POSTGRES_DB=music_fixture -e POSTGRES_USER=music_migrator -e POSTGRES_PASSWORD=music   -p 55432:5432 postgres:15-alpine
+```
+
+```powershell
+# from tunes/, PowerShell (Git Bash breaks the deploy-executable suites)
+$env:DATABASE_URL_TEST="postgresql://music_migrator:music@127.0.0.1:55432/music_fixture"
+$env:MUSIC_C3_POSTGRES_TEST="1"   # the workflow sets this too; it is the disposable-DB ack
+npx vitest run --config vitest.integration.config.ts <files> --maxWorkers=1 --fileParallelism=false
+```
+
+**`MUSIC_C3_POSTGRES_TEST=1` is not an owner decision** — `test.yml:105` and
+`tunes.yml:102` both set it. It asserts the target is disposable, which a container you
+just created is.
+
+**These suites are not idempotent against a reused database.** Re-running the list
+against the same container fails
+`explorers-lifecycle.integration.test.ts > keeps a Music-mapped deletion pending …` with
+`The Explorer identity conflicts with an existing Music identity`, from
+`ensureIdentity`. That is leftover state, not a defect: CI never sees it because it gets
+a fresh `postgres:15-alpine` service per run. **Recreate the container before trusting a
+result**, and do not debug a failure of this shape until you have.
+
+About 8 of the 15 files skip locally — they gate on environment the local container does
+not provide — so a local pass is a weaker signal than CI's, not an equal one. On a fresh
+database the list is 7 passed / 8 skipped / 0 failed.
+
 ## Lessons that will cost you time if you skip them
 
 - **`tsc -p tsconfig.json` in explorers-earth checks nothing** and always reports 0 errors
