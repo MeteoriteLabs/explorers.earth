@@ -868,9 +868,18 @@ repository, not the app** — and note that a runtime GraphQL interceptor keyed 
 name (`e2e/analytics.spec.ts`) is *not* a constraint: it simply never fires once the
 operation is no longer sent.
 
-Fifteen documents remain, four protected by scanners, two by e2e references, and eight only
-because a ticket or plan mentions them by name — a weak reason, left alone rather than
-argued over.
+**Nine documents remain, and every one has a concrete reason: four required by a source
+scanner above, five named in an e2e spec** (`PUBLIC_APP_DATA`, `GAME_LISTS_BY_ACCOUNT`,
+`APP_LISTS_BY_ACCOUNT`, `MOVIE_LISTS_BY_ACCOUNT`, `PRODUCT_LISTS_BY_ACCOUNT`). Six more were
+deleted in `edff0514` once re-checked.
+
+**A warning about the analysis, because it nearly caused a bad delete.** The deadness script
+reported the *first* file that named a symbol and stopped, and markdown sorted ahead of
+`e2e/`. So `APP_LISTS_BY_ACCOUNT`, `MOVIE_LISTS_BY_ACCOUNT` and `PRODUCT_LISTS_BY_ACCOUNT`
+were labelled "named in a ticket" while *also* being named in `e2e/apps.spec.ts`,
+`e2e/movies.spec.ts` and `e2e/products.spec.ts`. Keeping all fifteen was the right call for
+a reason that was wrong in three cases. **Report every match, not the first**, and confirm
+each candidate with an unrestricted `grep -r` over the repository before deleting it.
 
 #### Superseded: why the first attempt failed
 
