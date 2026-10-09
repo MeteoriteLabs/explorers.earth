@@ -120,9 +120,29 @@ function resolveImport(fromFile, specifier) {
   return null;
 }
 
-/** Blank out comments so a mention in prose is never read as code. */
+/**
+ * Blank out comments so a mention in prose is never read as code.
+ *
+ * The CRLF normalisation on the first line is load-bearing, not tidiness. Every file in
+ * this repository is CRLF, and splitting on a newline leaves a trailing carriage return
+ * on each line. In a JavaScript regex a carriage return is a line terminator, so `.` does
+ * not match it and `$` without the `m` flag anchors only at the very end of the string -
+ * which made the line-comment strip below match nothing at all. Line comments were
+ * therefore never stripped, and this function's own contract did not hold: a STRAPI_*
+ * mention inside a line comment in the canonical closure failed the scan as though it
+ * were a real read.
+ *
+ * Demonstrated by probe rather than argued: a line comment naming process.env.STRAPI_URL
+ * added to a closure module passes with this normalisation and reports a violation
+ * without it.
+ *
+ * That direction is over-strict rather than unsafe, so no violation was missed by it. It
+ * did cost real time twice, both times diagnosed as "the assertion trips on my own
+ * comment" rather than as this.
+ */
 function codeOnly(text) {
   return text
+    .replace(/\r\n/g, "\n")
     .replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, " "))
     .split("\n")
     .map((line) => line.replace(/\/\/.*$/, ""))
