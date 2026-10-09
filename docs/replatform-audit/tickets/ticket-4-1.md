@@ -63,4 +63,32 @@ Disposition stays **BOUNDED-SLICE** for the manual owner/public flow.
 
 Behavior may well be covered by differently-named cases; that is precisely what the traceability map must establish, and it is not established today. Absence by name is recorded here as absence of traceable evidence, not as proof the behavior is broken.
 
+### Traceability map for the three field assertions — established 2026-10-09
+
+The suspicion above was right: two of the three were already covered under a different
+name, and the third was genuinely missing.
+
+| Requirement (`:45`) | Where it is asserted | Verdict |
+|---|---|---|
+| runtime **zero versus null** | `moviesViewModel.test.ts` case 1 seeds `runtimeMinutes:0, providerRating:0` and asserts `movie.runtime` is `0` and `movie.tmdb_rating` is `0` | **covered** — a real zero survives instead of reading as unknown |
+| **watch-provider / cast arrays preserved** | same file, case 1 asserts `cast_details` is exactly the first 10 with the original ordinals and a preserved `null` profile; case 2 asserts provider order under both default priority and explicit selection | **covered** |
+| **no fabricated year** | **was absent.** Added 2026-10-09 to case 1: `movie.year` is `null`, and `typeof` is neither `string` nor `number`, so a later `?? ''` cannot satisfy it | **added, mutation-checked** — changing the view model to `facts.yearText??''` fails it |
+
+The same case now also asserts `original_title`, `director`, `overview` and `season_count`
+stay `null`, which is `:40`'s "make nullable provider fields explicit rather than
+defaulting unknown values to zero".
+
+**Correction to this ticket's own instruction:** `:45` says to put these in
+`api/__tests__/explorersAdapter.test.ts`. That file tests `useMoviesOwner` — fetch
+lifecycle, scope keying, invalidation — and none of these fields pass through it. The
+field mapping is `moviesViewModel.ts:9-12`, which is where the assertions went, beside the
+ones that already covered two thirds of the requirement. Writing them in the named file
+would have meant fixtures for a hook that does not touch the fields.
+
+**Still open, and unchanged by this:** `movie_and_tv_same_id_remain_distinct` and
+`creator_note_does_not_mutate_catalog_or_other_creator`. Both are database cases per
+`:43` - resolve fixture movie ID 42 and TV ID 42 and assert distinct canonical IDs; have
+creator A edit title/note/rating and assert creator B's effective values and the entity
+source are unchanged - so they belong in `movies.integration.test.ts`, not in a unit file.
+
 **Live TMDB qualification stays open.** `:37` keeps provider enrichment server-side with no catalog credential in Vite; the real-provider smoke is separately reported and is not satisfied by the fixture lane. The acceptance gate above is unchanged.
