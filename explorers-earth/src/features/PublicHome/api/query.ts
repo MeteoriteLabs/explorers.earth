@@ -57,21 +57,6 @@ export const recommendationListQuery = gql`
   }
 `;
 
-export const recommendedListByIdQuery = gql`
-  query RecommendationLists($documentId: ID!) {
-    recommendationList(documentId: $documentId) {
-      recommended_places {
-        documentId
-        Place_Details
-        recommendation_category {
-          Category_Name
-        }
-      }
-      documentId
-    }
-  }
-`;
-
 export const accountsDetailQuery = gql`
   query user($filters: AccountFiltersInput) {
     accounts(filters: $filters) {

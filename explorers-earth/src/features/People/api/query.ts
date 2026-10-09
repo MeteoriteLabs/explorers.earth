@@ -83,56 +83,6 @@ export function usePeopleCommands() {
 
 
 // ─────────────────────────────────────────────────────────────
-// Query 1.1 — Person Lists by Account (Dashboard + Public)
-// ─────────────────────────────────────────────────────────────
-export const PERSON_LISTS_BY_ACCOUNT = gql`
-  query PersonListsByAccount($accountDocumentId: ID!) {
-    personLists(
-      filters: { account: { documentId: { eq: $accountDocumentId } } }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      list_description
-      slug
-      Visibility
-      cover_image {
-        url
-        alternativeText
-      }
-      display_order
-      top_people_heading: top_picks_heading
-      recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-        documentId
-        name
-        username_handle
-        headline
-        location
-        avatar_path
-        media_details
-        primary_platform
-        social_urls
-        skills_tags
-        user_recommendation_note
-        user_rating
-        is_pinned
-        pin_order
-        display_order
-        people_category {
-          documentId
-          Category_name
-        }
-      }
-      account {
-        documentId
-        username
-      }
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Query 1.2 — People by List (paginated, for list view)
 // ─────────────────────────────────────────────────────────────
 export const PEOPLE_BY_LIST = gql`

@@ -130,14 +130,3 @@ export const refetchMoviesByList = (listId: string) => [
   { query: MOVIES_BY_LIST, variables: moviesByListVars(listId) },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// Query 1.8 — All Movie Categories
-// ─────────────────────────────────────────────────────────────
-export const MOVIE_CATEGORIES = gql`
-  query MovieCategories {
-    movieCategories(pagination: { limit: 100 }) {
-      documentId
-      genre_name
-    }
-  }
-`;
