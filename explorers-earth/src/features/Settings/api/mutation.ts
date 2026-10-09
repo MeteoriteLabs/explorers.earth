@@ -18,19 +18,6 @@ export const updatePasswordMutation = gql`
   }
 `;
 
-export const updateBlockedStatusMutation = gql`
-  mutation UpdateUsersPermissionsUser(
-    $updateUsersPermissionsUserId: ID!
-    $data: UsersPermissionsUserInput!
-  ) {
-    updateUsersPermissionsUser(id: $updateUsersPermissionsUserId, data: $data) {
-      data {
-        blocked
-      }
-    }
-  }
-`;
-
 export const deleteExplorerAccountMutation = gql`
   mutation DeleteExplorerAccount($accountDocumentId: ID!) {
     deleteAccount(documentId: $accountDocumentId) {
@@ -127,15 +114,6 @@ export const getUserAccountQuery = gql`
         username
         documentId
       }
-    }
-  }
-`;
-
-export const addReasonForLeavingMutation = gql`
-  mutation AddReasonForLeaving($Reasons: JSON!, $User_Details: JSON!) {
-    createReasonForLeaving(data: { Reasons: $Reasons, User_Details: $User_Details }) {
-      Reasons
-      User_Details
     }
   }
 `;
