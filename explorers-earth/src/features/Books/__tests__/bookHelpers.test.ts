@@ -133,8 +133,14 @@ describe('bookHelpers', () => {
     });
 
     it('retains canonical same-origin media paths', () => {
-      expect(buildCoverUrl('/api/explorers/v1/media/asset/content')).toBe('/api/explorers/v1/media/asset/content');
+      // The id is a uuid because `media_assets.id` is a `uuid` column and the book-cover
+      // projection interpolates it directly (`bookCovers.ts:5`), so `/media/asset/content`
+      // was never a shape the server can emit. It passed while this helper matched the
+      // route by prefix; the exact shared match in `lib/canonicalMedia.ts` refuses it.
+      expect(buildCoverUrl('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content')).toBe('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content');
       expect(buildCoverUrl('/uploads/cover.jpg')).toBe('');
+      // And a non-uuid id under the same prefix is not media.
+      expect(buildCoverUrl('/api/explorers/v1/media/asset/content')).toBe('');
     });
 
     it('handles empty', () => {
