@@ -20,27 +20,49 @@
  * `public-parity.spec.ts` browser lane. The ticket makes both dependent on 6.3, which
  * has not landed.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve, sep } from "node:path";
 import pg from "pg";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCanonicalApp } from "../../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../../auth/betterAuth";
+import { LocalObjectStorage } from "../../services/objectStorage";
 
 let pool: pg.Pool;
 let app: ReturnType<typeof createCanonicalApp>["app"];
+let storage: LocalObjectStorage;
+let storageRoot: string;
 
-beforeAll(() => {
+const STORAGE_PREFIX = "public-visibility-media-";
+
+beforeAll(async () => {
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 4 });
+  // Real bytes on disk, so the media case asserts a served response rather than a mock.
+  storageRoot = await mkdtemp(join(tmpdir(), STORAGE_PREFIX));
+  storage = new LocalObjectStorage(storageRoot);
   app = createCanonicalApp(pool, resolveExplorersAuthConfig({
     EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
     EXPLORERS_AUTH_SECRET: "public-visibility-secret-".repeat(2),
     GOOGLE_CLIENT_ID: "fixture",
     GOOGLE_CLIENT_SECRET: "fixture",
-  })).app;
+  }), { mediaStorage: storage }).app;
 });
 
-afterAll(async () => { await pool.end(); });
+afterAll(async () => {
+  await pool.end();
+  if (storageRoot) {
+    // Refuse to recurse anywhere this suite did not create.
+    const absolute = resolve(storageRoot);
+    const parent = resolve(tmpdir()) + sep;
+    if (!absolute.startsWith(parent) || !absolute.slice(parent.length).startsWith(STORAGE_PREFIX)) {
+      throw new Error("media storage cleanup refused");
+    }
+    await rm(absolute, { recursive: true, force: true });
+  }
+});
 
 const categoryPath = (handle: string) => `/api/explorers/v1/profiles/${handle}/recommendations/books`;
 const detailPath = (handle: string, slug: string) => `${categoryPath(handle)}/${slug}`;
@@ -281,5 +303,50 @@ describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
     // The one that exists but is hidden must not leak its rows in the body either.
     expect(JSON.stringify(responses[1].body)).not.toContain(privateList.ids[0]);
     expect(JSON.stringify(responses[2].body)).not.toContain(archived.ids[0]);
+  });
+
+  it("denies the bytes once the only public attachment is hidden", async () => {
+    /*
+     * The ticket: "Upload URL bytes fetched after hiding the only public attachment must
+     * be denied independently of the page cache." The page and the bytes are separate
+     * reads - a creator who unpublishes a recommendation has to lose the attachment too,
+     * or the image URL remains a working back door to content removed from the profile.
+     */
+    const seeded = await seedCollection(1);
+    const mediaId = randomUUID();
+    const bytes = Buffer.from("public-attachment-bytes");
+    const objectKey = `local/${seeded.account}/${mediaId}`;
+    await storage.put(objectKey, bytes);
+    await pool.query(
+      `INSERT INTO media_assets(id,account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
+       VALUES($1,$2,'recommendation','ready','image/png',$3,$4,now())`,
+      [mediaId, seeded.account, bytes.length, createHash("sha256").update(bytes).digest()]);
+    await pool.query(
+      `INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256)
+       VALUES($1,'original','local',$2,'image/png',$3,$4)`,
+      [mediaId, objectKey, bytes.length, createHash("sha256").update(bytes).digest()]);
+    await pool.query(
+      `INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order)
+       VALUES($1,$2,$3,0)`, [seeded.ids[0], seeded.account, mediaId]);
+
+    const contentPath = `/api/explorers/v1/media/${mediaId}/content`;
+    const served = await request(app).get(contentPath);
+    expect(served.status, JSON.stringify(served.body)).toBe(200);
+    expect(served.body).toEqual(bytes);
+    const etag = served.get("ETag");
+    // A public attachment is cacheable, which is exactly why the denial below has to be
+    // independent of any cached page - the bytes carry their own revalidation.
+    expect(served.get("Cache-Control")).toContain("must-revalidate");
+
+    await pool.query(
+      `UPDATE recommendations SET publication_state='draft' WHERE id=$1`, [seeded.ids[0]]);
+
+    const denied = await request(app).get(contentPath);
+    expect(denied.status).toBe(404);
+    expect(denied.body?.error?.code ?? denied.body?.code).toBeDefined();
+    // And a conditional request with the still-valid ETag must not be answered 304,
+    // which would confirm the bytes and let a cache keep serving them.
+    const revalidated = await request(app).get(contentPath).set("If-None-Match", etag as string);
+    expect(revalidated.status).toBe(404);
   });
 });

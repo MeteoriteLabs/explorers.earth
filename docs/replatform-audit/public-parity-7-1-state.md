@@ -180,11 +180,32 @@ open. That trade is the owner's.
 
 ## What full 7.1 still needs, by the ticket's own terms
 
-Unchanged and not addressed here: seeding >24 nested items with duplicate order values and
-asserting 53 unique IDs in deterministic order, the table-driven visibility matrix across
-owner/other-owner/anonymous, ETag invalidation after unpublish, same slug under two accounts,
-reserved handle protection, and the nine-route pin checks — plus `public-parity.spec.ts` and
-`publicVisibility.integration.test.ts`, neither of which exists. The ticket also states full
+**Updated 2026-10-09: `publicVisibility.integration.test.ts` now exists** (`d800a791`,
+plus the media case) with seven cases against a real PostgreSQL 15 fixture, wired into
+CI's `database` job in the same commit. It discharges: the 53-item multi-page traversal,
+ETag invalidation after unpublish, the same slug under two accounts, the
+missing/private/archived equivalence, the mid-traversal continuation refusal, and the
+media-bytes denial after the only public attachment is hidden.
+
+**One requirement could not be met as written, and that is a finding, not a gap.** The
+ticket asks for "53 items with duplicate order values". `collection_items` carries
+`UNIQUE(collection_id,display_order) DEFERRABLE INITIALLY DEFERRED`
+(`0029_explorers_recommendations.sql:56`), so duplicates are rejected at COMMIT. The
+requirement was written against Strapi, where order was a plain integer and a duplicate
+was an ordinary state a reader had to survive; the canonical schema makes it unreachable.
+The suite asserts the constraint instead, including that it is deferred — a reorder must
+be able to pass through a duplicate mid-transaction, which an immediate constraint would
+forbid.
+
+Worth carrying from the mutation testing: **the continuation refusal is defended three
+times** (the projection's `s.is_public` gate, and both halves of `freshBooksRead`'s
+before/after check), so no single mutation fails that case. It is a test that the cursor
+carries no authority of its own, not a test of any one check.
+
+Still not addressed: the table-driven visibility matrix across owner/other-owner/anonymous
+(the new suite covers the anonymous column only), reserved handle protection, the
+nine-route pin checks, and `public-parity.spec.ts`, which does not exist and which the
+ticket makes dependent on 6.3. The ticket also states full
 parity depends on every category producer and Music; **6.3 has not landed**, so the Music
 public/unlisted/revoked semantics it requires cannot be exercised yet.
 
