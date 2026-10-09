@@ -783,10 +783,30 @@ job's pinned selector. Prefer a pattern or a tree argument wherever the runner a
 - **Frontend unit: broadened.** `test.yml`'s `frontend` job now runs the suite
   argument-less, consistent with what `contracts` and `database` already do. It needs no
   new service and `test:unit` takes no coverage gate, so the change is contained.
-- **E2E: surfaced, not changed.** Going from 3 to 36 specs on the universal lane is a cost
-  and lane-allocation decision, and several specs need a PostgreSQL container and a built
-  frontend. `scripts/replatform-e2e.mjs` also pins `scopeContents` to a hardcoded lane set,
-  so the lanes are coordinator-allocated rather than freely addable. **Owner decision.**
+- **E2E: surfaced, not changed — and my first reason for that was wrong.** I wrote that
+  several specs "need a PostgreSQL container and a built frontend". **They do not.**
+  `ci.yml` has no `services:` block at all, and none of its five e2e jobs uses a database.
+  Checked 2026-10-09; correcting it because it made the gap look technically blocked when it
+  is not.
+
+  What `e2e-category-a` actually needs is four steps - `npm ci`,
+  `npm ci --prefix ../tunes --legacy-peer-deps`,
+  `npx playwright install --with-deps chromium`, then `npx playwright test --config=...` -
+  plus `CI`, `PLAYWRIGHT_PR_SAFE` and five `VITE_*` values. The configs carry no
+  `globalSetup`; two of the five declare their own `webServer`. The root
+  `playwright.config.ts` is no help for widening, incidentally: its `chromium-pr-safe`
+  project matches `/\.spec\.ts$/` - every spec - so the real curation is the job's file
+  arguments, not the project name.
+
+  So the remaining blocker is **cost plus an existing deliberate choice**, not plumbing:
+  `ci.yml` is scoped to `pull_request: branches: [main, develop]`, and five browser lanes on
+  the universal lane means five more runners on every pull request to any base. Duplicating
+  them into `test.yml` is the same decision as adding `codex/unified-replatform` to
+  `ci.yml`'s branch list, just wearing a different hat - so it is recorded here rather than
+  taken. **Owner decision, and a cheap one to execute either way.**
+
+  Separately, `scripts/replatform-e2e.mjs` pins `scopeContents` to a hardcoded lane set, so
+  the *milestone* lanes remain coordinator-allocated regardless of the above.
 - **The base-branch lists themselves: surfaced, not changed.** Adding
   `codex/unified-replatform` to `ci.yml` and `tunes.yml` would restore full coverage for
   this branch in two lines, and it is the cleanest fix. It also changes two workflows this
