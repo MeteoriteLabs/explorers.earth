@@ -840,7 +840,39 @@ Each blocks a step above, and none is an engineering question. Source: coverage 
 - The Games integration suite needs its own disposable Postgres container on a port other than 55432, which is reserved.
 - eslint carries 1647 warnings against a 0-error gate. The burn-down is ongoing and deliberately not sequenced here.
 
-### The 60 remaining documents inside live modules are NOT deletable by reference analysis
+### 45 of the 60 documents inside live modules are now deleted — the criterion, and the five scanners
+
+**Resolved 2026-10-09, on the second attempt.** 1,435 lines removed in `db153810`. The
+first attempt removed all 60 and was reverted; the history below is kept because the wrong
+criterion is the instructive part.
+
+**The criterion is: nothing names it anywhere in the repository, AND no source scanner
+requires its operation.** Both halves were necessary.
+
+**The five source scanners**, found by sweeping the whole repo for path references to the 13
+candidate files — not by any import graph, since none of these import the modules:
+
+| Scanner | Requires |
+|---|---|
+| `tunes/scripts/music-fixture-profile.ts:19-21` | Settings `UsersPermissionsUser`+`UpdateAccount`; PublicHome `PublicCategoryListCounts`+`PublicAccountBasic`+`PublicProfileData` — each **exactly once** |
+| `tunes/server/test/contracts/music-fixture-services.test.ts` | the same, via `checkedInGraphqlOperation` |
+| `explorers-earth/e2e/music-harness-contract.spec.ts:6002` | Profile `UsersPermissionsUser`, Settings `UpdateAccount`, PublicHome `PublicProfileData` |
+| `explorers-earth/e2e/contained-auth-session.spec.ts:101,130` | navigation `CategoryNavigationAccount`, asserted `toBeTruthy()` |
+| `explorers-earth/scripts/music-public-prebrowser-qualification.mjs:190` | Settings `UsersPermissionsUser`+`UpdateAccount` |
+
+**And the corpus matters as much as the rule.** The first pass scanned `src/` only, which
+would have deleted `PUBLIC_APP_DATA` (dynamically imported by
+`e2e/public-shell-continuity.spec.ts`) and `GAME_LISTS_BY_ACCOUNT` (named in
+`e2e/games.spec.ts`). Widening to all 2,564 repository files caught both. **Scan the
+repository, not the app** — and note that a runtime GraphQL interceptor keyed by operation
+name (`e2e/analytics.spec.ts`) is *not* a constraint: it simply never fires once the
+operation is no longer sent.
+
+Fifteen documents remain, four protected by scanners, two by e2e references, and eight only
+because a ticket or plan mentions them by name — a weak reason, left alone rather than
+argued over.
+
+#### Superseded: why the first attempt failed
 
 Attempted and reverted 2026-10-09. Worth recording so the next attempt starts from the
 right criterion rather than repeating it.
