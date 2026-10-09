@@ -33,6 +33,7 @@ import { LocalObjectStorage } from "../../services/objectStorage";
 import { ProfileInputError, ProfileService } from "../../application/profiles";
 import type { Actor } from "../../application/actor";
 import { OwnerContentService } from "../../application/ownerContent";
+import { PUBLIC_RECOMMENDATION_CATEGORIES } from "../../publicProfile/publicProfilePolicy";
 
 let pool: pg.Pool;
 let app: ReturnType<typeof createCanonicalApp>["app"];
@@ -507,6 +508,72 @@ describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
       const absent = await owners.getCollection(theirs, randomUUID()).catch((error) => error);
       expect(hidden.status).toBe(absent.status);
       expect(hidden.message).toBe(absent.message);
+    });
+  });
+
+  /*
+   * The ticket's route pin: `/:username`, all nine category routes, list slugs, the
+   * genre route and guide detail.
+   *
+   * What makes this worth asserting over HTTP rather than trusting the router: an
+   * **unmounted** route and a mounted route with nothing to show both answer 404. The
+   * difference is the body - a mounted route answers the typed
+   * `explorers-public-error/v1` envelope, while an absent one falls through to Express's
+   * default handler, which answers HTML. So the pin is "every one of these answers the
+   * typed envelope or 200", never an untyped body.
+   *
+   * This is the same masking that `platform-fixture` has been failing on: a route absent
+   * from a composition is answered by a catch-all, and a check that only looks at the
+   * status code cannot see it. A typed-body assertion can.
+   *
+   * Category *dispatch* is pinned separately and enum-driven in
+   * `contracts/public-category-coverage.test.ts`; this is only about the routes existing.
+   */
+  describe("route pins", () => {
+    const typed = (body: unknown) =>
+      typeof body === "object" && body !== null
+      && (body as { version?: unknown }).version === "explorers-public-error/v1";
+
+    it("mounts every public profile route with a typed body, never a catch-all", async () => {
+      const seeded = await seedCollection(1);
+      const paths = [
+        `/api/explorers/v1/profiles/${seeded.handle}`,
+        ...PUBLIC_RECOMMENDATION_CATEGORIES.map(
+          (category) => `/api/explorers/v1/profiles/${seeded.handle}/recommendations/${category}`),
+        // A list slug, the genre route and guide detail.
+        detailPath(seeded.handle, seeded.slug),
+        `/api/explorers/v1/profiles/${seeded.handle}/recommendations/movies/genres/action`,
+        `/api/explorers/v1/profiles/${seeded.handle}/recommendations/guides/some-guide`,
+      ];
+      /*
+       * Twelve, not the ticket's thirteen, and the gap is accounted for rather than
+       * rounded away. `PUBLIC_RECOMMENDATION_CATEGORIES` holds **eight** entries -
+       * `public-category-coverage.test.ts` pins that it does not quietly gain a ninth -
+       * because Music is not a public recommendation category. The ticket counts it as
+       * the ninth and lists its "shared capability route" separately, and that route is
+       * mounted in `routes/index.ts`, the legacy composition, not in `canonicalApp.ts`.
+       * Pinning it here would assert the canonical app mounts something it does not;
+       * it belongs with 6.3, which the ticket already makes this part depend on.
+       */
+      expect(PUBLIC_RECOMMENDATION_CATEGORIES).toHaveLength(8);
+      expect(paths).toHaveLength(12);
+
+      for (const path of paths) {
+        const response = await request(app).get(path);
+        expect([200, 404, 503], `${path} answered ${response.status}`).toContain(response.status);
+        if (response.status !== 200) {
+          expect(typed(response.body), `${path} answered an untyped body`).toBe(true);
+        }
+        expect(response.get("Content-Type") ?? "").toContain("application/json");
+      }
+    });
+
+    it("distinguishes a mounted route from one that is not, so the pin above can fail", async () => {
+      // The control. A path under the same prefix that no route claims must NOT produce
+      // the typed envelope - otherwise every assertion above would hold for a router
+      // with nothing mounted at all.
+      const absent = await request(app).get("/api/explorers/v1/profiles/x/not-a-real-subroute");
+      expect(typed(absent.body)).toBe(false);
     });
   });
 });
