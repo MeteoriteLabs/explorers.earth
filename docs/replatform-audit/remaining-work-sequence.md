@@ -710,7 +710,43 @@ via `explorers-earth/src/lib/canonicalMedia.ts`. Anything that rewrites a relati
 must recognise `/api/explorers/v1/media/<uuid>/content` first.
 
 - Verify zero active consumers, then delete the compatibility files and the retired `gql` documents across all nine category features. **The `gql` documents are dead already — the frontend executes no Apollo operation at all (see step 6), so this part is deletion with no replacement work.**
-- 8.2: remove the duplicate Tunes frontend — still built and served. A CI-gating risk, not a product change.
+- 8.2: remove the duplicate Tunes frontend — still built and served. **"A CI-gating risk,
+  not a product change" is too strong; measured 2026-10-09.** `tunes/vite.config.ts:31`
+  sets `root: tunes/client` and `:33` `outDir: tunes/dist/public`; `npm run build` runs
+  `vite build`; `tunes/server/runtime.ts:24` serves that directory. So it is the Tunes
+  service's *actual* served frontend, and deleting it stops serving the standalone Tunes
+  UI and leaves the vite build without a root. Whether that UI is still wanted once Music
+  is embedded in explorers-earth is a deployment and product call, so this is **not** a
+  deletion an agent should take unprompted.
+
+**8.1b progress, 2026-10-09 — 843 lines of provably dead code deleted.** Done by resolving
+every relative import to its target file, because `./api/query` exists nine times and a
+basename grep collides across features:
+
+| Deleted | Why it was safe |
+|---|---|
+| `pages/EmailVerification.tsx` (105) | Posts to `/send-email-confirmation`; nothing imports it and `AuthRoutes.tsx:28` redirects `/email-verification` to `/login`, so it cannot mount |
+| `Authentication/api/mutation.ts`, `Authentication/api/userQueries.ts`, `Books/api/query.ts`, `Guides/api/queries.ts`, `Profile/api/UserStatus.ts` (527) | No importer at all, test or otherwise, and no barrel re-export |
+| `Favorites/api/query.ts` + its own `__tests__/query.test.ts` (211) | The test's only assertion is an Apollo cache-normalization property of a document nothing executes, so module and test are one orphan |
+
+Verified each time with `tsc -p tsconfig.app.json` (**not** `tsconfig.json`, which checks
+nothing here) and the full suite: 325/4554 unchanged for the first two, then 324/4553,
+which is exactly the one deleted case.
+
+The claim licensing all of this was checked first rather than taken on trust: of seven
+non-test modules using `useQuery`/`useMutation`, five import `@tanstack/react-query` and
+two match only in prose comments, so **no component executes an Apollo operation**.
+
+**What remains, and why it is not mechanical.** `Books/api/mutation.ts`,
+`Favorites/api/mutation.ts` and `Guides/api/mutations.ts` have no non-test consumer, but
+their only importer is `features/__tests__/recommendationMutationsPublish.test.ts` — the
+cross-category guard that every `Recommended*` write carries `status: PUBLISHED`, which is
+a regression that actually shipped once. Five of the eight modules it covers (Games,
+AppsAndTools, People, Products, Movies) are still live, so the guard stays; removing the
+three dead ones means trimming a test whose comment says it covers "all categories", which
+asserts per category that those writes are now canonical. That is migration verification
+and belongs to whoever closes those categories. The other 15 Apollo modules have live
+consumers, and `main.tsx`/`lib/apolloCache.ts` keep Apollo wired up.
 - 8.3: the mechanical backend rename, strictly after 8.1 and 8.2.
 
 ### 13. Topology, deployment, recovery — [3.5](tickets/ticket-3-5.md), [8.4](tickets/ticket-8-4.md), [8.5](tickets/ticket-8-5.md)
