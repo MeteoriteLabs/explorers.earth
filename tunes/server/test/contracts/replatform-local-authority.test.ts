@@ -24,6 +24,9 @@ import {
   classifyPlatformBuildFailure,
   classifyPlatformIngressFailure,
   buildAndStartPlatformServices,
+  classifiesChildOutput,
+  carriesBuildStage,
+  type PlatformPhase,
 } from "../../../../scripts/replatform-local";
 
 const receipt = {
@@ -196,6 +199,29 @@ describe("replatform local authority", () => {
     // step lines, and a service start produces none, so it would always say "unknown".
     expect(formatPlatformFailure("postgres-start", "port-unavailable")).not.toContain("build-stage=");
     expect(classifyPlatformBuildStage("no such service: postgres")).toBe("unknown");
+  });
+
+  /*
+   * This is the assertion the cause-set cases above cannot make. Mutation-testing them
+   * found it: reverting the wiring that routes `postgres-start` to the classifier left all
+   * of them green, because they call the classifier themselves. The behaviour under test
+   * is *which phases get classified at all*, so it needs its own seam and its own case.
+   */
+  it("classifies exactly the two phases that produce child output", () => {
+    const classified: PlatformPhase[] = ["service-build", "postgres-start"];
+    const bare: PlatformPhase[] = ["docker-endpoint", "compose-model", "resource-inventory",
+      "secret-inventory", "postgres-attestation", "service-check", "receipt-check", "ingress-check"];
+    for (const phase of classified) expect(classifiesChildOutput(phase)).toBe(true);
+    // `ingress-check` is in this list on purpose: it has its own classifier, driven by the
+    // probe's error rather than by child process output, and must not be routed here.
+    for (const phase of bare) expect(classifiesChildOutput(phase)).toBe(false);
+    // Every phase is accounted for, so a new one cannot be added without a decision here.
+    expect(new Set([...classified, ...bare]).size).toBe(10);
+  });
+
+  it("attaches a build stage to the build phase only", () => {
+    expect(carriesBuildStage("service-build")).toBe(true);
+    expect(carriesBuildStage("postgres-start")).toBe(false);
   });
 
   it.each([

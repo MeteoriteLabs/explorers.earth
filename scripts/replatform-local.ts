@@ -216,7 +216,7 @@ const RESET_INTENT = join(STATE, "reset-intent.json");
 const COMPOSE = join(ROOT, "docker-compose.replatform.yml");
 const DOCKER = process.platform === "win32" ? "docker.exe" : "docker";
 const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
-type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
+export type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
   | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check"
   /*
    * Ingress verification, which used to report as "receipt-check" because the phase was set
@@ -237,6 +237,23 @@ type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-res
 export type PlatformIngressFailure = "canonical-route-absent" | "canonical-handler-mismatch"
   | "fixture-route-mismatch" | "fixture-handler-mismatch" | "fixture-identity-boundary"
   | "ingress-unreachable" | "ingress-malformed-body" | "ingress-html-shell" | "unclassified";
+
+/**
+ * Which phases classify child output into a closed cause set, and which report bare.
+ *
+ * A named seam rather than an inline condition, because the condition is the whole
+ * behaviour: `postgres-start` failed in CI with no cause for want of being listed here,
+ * and a test asserting the classifier directly cannot see that - mutation-testing proved
+ * it, leaving seven cause cases green while the wiring was reverted. Pinned per phase.
+ */
+export function classifiesChildOutput(phase: PlatformPhase): boolean {
+  return phase === "service-build" || phase === "postgres-start";
+}
+
+/** Only a real build emits BuildKit step lines, so only a build can carry a stage. */
+export function carriesBuildStage(phase: PlatformPhase): boolean {
+  return phase === "service-build";
+}
 
 let failurePhase: PlatformPhase = "docker-endpoint";
 let failureCause: PlatformBuildFailure | PlatformIngressFailure | undefined;
@@ -396,10 +413,10 @@ function run(file: string, args: string[], environment = childEnvironment(), tim
      * details are redacted by design, so the category is the only thing that can speak.
      * The build *stage* is deliberately not set: there is no BuildKit output to parse.
      */
-    if (failurePhase === "service-build" || failurePhase === "postgres-start") {
+    if (classifiesChildOutput(failurePhase)) {
       const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`;
       failureCause = classifyPlatformBuildFailure(output);
-      if (failurePhase === "service-build") failureStage = classifyPlatformBuildStage(output);
+      if (carriesBuildStage(failurePhase)) failureStage = classifyPlatformBuildStage(output);
     }
     throw new Error("local subprocess failed");
   }
