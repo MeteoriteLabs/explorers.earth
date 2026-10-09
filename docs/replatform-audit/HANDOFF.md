@@ -417,136 +417,80 @@ If you write a scanner here, normalise line endings before anything else.
   It will show up in `git status` as a change you did not make; drop it rather than committing
   it.
 
-## `platform-fixture` has a SECOND failure mode — check the phase before dismissing it
+## `platform-fixture` is red BY DESIGN — stop before you debug it
 
-**Read this before the registry-rate-limit section below, because that section says "do not
-chase it" and this one is a different failure.**
+**Read this before touching that job. It is not flaky, not a regression, and not caused by
+any branch. It is ticket 1.2's route-graph invariant doing exactly what it was built to
+do**, and the repository already said so at
+[route-graph-invariant.md:61](route-graph-invariant.md) under the heading *"The cost:
+`platform:test:routes` will fail in CI, by design"*:
 
-Observed 2026-10-08/09 on `claude/wave3-auth-lifecycle` and on the base branch:
+> Against a `legacy-music` fixture, the five canonical probes are absent, so **that job now
+> fails.** That is the ticket's mandated behaviour [...] and it is the first time the
+> invariant has been able to fail at all.
 
-    Replatform local command refused or failed; phase=receipt-check; authority details redacted.
+Measured confirmation, run by run on the **"Music contract and qualification CI"**
+workflow:
 
-`phase=receipt-check`, and **no `cause=`** — not `phase=service-build;
-cause=registry-rate-limit`. Nothing is being pulled, so the rate-limit explanation does not
-apply and re-running on a reset limit is not the remedy.
+| Commit | `platform-fixture` |
+|---|---|
+| `91b6c99b` (2026-10-08 13:56) | success — the last one |
+| `b4975654` (14:44) — *"bind the route-parity invariant to the real canonical app"* | **failure** |
+| every run since, up to today | failure |
 
-It is not caused by any branch. Evidence: the job **passed** on `69e0d47f` (the PR #120
-merge) and failed on `46274e06` immediately after, and `46274e06` changes
-`docs/replatform-audit/HANDOFF.md` and nothing else. A single-markdown-file commit cannot
-break a Docker ingress fixture, so this is flaky on `codex/unified-replatform` itself.
+So it has failed continuously since the commit that added `CANONICAL_ROUTES`. The cause is
+that `docker-compose.replatform.yml:56,106` starts `EXPLORERS_API_MODE: legacy-music`,
+whose composition mounts neither Better Auth, nor `/health/live`, nor the
+`/api/explorers/v1` owner routes — and `explorers-earth/nginx.music-fixture.conf` proxies
+only one of the ten probe paths to tunes, so the rest reach
+`location / { try_files $uri $uri/ /index.html; }` and are answered with the SPA.
 
-**What makes it hard to diagnose is a real observability defect, not the flake.**
-`scripts/replatform-local.ts` sets `failurePhase = "receipt-check"` before `check()` and
-never updates it before `verifyPlatformIngress`, so the label cannot distinguish a bad
-authority receipt from an ingress probe mismatch. The top-level handler then prints only the
-phase. The useful messages exist and are thrown - `replatform-route-parity.ts:119-128`
-produces `canonical route absent: <path> expected <n> got <m>` - and they contain only paths
-and status codes, no authority material. They are discarded anyway.
+**How to clear it, and it is not a code fix on a feature branch:** make the fixture run the
+canonical composition. Until then the red is correct, and
+[route-graph-invariant.md:72](route-graph-invariant.md) is explicit that reverting the probes
+"restores the vacuous pass; it does not restore correctness" — so **do not** delete a probe,
+lower `EXPECTED_PLATFORM_PROBE_COUNT`, or revert `b4975654`.
 
-**Half of that is now done (`44b00775`).** Ingress reports `phase=ingress-check` with a
-closed cause set - `canonical-route-absent`, `canonical-handler-mismatch`,
-`fixture-route-mismatch`, `fixture-handler-mismatch`, `fixture-identity-boundary`,
-`ingress-unreachable`, `unclassified` - modelled on `classifyPlatformBuildFailure` and
-tested the same way, with a synthetic secret in each input asserted absent from the output.
-Redaction is unchanged: only fixed enum values are ever printed.
+**Consequence for any PR:** this required check cannot go green on a branch, so a merge
+needs the owner to accept a known-failing gate or to land the fixture change first. That is
+a decision, not a bug to chase.
 
-**It has now been read, and the answer narrows to one thing.** Run `37865052473`
-reported:
+### My own wrong turn, recorded so it is not repeated
 
-    Replatform local command refused or failed; phase=ingress-check; cause=ingress-malformed-body
+I spent a long stretch treating this as a flake. The error was comparing **different
+workflows**: `gh run list --commit <sha>` returns several runs per commit, and the one I
+read as a pass on `69e0d47f` was *"Music C0 contracts"*, a different workflow that does not
+contain this job. The same commit's *"Music contract and qualification CI"* run failed.
+**Always pass `--workflow` when judging whether a job's state changed.**
 
-That is: a probe got **the status it expected** and then `response.json()` threw. So no
-route is missing by status code, nothing timed out, and the authority receipt is fine -
-one route answered with a body that is not JSON.
+The diagnostic work that came out of it is still worth having, and is why the failure now
+names itself instead of hiding behind one label: `phase=ingress-check` separates ingress
+verification from the authority receipt (`44b00775`), and the cause set — including
+`ingress-malformed-body` and `ingress-html-shell` — distinguishes "a route is not mounted
+and the SPA answered instead" from "a body was truncated" and from "nothing was listening"
+(`042a1f43`, `5e4fd449`). On a `legacy-music` fixture the expected cause is
+`ingress-html-shell`.
 
-The likeliest shape by a wide margin is **the SPA shell**: a route absent from the
-fixture falls through to the catch-all, which answers `200` with `index.html`, so the
-status assertion passes and only the body gives it away. That is exactly the masking
-ticket 1.2's route invariant exists to catch. A dedicated cause now separates it -
-`ingress-html-shell`, decided on the response's `content-type` before parsing - so the
-next failing run distinguishes "a route is not mounted" from "something truncated the
-body".
+### This cannot be reproduced on the Windows host
 
-**What the owner needs to decide, if `ingress-html-shell` is confirmed:** which route,
-which needs the probe's path in the output. That is the redaction change described below
-and it is still not made.
+`provision` reaches `phase=postgres-start` and Docker refuses the bind:
 
-### What static reading established, and the contradiction it leaves
-
-Port **51474 is the explorers Nginx container**, not the tunes Express app
-(`docker-compose.replatform.yml:178` publishes `127.0.0.1:51474:80`;
-`explorers-earth/Dockerfile.music-fixture:49` installs
-`explorers-earth/nginx.music-fixture.conf`). That config proxies exactly six things, and
-against the ten probe paths in `scripts/replatform-route-parity.ts` **only
-`/api/music-fixture/readiness` is proxied to tunes.** Everything else - `/api/check`,
-`/api/csrf-token`, `/api/user/reactivate`, `/api/explorers/analytics/events`,
-`/health/live` and all five canonical probes - falls through to
-`location / { try_files $uri $uri/ /index.html; }`.
-
-**But that cannot be the whole story, and the next person should know why before
-trusting it.** Two facts contradict it:
-
-1. `platform-fixture` **passed** on `69e0d47f` with this same probe list
-   (`b4975654`, which added `CANONICAL_ROUTES`, is an ancestor of it) and with a
-   byte-identical workflow - `git show 69e0d47f:.github/workflows/test.yml` matches the
-   current file at lines 302-310. So the job demonstrably can pass.
-2. The observed cause is `ingress-malformed-body`, which means the **first failing probe
-   matched its expected status** and then failed to parse. The first probe is
-   `/api/check`, expecting **401**. Nginx serving the SPA would answer 200, which is a
-   status mismatch (`fixture-route-mismatch`), not a parse failure.
-
-So either something proxies these paths that is not in the committed Nginx config, or the
-probes do not run against the Nginx container at all. Resolving that needs the fixture
-running:
-
-```bash
-npm ci                                    # root deps FIRST - see below
-npm run platform:local -- provision
-curl -i http://127.0.0.1:51474/api/check  # 401 means it reaches tunes; 200 + HTML means Nginx
-```
-
-**`npm ci` at the repository root is not optional, and omitting it fails in a way that
-looks like a code bug.** A fresh worktree has no root `node_modules`, so
-`npm run platform:local` resolves a *globally* installed `tsx`, which loads
-`tunes/scripts/music-output-redaction.ts` as CommonJS. `import.meta.dirname` is undefined
-under CJS, so its line 3 `resolve(import.meta.dirname, "../..")` throws
-`ERR_INVALID_ARG_TYPE: paths[0] ... Received undefined` at module load, before any Docker
-work happens. CI does not hit this because `test.yml:305` runs `npm ci` at the root before
-`:306` and `:307` install the two packages. Same tsx version (4.21.0) either way - the
-difference is which copy resolves.
-
-**And on this Windows host the fixture cannot be provisioned at all, for a reason that
-has nothing to do with the repository.** With root deps installed, `provision` reaches
-`phase=postgres-start` and the container is created but never starts:
-
-    Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:51434
-    -> 127.0.0.1:0: listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a
-    socket in a way forbidden by its access permissions.
+    listen tcp4 127.0.0.1:51434: bind: An attempt was made to access a socket in a way
+    forbidden by its access permissions
 
 `netsh int ipv4 show excludedportrange protocol=tcp` lists **51342-51441** and
-**51442-51541** as excluded ranges, reserved by WinNAT/Hyper-V. The fixture needs
-**51434** for its postgres (`replatform-local.ts:13` `PLATFORM_PORT`) and **51474** for
-the ingress the route probes hit (`docker-compose.replatform.yml:178`). **Both are inside
-excluded ranges**, so no amount of retrying helps.
+**51442-51541** as WinNAT/Hyper-V reserved. The fixture needs **51434** (its postgres) and
+**51474** (the ingress the probes hit); both are inside excluded ranges, so retrying cannot
+help. Remedies, all the owner's: reserve the two ports, move `PLATFORM_PORT` and the
+published ingress port out of the ranges, or treat the fixture as CI-only here.
 
-Options, all the owner's: reserve the two ports (`netsh int ipv4 add excludedportrange
-... store=persistent` after a `net stop winnat`), move `PLATFORM_PORT` and the published
-ingress port out of the excluded ranges, or accept that this fixture is CI-only on this
-machine. Until one of those happens, **`platform-fixture` can only be diagnosed from CI
-logs on this host**, which is why the phase and cause work in `44b00775`, `042a1f43` and
-`5e4fd449` was worth doing at all.
-
-Cleanup note: a refused `provision` leaves a created-but-never-started container, and
-`platform:local -- stop` refuses to clean it because there is no valid receipt. Remove it
-by label - `docker rm -f`, then `docker network/volume rm` filtered on
+Two prerequisites if you do try it elsewhere: **`npm ci` at the repository root first** — a
+fresh worktree has no root `node_modules`, so `npm run platform:local` resolves a *global*
+`tsx`, loads `tunes/scripts/music-output-redaction.ts` as CommonJS, and dies on
+`import.meta.dirname` being undefined before any Docker work; CI avoids it via
+`test.yml:305`. And a refused `provision` leaves a created-but-never-started container that
+`platform:local -- stop` will not remove (no valid receipt) — delete it by
 `label=com.docker.compose.project=explorers-replatform-local`.
-
-**Do not conclude "the Nginx config is missing locations, add them"** on the strength of
-the first paragraph alone. That is the shape of the evidence, not a verified cause.
-
-What is still not done, and is the part that wants the owner: letting any probe *detail*
-through - the path, the expected and received status. That is a redaction change in
-authority-sensitive code.
 
 ## `platform-fixture` ALSO flaps on an external registry rate limit — do not chase that one
 
