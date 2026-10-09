@@ -89,7 +89,7 @@ receipts; three obligations remain.
 | 2. Dashboard home | Done |
 | 3. Claim flow | **Done.** D4 decided against it; the flow is dropped in `7399cfe1`. |
 | 4. Auth pages | Done. Was never D10's — see below. |
-| 5. Auth UX and lifecycle (2.4) | Prerequisite discharged; 2 of 6 obligations done; 3 remain |
+| 5. Auth UX and lifecycle (2.4) | **6 of 7 obligations closed; exactly one remains.** Re-counted 2026-10-09 against [the frozen map](lifecycle-requirement-receipt-map.md): 1 and 2 done 2026-10-08, **3** (real Google callback) discharged 2026-10-09 executed and observed, **4** (Music socket revocation on logout) discharged 2026-10-09 in `e809d57b`, 6 (the L19 fence) already done, and 7 closed by 1. **Open: only 5, the hosted attestation of the browser receipts**, which needs a hosted environment. The earlier "2 of 6 done; 3 remain" was stale and also miscounted - there are seven entries. |
 | 6. Public place/person detail | Done |
 | 7. Profile, Settings, Analytics | Done. Ticket 7.2's reference content landed 2026-10-08 |
 | 8. Music glue | Done |
