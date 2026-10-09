@@ -114,6 +114,34 @@ cd explorers-earth && grep -rn "useQuery\|useMutation\|useLazyQuery\|useApolloCl
   | grep -v "__tests__\|/test/" | wc -l
 ```
 
+## What stands between here and a finished plan — consolidated 2026-10-09
+
+The steps below are not blocked on engineering judgement or on more code being written.
+Each needs an input that cannot be produced from inside the repository. Read this before
+concluding that something was merely left undone.
+
+| Blocker | Step / ticket | What it needs, exactly |
+|---|---|---|
+| **`platform-fixture` is red by design** | 1.2 | Nothing on a feature branch. The fixture must run the canonical composition instead of `EXPLORERS_API_MODE: legacy-music`. Until then the red is correct and must not be silenced — see the by-design section below. A merge needs you to accept a known-failing required check. |
+| **Browser lanes are coordinator-reserved** | 6.3, 7.1's `public-parity.spec.ts`, 7.3, step 15's place specs | A Docker fixture runner plus `suite-manifest.json` identities. Both are allocated by the coordinator, not writable from a ticket. |
+| **Hosted QA environment and live providers** | 7.3, 2.4, 3.3's re-attestation, 4.1's live TMDB smoke | Real credentials and a hosted run at a named commit. A fixture cannot substitute, and each of those tickets says so itself. |
+| **`TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` acknowledgement** | 3.4 | Yours to give. Hand-adding the lane would falsify an attestation. |
+| **8.1a's three ops items** | 8.1a | Compose `${VAR:?}` loosening, the `music-reconcile.yml` cron disablement *recorded before* deletion, and an executed boot receipt with outbound Strapi denied. All three change what a half-configured or in-flight production deploy does. |
+| **8.2's deletion gate** | 8.2, step 12 | A packaged-image inspection, a production graph smoke, and the owner/guest/reconnect/publication browser scenarios. Its first step — re-homing the two coverage-gated client files — is **already satisfied**; see the ticket. |
+| **`strapiIdentityAbsenceProof` deletion authority** | step 12 | An explicit grant. Not mine to assume. |
+| **Legal copy values** | 7.2 | Company name, country/state, app URL, contact email. A one-file edit once you supply them; rewriting a legal document's operative text is not an engineering call. |
+| **D3, D5** | Phase D (step 15) | The Places taxonomy vocabulary (an export, or a decision to ship without it) and per-place pinning. |
+| **D8's `recommendation_list.List_Name_Details`** | step 7 | The last third of D8. Three live readers, including the public share card. |
+| **The 55 ungated `server/test` root files** | CI hygiene | Each file's pass state confirmed against a CI checkout first. `server/test/deployment`'s 46 release-authority cases read the git index, so they may not be CI-safe as-is. |
+| **eslint burn-down** | — | 1647 warnings against a 0-error gate, deliberately unsequenced. |
+
+**What is not on this list is done or recorded as measured.** The engineering-side items
+closed on 2026-10-09 are 8.1a's module move, 7.1's named acceptance suite (21 cases
+including the visibility matrix, reserved handles and route pins), 5.1's named unit suite,
+4.1's two named cases plus its field-assertion traceability map, 3.3's static half, two
+live canonical-media defects across eight files, a CRLF bug that silently disabled comment
+stripping in a production gate, and the gating of 30 previously-unrun test files.
+
 ## What actually remains, and what it needs
 
 **Nothing here is waiting on a decision any more.** All three that were are taken:
